@@ -1,0 +1,5 @@
+sqlalchemy>=2.0
+feedparser>=6.0
+brightdata-sdk>=2.0
+anthropic>=0.34
+pytest>=8.0
