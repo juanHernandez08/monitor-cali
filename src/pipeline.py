@@ -31,7 +31,10 @@ def ingest(session, source, connector: Connector, max_age_days: int = MAX_AGE_DA
             if session.query(Mention).filter_by(source_id=source.id, external_id=item.external_id).first():
                 continue
             url_norm = normalize_url(item.url)
-            if url_norm and session.query(Mention).filter_by(url_normalized=url_norm).first():
+            is_comment = (item.raw or {}).get("kind") == "comment"
+            # Dedup entre fuentes por URL (misma nota vía RSS y Google News). Los comentarios
+            # comparten la URL de su post, así que para ellos solo cuenta el external_id.
+            if url_norm and not is_comment and session.query(Mention).filter_by(url_normalized=url_norm).first():
                 continue
             candidate = (find_matching_candidate(item.text, candidates)
                          or find_candidate_by_term(item.search_term, candidates))

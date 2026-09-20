@@ -79,3 +79,12 @@ def test_ingest_skips_items_older_than_max_age(db_session):
     new = RawItem(external_id="new", text="Carlos Arias hoy", published_at=dt.datetime.utcnow())
     assert ingest(db_session, s1, ListConnector([old, new]), max_age_days=60) == 1
     assert db_session.query(Mention).one().external_id == "new"
+
+
+def test_ingest_does_not_dedup_comments_by_url(db_session):
+    """Varios comentarios comparten la URL del post: la dedup por URL solo aplica a posts/notas."""
+    _, _, s1, _ = _seed(db_session)
+    post = RawItem(external_id="ig:post:1", text="Carlos Arias hoy", url="https://instagram.com/p/X/", raw={"kind": "post"})
+    c1 = RawItem(external_id="ig:comment:1", text="bien", url="https://instagram.com/p/X/", search_term="Carlos Arias", raw={"kind": "comment"})
+    c2 = RawItem(external_id="ig:comment:2", text="mal", url="https://instagram.com/p/X/", search_term="Carlos Arias", raw={"kind": "comment"})
+    assert ingest(db_session, s1, ListConnector([post, c1, c2])) == 3
