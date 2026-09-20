@@ -21,3 +21,12 @@ def test_seed_includes_carlos_with_aliases(db_session):
     seed(db_session)
     carlos = db_session.query(Candidate).filter_by(name="Carlos Arias").first()
     assert "@soycarlosaarias" in carlos.aliases
+
+
+def test_seed_updates_aliases_and_party_of_existing_candidates(db_session):
+    db_session.add(Candidate(name="Carlos Arias", party="viejo", aliases=["alias-viejo"]))
+    db_session.commit()
+    seed(db_session)
+    carlos = db_session.query(Candidate).filter_by(name="Carlos Arias").one()
+    assert "alias-viejo" not in carlos.aliases and "@soycarlosaarias" in carlos.aliases
+    assert carlos.party == "Partido de la U"

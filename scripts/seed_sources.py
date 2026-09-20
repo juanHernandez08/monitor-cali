@@ -12,10 +12,14 @@ EXTRA_SOURCES = [
 
 def seed(session):
     for c in CANDIDATES:
-        if not session.query(Candidate).filter_by(name=c["name"]).first():
+        row = session.query(Candidate).filter_by(name=c["name"]).first()
+        if row is None:
             session.add(Candidate(
                 name=c["name"], party=c.get("party"), aliases=c.get("aliases", []),
             ))
+        else:  # config.py es la fuente de verdad de alias y partido
+            row.aliases = c.get("aliases", [])
+            row.party = c.get("party")
     for s in RSS_SOURCES:
         exists = session.query(Source).filter_by(
             type=SourceType.RSS, name=s["name"],
