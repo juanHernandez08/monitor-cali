@@ -22,8 +22,9 @@ class YouTubeConnector:
     source_name = "youtube"
 
     def __init__(self, api_key: str, max_videos: int = 5, max_comments: int = 50,
-                 pause_seconds: float = 0.5, published_after_days: int = 30):
+                 pause_seconds: float = 0.5, published_after_days: int = 30, context: str = "Cali"):
         self.api_key = api_key
+        self.context = context  # evita homónimos (p. ej. "Carlos Arias" → futbolistas Arias)
         self.max_videos = max_videos
         self.max_comments = max_comments
         self.pause_seconds = pause_seconds
@@ -40,7 +41,8 @@ class YouTubeConnector:
         seen: set[str] = set()
         after = (dt.datetime.utcnow() - dt.timedelta(days=self.published_after_days)).strftime("%Y-%m-%dT%H:%M:%SZ")
         for term in search_terms:
-            data = self._get("search", part="snippet", q=term, type="video", regionCode="CO",
+            query = f'"{term}" {self.context}'.strip()
+            data = self._get("search", part="snippet", q=query, type="video", regionCode="CO",
                              relevanceLanguage="es", order="date", maxResults=self.max_videos,
                              publishedAfter=after)
             for v in data.get("items", []):

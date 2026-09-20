@@ -2,7 +2,12 @@ from src.connectors.youtube import YouTubeConnector
 
 
 def test_youtube_connector_returns_videos_and_comments(monkeypatch):
+    queries = []
+
     def fake_get(url, params, timeout):
+        if url.endswith("/search"):
+            queries.append(params["q"])
+
         class R:
             def __init__(self, payload): self._p = payload
             def raise_for_status(self): pass
@@ -20,6 +25,7 @@ def test_youtube_connector_returns_videos_and_comments(monkeypatch):
 
     items = YouTubeConnector(api_key="k", max_videos=5, max_comments=20, pause_seconds=0).fetch(["Irene Vélez"])
 
+    assert queries == ['"Irene Vélez" Cali']
     ids = {i.external_id for i in items}
     assert ids == {"yt:video:v1", "yt:comment:c1"}
     video = next(i for i in items if i.external_id == "yt:video:v1")
