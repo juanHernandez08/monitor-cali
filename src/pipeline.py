@@ -4,6 +4,7 @@ import logging
 from src.connectors.base import Connector
 from src.matching import all_search_terms_flat, find_matching_candidate, find_candidate_by_term
 from sqlalchemy import or_
+from sqlalchemy.exc import IntegrityError
 
 from src.models import Candidate, Mention, Run, SentimentScore, Source, SourceType
 from src.urlnorm import normalize_url
@@ -90,7 +91,11 @@ def score_pending(session, engine, limit: int = 20) -> int:
             mention.relevant = False
         session.add(SentimentScore(mention_id=mention.id, label=result.label, score=result.score,
                                    topic=result.topic, model=result.model))
-        session.commit()
+        try:
+            session.commit()
+        except IntegrityError:  # otro proceso (el scheduler del servidor) ya la clasificó
+            session.rollback()
+            continue
         scored += 1
     return scored
 
