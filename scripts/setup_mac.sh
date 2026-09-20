@@ -18,8 +18,18 @@ command -v cloudflared >/dev/null || brew install cloudflared
 
 [ -f .env ] || cp .env.example .env
 
-# Modelo de sentimiento (cámbialo en .env con OLLAMA_MODEL; llama3.1:8b si el Mac tiene <=16 GB de RAM)
-MODEL="$(grep -E '^OLLAMA_MODEL=' .env | cut -d= -f2)"; MODEL="${MODEL:-qwen2.5:14b}"
+# Modelo de sentimiento según la RAM del Mac (se escribe en .env si no está definido):
+#   <= 8 GB → qwen2.5:7b (4,7 GB) · <= 16 GB → llama3.1:8b · más → qwen2.5:14b
+RAM_GB=$(( $(sysctl -n hw.memsize) / 1024 / 1024 / 1024 ))
+if [ "$RAM_GB" -le 8 ]; then DEFAULT_MODEL="qwen2.5:7b"
+elif [ "$RAM_GB" -le 16 ]; then DEFAULT_MODEL="llama3.1:8b"
+else DEFAULT_MODEL="qwen2.5:14b"; fi
+MODEL="$(grep -E '^OLLAMA_MODEL=' .env | cut -d= -f2)"
+if [ -z "$MODEL" ]; then
+  MODEL="$DEFAULT_MODEL"
+  if grep -q '^OLLAMA_MODEL=' .env; then sed -i '' "s|^OLLAMA_MODEL=.*|OLLAMA_MODEL=$MODEL|" .env; else echo "OLLAMA_MODEL=$MODEL" >> .env; fi
+fi
+echo "RAM: ${RAM_GB} GB → modelo de sentimiento: $MODEL"
 pgrep -x ollama >/dev/null || (ollama serve >/dev/null 2>&1 &) ; sleep 3
 ollama list | grep -q "^${MODEL}" || ollama pull "$MODEL"
 
