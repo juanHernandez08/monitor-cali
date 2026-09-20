@@ -69,6 +69,9 @@ def score_pending(session, engine, limit: int = 20) -> int:
     scored = 0
     for mention in pending:
         text = f"{mention.text}\n\n{mention.body}" if mention.body else mention.text
+        video_title = (mention.raw or {}).get("video_title")
+        if video_title:  # comentario de YouTube: el título del video da el contexto
+            text = f"[Comentario en el video: {video_title}]\n{text}"
         try:
             result = engine.score(text, candidate=mention.candidate.name)
         except Exception:

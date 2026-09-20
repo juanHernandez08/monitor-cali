@@ -70,3 +70,18 @@ def test_homonym_topic_marks_mention_irrelevant(db_session):
     m = db_session.query(Mention).one(); m.body = ""; db_session.commit()
     score_pending(db_session, FakeEngine(topic="homónimo"), limit=10)
     assert db_session.query(Mention).one().relevant is False
+
+
+def test_score_prepends_video_title_for_youtube_comments(db_session):
+    c = Candidate(name="Carlos Arias", aliases=[])
+    yt = Source(type=SourceType.YOUTUBE, name="YouTube")
+    db_session.add_all([c, yt])
+    db_session.commit()
+    ingest(db_session, yt, ListConnector([RawItem(
+        external_id="yt:comment:1", text="no me gusta", search_term="Carlos Arias",
+        raw={"kind": "comment", "video_title": "Entrevista a Carlos Arias"},
+    )]))
+    engine = FakeEngine()
+    assert score_pending(db_session, engine, limit=10) == 1
+    assert engine.calls[0].startswith("[Comentario en el video: Entrevista a Carlos Arias]")
+    assert engine.calls[0].endswith("no me gusta")
