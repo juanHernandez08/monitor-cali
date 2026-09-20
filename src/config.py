@@ -29,10 +29,8 @@ BRIGHTDATA_API_TOKEN = os.environ.get("BRIGHTDATA_API_TOKEN")
 CANDIDATES = [
     {
         "name": "Carlos Arias", "party": "Partido de la U",
-        "aliases": [
-            "Carlos Andrés Arias Rueda", "Carlos Andres Arias", "Carlos Andrés Arias",
-            "@soycarlosaarias", "Buenos Ciudadanos",
-        ],
+        # Sin "Carlos Andrés Arias" a secas: hay homónimos (p. ej. Carlos Andrés Arias Orjuela).
+        "aliases": ["Carlos Andrés Arias Rueda", "Carlos Andres Arias Rueda", "@soycarlosaarias", "Buenos Ciudadanos"],
     },
     {
         "name": "Alfredo Mondragón", "party": "Pacto Histórico",
