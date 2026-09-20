@@ -11,6 +11,7 @@ class RawItem:
     author: str | None = None
     published_at: dt.datetime | None = None
     raw: dict = field(default_factory=dict)
+    search_term: str | None = None  # término que produjo el item (para atribuir candidato)
 
 
 class Connector(Protocol):
