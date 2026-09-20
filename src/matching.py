@@ -18,3 +18,14 @@ def find_matching_candidate(text: str, candidates: list[Candidate]) -> Candidate
         if any(term.lower() in lowered for term in all_search_terms(candidate)):
             return candidate
     return None
+
+
+def find_candidate_by_term(term: str | None, candidates: list[Candidate]) -> Candidate | None:
+    """Atribuye por el término de búsqueda que produjo el item (p. ej. comentarios de YouTube)."""
+    if not term:
+        return None
+    lowered = term.lower()
+    for candidate in candidates:
+        if any(t.lower() == lowered for t in all_search_terms(candidate)):
+            return candidate
+    return None

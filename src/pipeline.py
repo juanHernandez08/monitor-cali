@@ -1,45 +1,77 @@
-from src.models import Candidate, Mention, SentimentScore
-from src.matching import all_search_terms_flat, find_matching_candidate
-from src.sentiment import SentimentEngine
+import datetime as dt
+import logging
+
 from src.connectors.base import Connector
+from src.matching import all_search_terms_flat, find_matching_candidate, find_candidate_by_term
+from src.models import Candidate, Mention, Run, SentimentScore
+from src.urlnorm import normalize_url
+
+log = logging.getLogger(__name__)
 
 
-def run_pipeline(session, source, connector: Connector, sentiment_engine: SentimentEngine) -> int:
-    """Corre cualquier conector contra una fuente ya registrada y guarda menciones nuevas."""
+def ingest(session, source, connector: Connector) -> int:
+    """Corre un conector, guarda menciones nuevas SIN score y registra un Run. Nunca lanza."""
+    run = Run(source_id=source.id)
+    session.add(run)
+    session.commit()
+
     candidates = session.query(Candidate).filter_by(active=True).all()
-    search_terms = all_search_terms_flat(candidates)
-
     new_mentions = 0
-    for item in connector.fetch(search_terms):
-        exists = session.query(Mention).filter_by(
-            source_id=source.id, external_id=item.external_id,
-        ).first()
-        if exists:
-            continue
-
-        matched_candidate = find_matching_candidate(item.text, candidates)
-        if matched_candidate is None:
-            continue
-
-        mention = Mention(
-            candidate_id=matched_candidate.id,
-            source_id=source.id,
-            external_id=item.external_id,
-            url=item.url,
-            author=item.author,
-            text=item.text,
-            published_at=item.published_at,
-            raw=item.raw,
-        )
-        session.add(mention)
-        session.flush()
-
-        result = sentiment_engine.score(item.text)
-        session.add(SentimentScore(
-            mention_id=mention.id, label=result.label, score=result.score,
-            topic=result.topic, model=result.model,
-        ))
-        new_mentions += 1
-
+    try:
+        items = connector.fetch(all_search_terms_flat(candidates))
+        for item in items:
+            if session.query(Mention).filter_by(source_id=source.id, external_id=item.external_id).first():
+                continue
+            url_norm = normalize_url(item.url)
+            if url_norm and session.query(Mention).filter_by(url_normalized=url_norm).first():
+                continue
+            candidate = (find_matching_candidate(item.text, candidates)
+                         or find_candidate_by_term(item.search_term, candidates))
+            if candidate is None:
+                continue
+            session.add(Mention(
+                candidate_id=candidate.id, source_id=source.id, external_id=item.external_id,
+                url=item.url, url_normalized=url_norm, author=item.author, text=item.text,
+                published_at=item.published_at, raw=item.raw,
+            ))
+            new_mentions += 1
+        session.commit()
+    except Exception as exc:  # una fuente caída no debe tumbar las demás
+        session.rollback()
+        log.exception("ingest %s falló", source.name)
+        run.error = f"{type(exc).__name__}: {exc}"[:500]
+    run.new_mentions = new_mentions
+    run.finished_at = dt.datetime.utcnow()
     session.commit()
     return new_mentions
+
+
+def score_pending(session, engine, limit: int = 20) -> int:
+    """Clasifica menciones sin SentimentScore, en lotes. Devuelve cuántas clasificó."""
+    pending = (
+        session.query(Mention)
+        .outerjoin(SentimentScore, SentimentScore.mention_id == Mention.id)
+        .filter(SentimentScore.id.is_(None))
+        .order_by(Mention.fetched_at.desc())
+        .limit(limit)
+        .all()
+    )
+    scored = 0
+    for mention in pending:
+        try:
+            result = engine.score(mention.text, candidate=mention.candidate.name)
+        except Exception:
+            log.exception("score falló para mention %s", mention.id)
+            break  # Ollama caído: reintentar en el próximo ciclo
+        session.add(SentimentScore(mention_id=mention.id, label=result.label, score=result.score,
+                                   topic=result.topic, model=result.model))
+        session.commit()
+        scored += 1
+    return scored
+
+
+def run_pipeline(session, source, connector: Connector, sentiment_engine) -> int:
+    """Compatibilidad: ingesta + scoring en un paso."""
+    count = ingest(session, source, connector)
+    score_pending(session, sentiment_engine, limit=max(count, 1))
+    return count
