@@ -21,8 +21,11 @@ class YouTubeConnector:
     """YouTube Data API v3: search.list (100 unidades) por término + commentThreads.list (1) por video."""
     source_name = "youtube"
 
-    def __init__(self, api_key: str, max_videos: int = 5, max_comments: int = 50,
-                 pause_seconds: float = 0.5, published_after_days: int = 30, context: str = "Cali"):
+    # Cuota: cada search.list cuesta 100 unidades (10.000/día gratis). 30 términos × 100 = 3.000
+    # por corrida → máximo 2-3 corridas al día (ver scheduler). Los videos populares (relevance)
+    # concentran los comentarios; un comentario reciente en un video viejo sigue siendo mención.
+    def __init__(self, api_key: str, max_videos: int = 8, max_comments: int = 50,
+                 pause_seconds: float = 0.5, published_after_days: int = 180, context: str = "Cali"):
         self.api_key = api_key
         self.context = context  # evita homónimos (p. ej. "Carlos Arias" → futbolistas Arias)
         self.max_videos = max_videos
@@ -43,7 +46,7 @@ class YouTubeConnector:
         for term in search_terms:
             query = f'"{term}" {self.context}'.strip()
             data = self._get("search", part="snippet", q=query, type="video", regionCode="CO",
-                             relevanceLanguage="es", order="date", maxResults=self.max_videos,
+                             relevanceLanguage="es", order="relevance", maxResults=self.max_videos,
                              publishedAfter=after)
             for v in data.get("items", []):
                 vid = v.get("id", {}).get("videoId")

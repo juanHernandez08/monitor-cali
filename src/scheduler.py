@@ -98,7 +98,7 @@ def start_scheduler() -> BackgroundScheduler:
     sched = BackgroundScheduler(timezone="America/Bogota")
     sched.add_job(job_fast, "interval", minutes=15, id="fast", max_instances=1, coalesce=True)
     sched.add_job(job_cse, "interval", hours=8, id="cse", max_instances=1, coalesce=True)
-    sched.add_job(job_youtube, "interval", hours=4, id="youtube", max_instances=1, coalesce=True)
+    sched.add_job(job_youtube, "interval", hours=12, id="youtube", max_instances=1, coalesce=True)  # cuota: ~3.000 unidades/corrida
     sched.add_job(job_score, "interval", minutes=2, id="score", max_instances=1, coalesce=True)
     sched.start()
     return sched
