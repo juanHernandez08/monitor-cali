@@ -8,7 +8,8 @@ Bot que captura menciones de los candidatos a la Alcaldía de Cali (incluido Car
 |---|---|---|
 | Prensa | Google News RSS por candidato + feeds directos (El País, El Tiempo, Caracol, Q'hubo, Caliescribe, 90 Minutos, Semana) | ninguna |
 | Reddit | Búsqueda pública vía RSS | ninguna |
-| Instagram / Facebook / X | Índice de Google (Custom Search JSON API) con `site:` | `GOOGLE_API_KEY` + `GOOGLE_CSE_ID` (gratis) |
+| Instagram / Facebook (cuentas conocidas) | Bright Data Web Scraper API: posts recientes + comentarios de las cuentas en `SOCIAL_ACCOUNTS` | `BRIGHTDATA_API_TOKEN` (5.000 registros/mes gratis) |
+| IG / FB / X (búsqueda) | Índice de Google con `site:` — **Custom Search JSON API cerrada a clientes nuevos**; el conector queda para Serper/SerpApi | pendiente |
 | YouTube | YouTube Data API v3: videos + comentarios | `GOOGLE_API_KEY` (gratis) |
 | Sentimiento | Ollama local (`qwen2.5:14b`) o Claude Sonnet 5 | Ollama: ninguna · Claude: `ANTHROPIC_API_KEY` |
 
@@ -74,7 +75,7 @@ docs/              presupuesto.md, despliegue.md, specs y planes
 
 ## Limitaciones conocidas
 
-- Instagram/Facebook/X: solo se ve lo que Google tiene indexado (posts públicos), no comentarios ni historias.
+- Instagram/Facebook: se leen solo las cuentas listadas en `SOCIAL_ACCOUNTS` (candidatos y medios); no hay búsqueda abierta por palabra clave. Cada registro consume 1 crédito de Bright Data (~800 por corrida); el scheduler corre cada 5 días.
 - Nombres comunes ("Carlos Arias", "Carlos Paz") traen homónimos; el clasificador recibe el nombre del candidato y suele marcarlos como neutrales, pero cuentan como mención. Ajustar alias en `config.py`.
 - Reddit limita la tasa (429); el conector se detiene y reintenta en el siguiente ciclo.
 - Las notas de Google News se enriquecen con el cuerpo del artículo antes de clasificar (`src/enrich.py`); si el medio bloquea la descarga, se clasifica solo con el titular.
