@@ -16,6 +16,10 @@ def _since(days: int) -> dt.datetime:
     return dt.datetime.utcnow() - dt.timedelta(days=days)
 
 
+# Fecha efectiva de una mención: publicación si la fuente la da, si no captura.
+WHEN = func.coalesce(Mention.published_at, Mention.fetched_at)
+
+
 def _when(m: Mention) -> dt.datetime:
     return m.published_at or m.fetched_at
 
@@ -30,8 +34,8 @@ def summary(session, days: int = 7) -> list[dict]:
     rows = []
     for c in session.query(Candidate).filter_by(active=True).all():
         q = session.query(Mention).filter(Mention.candidate_id == c.id)
-        current = q.filter(Mention.fetched_at >= since).all()
-        previous = q.filter(Mention.fetched_at >= prev_since, Mention.fetched_at < since).count()
+        current = q.filter(WHEN >= since).all()
+        previous = q.filter(WHEN >= prev_since, WHEN < since).count()
         counts = Counter(m.sentiment.label for m in current if m.sentiment)
         rows.append({
             "candidate_id": c.id, "name": c.name, "party": c.party,
@@ -50,7 +54,7 @@ def timeline(session, days: int = 7) -> dict:
     today = dt.datetime.utcnow()
     labels = [_local_day(today - dt.timedelta(days=i)) for i in range(days - 1, -1, -1)]
     per: dict[str, Counter] = defaultdict(Counter)
-    for m in session.query(Mention).filter(Mention.fetched_at >= since).all():
+    for m in session.query(Mention).filter(WHEN >= since).all():
         per[m.candidate.name][_local_day(_when(m))] += 1
     names = [c.name for c in session.query(Candidate).filter_by(active=True).all()]
     names.sort(key=lambda n: n != CARLOS)
@@ -75,14 +79,14 @@ def _mention_dict(m: Mention) -> dict:
 def mentions(session, candidate_id: int | None = None, source_type: str | None = None,
              label: str | None = None, days: int = 30, limit: int = 100, offset: int = 0) -> list[dict]:
     q = (session.query(Mention).outerjoin(SentimentScore).join(Source)
-         .filter(Mention.fetched_at >= _since(days)))
+         .filter(WHEN >= _since(days)))
     if candidate_id:
         q = q.filter(Mention.candidate_id == candidate_id)
     if source_type:
         q = q.filter(Source.type == SourceType(source_type))
     if label:
         q = q.filter(SentimentScore.label == SentimentLabel(label))
-    rows = q.order_by(Mention.fetched_at.desc(), Mention.id.desc()).offset(offset).limit(limit).all()
+    rows = q.order_by(WHEN.desc(), Mention.id.desc()).offset(offset).limit(limit).all()
     return [_mention_dict(m) for m in rows]
 
 
@@ -91,8 +95,8 @@ def alerts(session, candidate_name: str = CARLOS, threshold: float = -0.5,
     rows = (
         session.query(Mention).join(SentimentScore).join(Candidate)
         .filter(Candidate.name == candidate_name, SentimentScore.score <= threshold,
-                Mention.fetched_at >= _since(days))
-        .order_by(Mention.fetched_at.desc()).limit(limit).all()
+                WHEN >= _since(days))
+        .order_by(WHEN.desc()).limit(limit).all()
     )
     return [_mention_dict(m) for m in rows]
 
@@ -102,7 +106,7 @@ def topics(session, days: int = 7, limit: int = 10) -> list[dict]:
     rows = (
         session.query(topic, func.count(SentimentScore.id))
         .join(Mention)
-        .filter(Mention.fetched_at >= _since(days), SentimentScore.topic != "")
+        .filter(WHEN >= _since(days), SentimentScore.topic != "")
         .group_by(topic).order_by(func.count(SentimentScore.id).desc())
         .limit(limit).all()
     )

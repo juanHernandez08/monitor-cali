@@ -17,11 +17,11 @@ _UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) monitor-cali/0.1"
 _TAG = re.compile(r"<[^>]+>")
 
 
-def build_search_url(terms: str | list[str]) -> str:
+def build_search_url(terms: str | list[str], context: str = "Cali") -> str:
     """Reddit acepta OR entre términos: una consulta por lote reduce el rate limit (429)."""
     if isinstance(terms, str):
         terms = [terms]
-    query = " OR ".join(f'"{t}"' for t in terms)
+    query = "(" + " OR ".join(f'"{t}"' for t in terms) + f") {context}".rstrip()
     return "https://www.reddit.com/search.rss?q=" + quote(query) + "&sort=new"
 
 

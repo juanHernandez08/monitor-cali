@@ -40,7 +40,8 @@ CANDIDATES = [
     },
     {
         "name": "Roberto Ortiz", "party": None,  # independiente; hoy concejal de Cali
-        "aliases": ["Roberto Ortiz Urueña", "Roberto Ortiz Uruena", "Chontico"],
+        # "Chontico" a secas trae la Lotería Chontico; solo variantes con apellido.
+        "aliases": ["Roberto Ortiz Urueña", "Roberto Ortiz Uruena", "Chontico Ortiz"],
     },
     {
         "name": "Mabel Lara", "party": "Nuevo Liberalismo",
