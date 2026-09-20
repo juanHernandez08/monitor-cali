@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Monitor Alcaldía Cali 2027</title>
+<link rel="stylesheet" href="/static/dashboard.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+<header class="top">
+  <div>
+    <h1>Monitor de menciones · Alcaldía de Cali 2027</h1>
+    <p class="sub">Prensa · Reddit · YouTube · Instagram / Facebook / X · <span id="last-run">—</span></p>
+  </div>
+  <div class="controls">
+    <select id="days">
+      <option value="1">Últimas 24 h</option>
+      <option value="7" selected>7 días</option>
+      <option value="30">30 días</option>
+    </select>
+    <button id="refresh">Actualizar ahora</button>
+  </div>
+</header>
+<main>
+  <section id="cards" class="cards"></section>
+  <section class="grid">
+    <div class="panel"><h2>Menciones por día</h2><canvas id="chart-timeline"></canvas></div>
+    <div class="panel"><h2>Sentimiento por candidato</h2><canvas id="chart-sentiment"></canvas></div>
+    <div class="panel"><h2>Temas más frecuentes</h2><canvas id="chart-topics"></canvas></div>
+    <div class="panel alerts"><h2>Alertas · menciones negativas sobre Carlos Arias</h2><ul id="alerts"></ul></div>
+  </section>
+  <section class="panel">
+    <div class="feed-head">
+      <h2>Menciones</h2>
+      <div class="filters">
+        <select id="f-candidate"><option value="">Todos los candidatos</option></select>
+        <select id="f-source">
+          <option value="">Todas las fuentes</option>
+          <option value="google_news">Prensa (Google News)</option>
+          <option value="rss">Prensa (RSS)</option>
+          <option value="reddit">Reddit</option>
+          <option value="youtube">YouTube</option>
+          <option value="google_cse">Instagram / Facebook / X</option>
+        </select>
+        <select id="f-label">
+          <option value="">Todo sentimiento</option>
+          <option value="negative">Negativo</option>
+          <option value="neutral">Neutral</option>
+          <option value="positive">Positivo</option>
+        </select>
+      </div>
+    </div>
+    <table id="feed">
+      <thead><tr><th>Fecha</th><th>Candidato</th><th>Fuente</th><th>Texto</th><th>Sentimiento</th><th></th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </section>
+  <footer id="status"></footer>
+</main>
+<script src="/static/dashboard.js"></script>
+</body>
+</html>
