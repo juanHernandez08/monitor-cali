@@ -117,7 +117,11 @@ class SocialAccountConnector:
         )[: self.comment_posts]
         for post in with_comments:
             post_url = _pick(post, "url")
-            result = await comments_fn(post_url)
+            try:
+                result = await comments_fn(post_url)
+            except Exception:  # timeout de Bright Data: se conservan los posts y los demás comentarios
+                log.exception("comentarios de %s fallaron", post_url)
+                continue
             post_title = str(_pick(post, "text") or "")[:120]
             for c in (result.data or []):
                 if not isinstance(c, dict):
