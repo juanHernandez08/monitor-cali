@@ -8,8 +8,10 @@ SAMPLE = """<?xml version="1.0"?><feed xmlns="http://www.w3.org/2005/Atom">
 <content type="html">&lt;div&gt;El Chontico otra vez&lt;/div&gt;</content></entry></feed>"""
 
 
-def test_build_search_url():
-    assert build_search_url("Roberto Ortiz").startswith("https://www.reddit.com/search.rss?q=")
+def test_build_search_url_joins_terms_with_or():
+    url = build_search_url(["Roberto Ortiz", "Mabel Lara"])
+    assert url.startswith("https://www.reddit.com/search.rss?q=")
+    assert "%20OR%20" in url
 
 
 def test_reddit_rss_connector(monkeypatch):
@@ -22,4 +24,4 @@ def test_reddit_rss_connector(monkeypatch):
     assert items[0].external_id == "t3_abc"
     assert items[0].author == "/u/caleño1"
     assert "Chontico" in items[0].text
-    assert items[0].search_term == "Roberto Ortiz"
+    assert items[0].search_term is None

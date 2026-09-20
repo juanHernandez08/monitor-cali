@@ -1,7 +1,9 @@
 import datetime as dt
 import html
+import logging
 import re
 import time
+import urllib.error
 import urllib.request
 from urllib.parse import quote
 
@@ -10,12 +12,17 @@ import feedparser
 from src.connectors.base import RawItem
 
 # Reddit devuelve 403 a user-agents genéricos; uno de navegador funciona.
+log = logging.getLogger(__name__)
 _UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) monitor-cali/0.1"
 _TAG = re.compile(r"<[^>]+>")
 
 
-def build_search_url(term: str) -> str:
-    return "https://www.reddit.com/search.rss?q=" + quote(f'"{term}"') + "&sort=new"
+def build_search_url(terms: str | list[str]) -> str:
+    """Reddit acepta OR entre términos: una consulta por lote reduce el rate limit (429)."""
+    if isinstance(terms, str):
+        terms = [terms]
+    query = " OR ".join(f'"{t}"' for t in terms)
+    return "https://www.reddit.com/search.rss?q=" + quote(query) + "&sort=new"
 
 
 def _download(url: str) -> bytes:
@@ -28,14 +35,22 @@ class RedditRSSConnector:
     """Búsqueda pública de Reddit vía RSS (sin API key)."""
     source_name = "reddit_rss"
 
-    def __init__(self, pause_seconds: float = 2.0):
+    def __init__(self, pause_seconds: float = 4.0, batch_size: int = 5):
         self.pause_seconds = pause_seconds
+        self.batch_size = batch_size
 
     def fetch(self, search_terms: list[str]) -> list[RawItem]:
         items: list[RawItem] = []
         seen: set[str] = set()
-        for term in search_terms:
-            parsed = feedparser.parse(_download(build_search_url(term)))
+        batches = [search_terms[i:i + self.batch_size] for i in range(0, len(search_terms), self.batch_size)]
+        for batch in batches:
+            try:
+                parsed = feedparser.parse(_download(build_search_url(batch)))
+            except urllib.error.HTTPError as exc:
+                if exc.code == 429:
+                    log.warning("Reddit 429: se detiene este ciclo, se reintenta en el siguiente")
+                    break
+                raise
             for entry in parsed.entries:
                 ext_id = entry.get("id") or entry.get("link")
                 if not ext_id or ext_id in seen:
@@ -52,7 +67,7 @@ class RedditRSSConnector:
                     author=entry.get("author"),
                     published_at=published,
                     raw={"title": entry.get("title")},
-                    search_term=term,
+                    search_term=None,  # atribución por texto (el post contiene el nombre)
                 ))
             time.sleep(self.pause_seconds)
         return items

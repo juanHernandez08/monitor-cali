@@ -11,9 +11,11 @@ from src.connectors.base import RawItem
 _TAG = re.compile(r"<[^>]+>")
 
 
-def build_query_url(term: str) -> str:
+def build_query_url(term: str, window: str = "30d", context: str = "Cali") -> str:
+    """Búsqueda de Google News acotada a Colombia, con contexto ("Cali") y ventana (when:30d)."""
+    query = f'"{term}" {context} when:{window}'.strip()
     return (
-        "https://news.google.com/rss/search?q=" + quote(f'"{term}"')
+        "https://news.google.com/rss/search?q=" + quote(query)
         + "&hl=es-419&gl=CO&ceid=" + quote("CO:es-419")
     )
 
@@ -26,14 +28,16 @@ class GoogleNewsConnector:
     """Prensa vía Google News RSS: una búsqueda por término, restringida a Colombia."""
     source_name = "google_news"
 
-    def __init__(self, pause_seconds: float = 1.0):
+    def __init__(self, pause_seconds: float = 1.0, window: str = "30d", context: str = "Cali"):
         self.pause_seconds = pause_seconds
+        self.window = window
+        self.context = context
 
     def fetch(self, search_terms: list[str]) -> list[RawItem]:
         items: list[RawItem] = []
         seen: set[str] = set()
         for term in search_terms:
-            parsed = feedparser.parse(build_query_url(term))
+            parsed = feedparser.parse(build_query_url(term, self.window, self.context))
             for entry in parsed.entries:
                 ext_id = entry.get("id") or entry.get("link")
                 if not ext_id or ext_id in seen:
