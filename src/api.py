@@ -11,6 +11,7 @@ from fastapi.templating import Jinja2Templates
 from src import queries
 from src.db import SessionLocal, init_db
 from src.scheduler import run_everything, start_scheduler
+from scripts.seed_sources import seed
 
 log = logging.getLogger(__name__)
 BASE = Path(__file__).parent
@@ -25,6 +26,8 @@ def create_app(session_factory=None, start_jobs: bool = True) -> FastAPI:
         sched = None
         if start_jobs:
             init_db()
+            with SessionLocal() as s:
+                seed(s)  # config.py es la fuente de verdad de candidatos y fuentes
             sched = start_scheduler()
         yield
         if sched:
