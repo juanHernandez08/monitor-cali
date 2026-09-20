@@ -1,6 +1,6 @@
 const $ = (s) => document.querySelector(s);
 const COLORS = ["#1f5fbf", "#d64545", "#2e9e6b", "#e0a020", "#8b5cf6", "#0ea5a4", "#f97316", "#64748b", "#be185d"];
-const SRC = { google_news: "Prensa", rss: "Prensa", reddit: "Reddit", youtube: "YouTube", google_cse: "IG/FB/X", serp: "IG/FB/X" };
+const SRC = { google_news: "Prensa", rss: "Prensa", reddit: "Reddit", youtube: "YouTube", google_cse: "IG/FB/X", serp: "IG/FB/X", social: "IG/FB" };
 const LABEL = { negative: "Negativo", positive: "Positivo", neutral: "Neutral" };
 const charts = {};
 

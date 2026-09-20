@@ -7,6 +7,7 @@ EXTRA_SOURCES = [
     {"type": SourceType.REDDIT, "name": "Reddit", "config": {"via": "rss"}},
     {"type": SourceType.GOOGLE_CSE, "name": "Instagram / Facebook / X (Google)", "config": {}},
     {"type": SourceType.YOUTUBE, "name": "YouTube", "config": {}},
+    {"type": SourceType.SOCIAL, "name": "Instagram / Facebook (cuentas)", "config": {}},
 ]
 
 

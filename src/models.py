@@ -18,6 +18,7 @@ class SourceType(enum.Enum):
     GOOGLE_NEWS = "google_news"
     YOUTUBE = "youtube"
     GOOGLE_CSE = "google_cse"
+    SOCIAL = "social"  # Instagram/Facebook por cuenta conocida (Bright Data)
 
 
 class SentimentLabel(enum.Enum):

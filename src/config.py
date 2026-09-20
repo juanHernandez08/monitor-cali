@@ -71,6 +71,20 @@ CANDIDATES = [
     },
 ]
 
+# Cuentas de Instagram/Facebook a monitorear vía Bright Data (posts + comentarios).
+# "candidate": los posts/comentarios de esa cuenta se atribuyen al candidato; None = medio
+# (solo cuenta lo que nombre a un candidato). Completar con los handles confirmados.
+SOCIAL_ACCOUNTS = [
+    {"platform": "instagram", "url": "https://www.instagram.com/soycarlosaarias/", "candidate": "Carlos Arias"},
+    {"platform": "instagram", "url": "https://www.instagram.com/robertoortizcali/", "candidate": "Roberto Ortiz"},
+    {"platform": "instagram", "url": "https://www.instagram.com/claraluzroldan/", "candidate": "Clara Luz Roldán"},
+    {"platform": "facebook", "url": "https://www.facebook.com/ClaraLuzRoldanG/", "candidate": "Clara Luz Roldán"},
+    {"platform": "instagram", "url": "https://www.instagram.com/noticalioficial/", "candidate": None},
+]
+SOCIAL_MAX_POSTS = int(os.environ.get("SOCIAL_MAX_POSTS", "5"))
+SOCIAL_MAX_COMMENTS = int(os.environ.get("SOCIAL_MAX_COMMENTS", "25"))
+SOCIAL_COMMENT_POSTS = int(os.environ.get("SOCIAL_COMMENT_POSTS", "3"))
+
 # Feeds RSS directos de medios — verificados el 2026-09-19 (todos responden 200 con entradas).
 RSS_SOURCES = [
     {"name": "El País Cali", "url": "https://www.elpais.com.co/arc/outboundfeeds/rss/category/cali/?outputType=xml"},
