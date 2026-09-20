@@ -32,17 +32,25 @@ class GoogleNewsConnector:
     """Prensa vía Google News RSS: una búsqueda por término, restringida a Colombia."""
     source_name = "google_news"
 
-    def __init__(self, pause_seconds: float = 1.0, window: str | None = None, context: str = "Cali"):
+    # Google News ordena por relevancia (hasta 100, cubre años) y `when:` devuelve máximo 10
+    # recientes. Combinar ambas trae lo importante y lo nuevo; se deduplica por id.
+    DEFAULT_WINDOWS: tuple[str | None, ...] = (None, "60d", "7d")
+
+    def __init__(self, pause_seconds: float = 1.0, windows: tuple[str | None, ...] = DEFAULT_WINDOWS,
+                 context: str = "Cali"):
         self.pause_seconds = pause_seconds
-        self.window = window
+        self.windows = windows
         self.context = context
 
     def fetch(self, search_terms: list[str]) -> list[RawItem]:
         items: list[RawItem] = []
         seen: set[str] = set()
         for term in search_terms:
-            parsed = feedparser.parse(build_query_url(term, self.window, self.context))
-            for entry in parsed.entries:
+            entries = []
+            for window in self.windows:
+                entries.extend(feedparser.parse(build_query_url(term, window, self.context)).entries)
+                time.sleep(self.pause_seconds)
+            for entry in entries:
                 ext_id = entry.get("id") or entry.get("link")
                 if not ext_id or ext_id in seen:
                     continue
@@ -61,5 +69,4 @@ class GoogleNewsConnector:
                     raw={"title": title, "source": source_title},
                     search_term=term,
                 ))
-            time.sleep(self.pause_seconds)
         return items
