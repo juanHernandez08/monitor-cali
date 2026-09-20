@@ -34,3 +34,22 @@ def test_youtube_connector_returns_videos_and_comments(monkeypatch):
     assert comment.url == "https://www.youtube.com/watch?v=v1&lc=c1"
     assert comment.search_term == "Irene Vélez"
     assert comment.author == "juan"
+
+
+def test_youtube_video_not_about_candidate_gets_no_hint(monkeypatch):
+    def fake_get(url, params, timeout):
+        class R:
+            def __init__(self, payload): self._p = payload
+            def raise_for_status(self): pass
+            def json(self): return self._p
+        if url.endswith("/search"):
+            return R({"items": [{"id": {"videoId": "v9"}, "snippet": {
+                "title": "Salomón sobrevivió al terremoto", "description": "Historia de un rescate",
+                "channelTitle": "Noticias", "publishedAt": "2026-09-18T10:00:00Z"}}]})
+        return R({"items": [{"id": "c9", "snippet": {"topLevelComment": {"snippet": {
+            "textDisplay": "qué milagro", "authorDisplayName": "ana", "publishedAt": "2026-09-18T11:00:00Z"}}}}]})
+
+    import src.connectors.youtube as m
+    monkeypatch.setattr(m.requests, "get", fake_get)
+    items = YouTubeConnector(api_key="k", pause_seconds=0).fetch(["Carlos Arias"])
+    assert all(i.search_term is None for i in items)  # ni el video ni el comentario se atribuyen

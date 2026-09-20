@@ -54,6 +54,11 @@ class YouTubeConnector:
                     continue
                 seen.add(f"yt:video:{vid}")
                 s = v["snippet"]
+                # La búsqueda de YouTube es laxa: solo atribuimos el video (y sus comentarios) al
+                # candidato si el título o la descripción lo nombran; si no, cuenta únicamente lo
+                # que mencione al candidato por su propio texto.
+                about = f"{s.get('title', '')} {s.get('description', '')}".lower()
+                hint = term if term.lower() in about else None
                 items.append(RawItem(
                     external_id=f"yt:video:{vid}",
                     text=f"{s.get('title', '')} {s.get('description', '')}".strip(),
@@ -61,7 +66,7 @@ class YouTubeConnector:
                     author=s.get("channelTitle"),
                     published_at=_parse(s.get("publishedAt")),
                     raw={"kind": "video", "title": s.get("title")},
-                    search_term=term,
+                    search_term=hint,
                 ))
                 try:
                     comments = self._get("commentThreads", part="snippet", videoId=vid,
@@ -80,8 +85,9 @@ class YouTubeConnector:
                         url=f"https://www.youtube.com/watch?v={vid}&lc={cid}",
                         author=cs.get("authorDisplayName"),
                         published_at=_parse(cs.get("publishedAt")),
-                        raw={"kind": "comment", "video_id": vid, "video_title": s.get("title")},
-                        search_term=term,
+                        raw={"kind": "comment", "video_id": vid, "video_title": s.get("title"),
+                             "video_about_candidate": hint is not None},
+                        search_term=hint,
                     ))
                 time.sleep(self.pause_seconds)
         return items

@@ -15,7 +15,8 @@ Criterios:
 - "negative": lo asocia a críticas, escándalos, fracasos, rechazo, burla, o el autor lo ataca/desconfía.
 - "neutral": SOLO si es una mención de agenda o trámite sin ninguna carga (p. ej. "asistirá al foro").
 Sé decidido: si hay cualquier inclinación, aunque sea leve, no uses "neutral"; usa un score pequeño (±0.2 a ±0.4).
-Si el candidato aparece solo de paso (una cita, una lista, un evento), clasifica igual el tono con que aparece y usa topic "mención tangencial".
+Si el candidato aparece solo de paso en una noticia (una cita, una lista, un evento), clasifica igual el tono con que aparece y usa topic "mención tangencial".
+Si el texto es un COMENTARIO que no se refiere al candidato ni a algo que él hizo o dijo (habla del tema del video/post, de otra persona o de otra cosa), responde neutral con score 0 y topic "mención tangencial".
 SOLO si el texto claramente habla de OTRA persona con el mismo nombre (otra ciudad, otro cargo, otro país), responde neutral con score 0 y topic "homónimo".
 
 Texto: {text}
