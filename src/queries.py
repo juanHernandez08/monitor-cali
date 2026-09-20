@@ -9,6 +9,7 @@ from src.models import (
 )
 
 CARLOS = "Carlos Arias"
+META_TOPICS = ("mención tangencial", "mencion tangencial", "homónimo", "homonimo")  # etiquetas de control, no temas
 BOGOTA = dt.timezone(dt.timedelta(hours=-5))
 
 
@@ -107,6 +108,7 @@ def topics(session, days: int = 7, limit: int = 10) -> list[dict]:
         session.query(topic, func.count(SentimentScore.id))
         .join(Mention)
         .filter(WHEN >= _since(days), SentimentScore.topic != "", Mention.relevant.is_(True))
+        .filter(topic.notin_(META_TOPICS))
         .group_by(topic).order_by(func.count(SentimentScore.id).desc())
         .limit(limit).all()
     )

@@ -85,3 +85,19 @@ def test_score_prepends_video_title_for_youtube_comments(db_session):
     assert score_pending(db_session, engine, limit=10) == 1
     assert engine.calls[0].startswith("[Comentario en el video: Entrevista a Carlos Arias]")
     assert engine.calls[0].endswith("no me gusta")
+
+
+def test_tangential_youtube_comment_is_irrelevant_but_tangential_news_is_kept(db_session):
+    c = Candidate(name="Carlos Arias", aliases=[])
+    yt = Source(type=SourceType.YOUTUBE, name="YouTube")
+    gn = Source(type=SourceType.GOOGLE_NEWS, name="Google News")
+    db_session.add_all([c, yt, gn])
+    db_session.commit()
+    ingest(db_session, yt, ListConnector([RawItem(external_id="yt:comment:1", text="qué video tan bueno", search_term="Carlos Arias",
+                                                   raw={"kind": "comment", "video_title": "x"})]))
+    ingest(db_session, gn, ListConnector([RawItem(external_id="g1", text="Carlos Arias asistió", url=None)]))
+    db_session.query(Mention).filter_by(external_id="g1").one().body = ""
+    db_session.commit()
+    score_pending(db_session, FakeEngine(topic="mención tangencial"), limit=10)
+    assert db_session.query(Mention).filter_by(external_id="yt:comment:1").one().relevant is False
+    assert db_session.query(Mention).filter_by(external_id="g1").one().relevant is True

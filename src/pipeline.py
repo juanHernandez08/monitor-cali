@@ -77,7 +77,11 @@ def score_pending(session, engine, limit: int = 20) -> int:
         except Exception:
             log.exception("score falló para mention %s", mention.id)
             break  # Ollama caído: reintentar en el próximo ciclo
-        if "homónimo" in (result.topic or "").lower() or "homonimo" in (result.topic or "").lower():
+        topic = (result.topic or "").lower()
+        is_comment = (mention.raw or {}).get("kind") == "comment"
+        # Homónimo → fuera. Un comentario "tangencial" habla del video, no del candidato → fuera.
+        # Una nota de prensa tangencial sí menciona al candidato → se conserva.
+        if "homónimo" in topic or "homonimo" in topic or (is_comment and "tangencial" in topic):
             mention.relevant = False
         session.add(SentimentScore(mention_id=mention.id, label=result.label, score=result.score,
                                    topic=result.topic, model=result.model))
