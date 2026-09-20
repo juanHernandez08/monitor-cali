@@ -68,12 +68,13 @@ CANDIDATES = [
     },
 ]
 
-# Feeds RSS directos de medios locales — se verifican en Task 12; los que no respondan se quitan.
+# Feeds RSS directos de medios — verificados el 2026-09-19 (todos responden 200 con entradas).
 RSS_SOURCES = [
-    {"name": "El País Cali", "url": "https://www.elpais.com.co/rss/cali.xml"},
+    {"name": "El País Cali", "url": "https://www.elpais.com.co/arc/outboundfeeds/rss/category/cali/?outputType=xml"},
     {"name": "El Tiempo Cali", "url": "https://www.eltiempo.com/rss/colombia_cali.xml"},
-    {"name": "Caracol Radio Cali", "url": "https://caracol.com.co/emisora/cali/rss/"},
-    {"name": "Blu Radio Cali", "url": "https://www.bluradio.com/rss/cali"},
+    {"name": "Caracol Radio", "url": "https://caracol.com.co/arc/outboundfeeds/rss/?outputType=xml"},
     {"name": "Q'hubo Cali", "url": "https://www.qhubocali.com/feed/"},
     {"name": "Caliescribe", "url": "https://caliescribe.com/feed/"},
+    {"name": "90 Minutos", "url": "https://90minutos.co/feed/"},
+    {"name": "Semana", "url": "https://www.semana.com/arc/outboundfeeds/rss/?outputType=xml"},
 ]
