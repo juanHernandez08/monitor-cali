@@ -49,7 +49,7 @@ async function loadTimeline() {
     data: { labels: d.labels, datasets: d.series.map((s, i) => ({
       label: s.name, data: s.data, borderColor: COLORS[i % COLORS.length], backgroundColor: COLORS[i % COLORS.length],
       tension: .3, borderWidth: s.name === "Carlos Arias" ? 3 : 1.5, pointRadius: 2 })) },
-    options: { responsive: true, scales: { y: { beginAtZero: true } } },
+    options: { responsive: true, scales: { y: { beginAtZero: true }, x: { ticks: { maxTicksLimit: 10, maxRotation: 0 } } } },
   });
 }
 
