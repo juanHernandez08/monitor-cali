@@ -55,3 +55,17 @@ def test_candidate_stores_aliases(db_session):
 
     fetched = db_session.query(Candidate).filter_by(name="Carlos Arias").first()
     assert "@soycarlosaarias" in fetched.aliases
+
+
+def test_run_and_api_usage_tables(db_session):
+    from src.models import Run, ApiUsage
+
+    source = Source(type=SourceType.RSS, name="X")
+    db_session.add(source)
+    db_session.commit()
+    run = Run(source_id=source.id, new_mentions=3)
+    usage = ApiUsage(service="google_cse", day="2026-09-19", count=27)
+    db_session.add_all([run, usage])
+    db_session.commit()
+    assert run.started_at is not None
+    assert db_session.query(ApiUsage).filter_by(service="google_cse", day="2026-09-19").one().count == 27

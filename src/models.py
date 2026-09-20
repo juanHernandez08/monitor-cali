@@ -15,6 +15,9 @@ class SourceType(enum.Enum):
     REDDIT = "reddit"
     SERP = "serp"
     RADIO = "radio"
+    GOOGLE_NEWS = "google_news"
+    YOUTUBE = "youtube"
+    GOOGLE_CSE = "google_cse"
 
 
 class SentimentLabel(enum.Enum):
@@ -56,6 +59,7 @@ class Mention(Base):
     source_id = Column(Integer, ForeignKey("sources.id"), nullable=False)
     external_id = Column(String, nullable=False)
     url = Column(String, nullable=True)
+    url_normalized = Column(String, nullable=True, index=True)
     author = Column(String, nullable=True)
     text = Column(String, nullable=False)
     published_at = Column(DateTime, nullable=True)
@@ -83,3 +87,27 @@ class SentimentScore(Base):
     created_at = Column(DateTime, default=dt.datetime.utcnow, nullable=False)
 
     mention = relationship("Mention", back_populates="sentiment")
+
+
+class Run(Base):
+    __tablename__ = "runs"
+
+    id = Column(Integer, primary_key=True)
+    source_id = Column(Integer, ForeignKey("sources.id"), nullable=False)
+    started_at = Column(DateTime, default=dt.datetime.utcnow, nullable=False)
+    finished_at = Column(DateTime, nullable=True)
+    new_mentions = Column(Integer, default=0, nullable=False)
+    error = Column(String, nullable=True)
+
+    source = relationship("Source")
+
+
+class ApiUsage(Base):
+    __tablename__ = "api_usage"
+
+    id = Column(Integer, primary_key=True)
+    service = Column(String, nullable=False)
+    day = Column(String, nullable=False)  # YYYY-MM-DD (UTC)
+    count = Column(Integer, default=0, nullable=False)
+
+    __table_args__ = (UniqueConstraint("service", "day", name="uq_api_usage_service_day"),)
