@@ -11,17 +11,23 @@ from src.urlnorm import normalize_url
 log = logging.getLogger(__name__)
 
 
-def ingest(session, source, connector: Connector) -> int:
+MAX_AGE_DAYS = 60  # menciones más viejas no se guardan (el dashboard muestra hasta 30 días)
+
+
+def ingest(session, source, connector: Connector, max_age_days: int = MAX_AGE_DAYS) -> int:
     """Corre un conector, guarda menciones nuevas SIN score y registra un Run. Nunca lanza."""
     run = Run(source_id=source.id)
     session.add(run)
     session.commit()
 
     candidates = session.query(Candidate).filter_by(active=True).all()
+    cutoff = dt.datetime.utcnow() - dt.timedelta(days=max_age_days)
     new_mentions = 0
     try:
         items = connector.fetch(all_search_terms_flat(candidates))
         for item in items:
+            if item.published_at and item.published_at < cutoff:
+                continue
             if session.query(Mention).filter_by(source_id=source.id, external_id=item.external_id).first():
                 continue
             url_norm = normalize_url(item.url)

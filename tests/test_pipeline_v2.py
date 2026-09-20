@@ -70,3 +70,12 @@ def test_ingest_records_error_when_connector_fails(db_session):
 
     assert ingest(db_session, s1, Boom()) == 0
     assert "red caída" in db_session.query(Run).one().error
+
+
+def test_ingest_skips_items_older_than_max_age(db_session):
+    import datetime as dt
+    _, _, s1, _ = _seed(db_session)
+    old = RawItem(external_id="old", text="Carlos Arias hace un año", published_at=dt.datetime.utcnow() - dt.timedelta(days=400))
+    new = RawItem(external_id="new", text="Carlos Arias hoy", published_at=dt.datetime.utcnow())
+    assert ingest(db_session, s1, ListConnector([old, new]), max_age_days=60) == 1
+    assert db_session.query(Mention).one().external_id == "new"
