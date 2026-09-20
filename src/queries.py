@@ -33,7 +33,7 @@ def summary(session, days: int = 7) -> list[dict]:
     prev_since = since - dt.timedelta(days=days)
     rows = []
     for c in session.query(Candidate).filter_by(active=True).all():
-        q = session.query(Mention).filter(Mention.candidate_id == c.id)
+        q = session.query(Mention).filter(Mention.candidate_id == c.id, Mention.relevant.is_(True))
         current = q.filter(WHEN >= since).all()
         previous = q.filter(WHEN >= prev_since, WHEN < since).count()
         counts = Counter(m.sentiment.label for m in current if m.sentiment)
@@ -54,7 +54,7 @@ def timeline(session, days: int = 7) -> dict:
     today = dt.datetime.utcnow()
     labels = [_local_day(today - dt.timedelta(days=i)) for i in range(days - 1, -1, -1)]
     per: dict[str, Counter] = defaultdict(Counter)
-    for m in session.query(Mention).filter(WHEN >= since).all():
+    for m in session.query(Mention).filter(WHEN >= since, Mention.relevant.is_(True)).all():
         per[m.candidate.name][_local_day(_when(m))] += 1
     names = [c.name for c in session.query(Candidate).filter_by(active=True).all()]
     names.sort(key=lambda n: n != CARLOS)
@@ -79,7 +79,7 @@ def _mention_dict(m: Mention) -> dict:
 def mentions(session, candidate_id: int | None = None, source_type: str | None = None,
              label: str | None = None, days: int = 30, limit: int = 100, offset: int = 0) -> list[dict]:
     q = (session.query(Mention).outerjoin(SentimentScore).join(Source)
-         .filter(WHEN >= _since(days)))
+         .filter(WHEN >= _since(days), Mention.relevant.is_(True)))
     if candidate_id:
         q = q.filter(Mention.candidate_id == candidate_id)
     if source_type:
@@ -95,7 +95,7 @@ def alerts(session, candidate_name: str = CARLOS, threshold: float = -0.5,
     rows = (
         session.query(Mention).join(SentimentScore).join(Candidate)
         .filter(Candidate.name == candidate_name, SentimentScore.score <= threshold,
-                WHEN >= _since(days))
+                WHEN >= _since(days), Mention.relevant.is_(True))
         .order_by(WHEN.desc()).limit(limit).all()
     )
     return [_mention_dict(m) for m in rows]
@@ -106,7 +106,7 @@ def topics(session, days: int = 7, limit: int = 10) -> list[dict]:
     rows = (
         session.query(topic, func.count(SentimentScore.id))
         .join(Mention)
-        .filter(WHEN >= _since(days), SentimentScore.topic != "")
+        .filter(WHEN >= _since(days), SentimentScore.topic != "", Mention.relevant.is_(True))
         .group_by(topic).order_by(func.count(SentimentScore.id).desc())
         .limit(limit).all()
     )
@@ -116,6 +116,9 @@ def topics(session, days: int = 7, limit: int = 10) -> list[dict]:
 def status(session) -> dict:
     total = session.query(Mention).count()
     scored = session.query(SentimentScore).count()
+    discarded = session.query(Mention).filter(Mention.relevant.is_(False)).count()
+    unenriched = (session.query(Mention).join(Source)
+                  .filter(Source.type.in_((SourceType.GOOGLE_NEWS, SourceType.RSS)), Mention.body.is_(None)).count())
     sources = []
     for s in session.query(Source).order_by(Source.id).all():
         last = session.query(Run).filter_by(source_id=s.id).order_by(Run.started_at.desc()).first()
@@ -131,6 +134,7 @@ def status(session) -> dict:
     cse = session.query(ApiUsage).filter_by(service="google_cse", day=today).first()
     return {
         "total_mentions": total, "scored": scored, "pending": total - scored,
+        "discarded": discarded, "unenriched": unenriched,
         "last_run": last_run.isoformat() if last_run else None,
         "cse_used_today": cse.count if cse else 0,
         "sources": sources,

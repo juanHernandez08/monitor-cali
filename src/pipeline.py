@@ -3,7 +3,9 @@ import logging
 
 from src.connectors.base import Connector
 from src.matching import all_search_terms_flat, find_matching_candidate, find_candidate_by_term
-from src.models import Candidate, Mention, Run, SentimentScore
+from sqlalchemy import or_
+
+from src.models import Candidate, Mention, Run, SentimentScore, Source, SourceType
 from src.urlnorm import normalize_url
 
 log = logging.getLogger(__name__)
@@ -49,20 +51,25 @@ def ingest(session, source, connector: Connector) -> int:
 def score_pending(session, engine, limit: int = 20) -> int:
     """Clasifica menciones sin SentimentScore, en lotes. Devuelve cuántas clasificó."""
     pending = (
-        session.query(Mention)
+        session.query(Mention).join(Source, Mention.source_id == Source.id)
         .outerjoin(SentimentScore, SentimentScore.mention_id == Mention.id)
         .filter(SentimentScore.id.is_(None))
+        # Google News solo trae el titular: esperar a que enrich_pending traiga el cuerpo.
+        .filter(or_(Source.type != SourceType.GOOGLE_NEWS, Mention.body.isnot(None)))
         .order_by(Mention.fetched_at.desc())
         .limit(limit)
         .all()
     )
     scored = 0
     for mention in pending:
+        text = f"{mention.text}\n\n{mention.body}" if mention.body else mention.text
         try:
-            result = engine.score(mention.text, candidate=mention.candidate.name)
+            result = engine.score(text, candidate=mention.candidate.name)
         except Exception:
             log.exception("score falló para mention %s", mention.id)
             break  # Ollama caído: reintentar en el próximo ciclo
+        if "homónimo" in (result.topic or "").lower() or "homonimo" in (result.topic or "").lower():
+            mention.relevant = False
         session.add(SentimentScore(mention_id=mention.id, label=result.label, score=result.score,
                                    topic=result.topic, model=result.model))
         session.commit()

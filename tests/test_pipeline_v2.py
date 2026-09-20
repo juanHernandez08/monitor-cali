@@ -53,6 +53,9 @@ def test_ingest_records_run_and_score_pending_scores(db_session):
     assert db_session.query(SentimentScore).count() == 0
 
     engine = FakeEngine()
+    assert score_pending(db_session, engine, limit=10) == 0  # Google News espera el cuerpo
+    db_session.query(Mention).one().body = ""
+    db_session.commit()
     assert score_pending(db_session, engine, limit=10) == 1
     assert engine.calls[0][1] == "Carlos Arias"
     assert db_session.query(SentimentScore).one().score == -0.8

@@ -2,7 +2,7 @@ import datetime as dt
 import enum
 
 from sqlalchemy import (
-    Column, Integer, String, Boolean, ForeignKey, DateTime, Float,
+    Column, Integer, String, Text, Boolean, ForeignKey, DateTime, Float,
     JSON, UniqueConstraint, Enum,
 )
 from sqlalchemy.orm import declarative_base, relationship
@@ -61,7 +61,9 @@ class Mention(Base):
     url = Column(String, nullable=True)
     url_normalized = Column(String, nullable=True, index=True)
     author = Column(String, nullable=True)
-    text = Column(String, nullable=False)
+    text = Column(String, nullable=False)  # titular / snippet / comentario
+    body = Column(Text, nullable=True)  # cuerpo del artículo (None = pendiente, '' = no disponible)
+    relevant = Column(Boolean, default=True, nullable=False)  # False = homónimo u otro descarte
     published_at = Column(DateTime, nullable=True)
     fetched_at = Column(DateTime, default=dt.datetime.utcnow, nullable=False)
     raw = Column(JSON, default=dict)

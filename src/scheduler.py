@@ -10,6 +10,7 @@ from src.connectors.news_rss import RSSConnector
 from src.connectors.reddit_rss import RedditRSSConnector
 from src.connectors.youtube import YouTubeConnector
 from src.db import get_session
+from src.enrich import enrich_pending
 from src.models import Source, SourceType
 from src.pipeline import ingest, score_pending
 from src.sentiment import build_sentiment_engine
@@ -79,6 +80,9 @@ def job_youtube():
 def job_score():
     engine = build_sentiment_engine()
     with get_session() as s:
+        e = enrich_pending(s, limit=20)
+        if e:
+            log.info("enrich: %d procesadas", e)
         n = score_pending(s, engine, limit=20)
         if n:
             log.info("score: %d clasificadas", n)

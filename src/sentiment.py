@@ -7,16 +7,21 @@ from dataclasses import dataclass
 from src.models import SentimentLabel
 from src import config
 
-SENTIMENT_PROMPT = """Eres un analista de comunicación política en Cali, Colombia.
-Clasifica el sentimiento del siguiente texto HACIA el candidato a la alcaldía {candidate}.
-Si el texto es informativo sin juicio de valor, es "neutral".
+SENTIMENT_PROMPT = """Eres un analista de comunicación política de una campaña a la Alcaldía de Cali, Colombia.
+Evalúa cómo deja parado al candidato {candidate} el siguiente texto (noticia, post o comentario).
+
+Criterios:
+- "positive": lo muestra con logros, apoyo, liderazgo, propuestas bien recibidas, o el autor lo elogia/apoya.
+- "negative": lo asocia a críticas, escándalos, fracasos, rechazo, burla, o el autor lo ataca/desconfía.
+- "neutral": SOLO si es una mención de agenda o trámite sin ninguna carga (p. ej. "asistirá al foro").
+Sé decidido: si hay cualquier inclinación, aunque sea leve, no uses "neutral"; usa un score pequeño (±0.2 a ±0.4).
+Si el texto trata de otra persona con el mismo nombre, responde neutral con score 0 y topic "homónimo".
 
 Texto: {text}
 
 Responde SOLO con un JSON de la forma:
 {{"label": "positive" | "negative" | "neutral", "score": <float entre -1.0 y 1.0>, "topic": "<tema en 2-3 palabras>"}}
 """
-
 _JSON_FENCE = re.compile(r"^```(?:json)?\s*|\s*```$", re.MULTILINE)
 
 
