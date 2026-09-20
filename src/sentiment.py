@@ -1,14 +1,15 @@
 import json
+import os
 import re
+import urllib.request
 from dataclasses import dataclass
 
-from anthropic import Anthropic
-
 from src.models import SentimentLabel
-from src.config import ANTHROPIC_API_KEY
+from src import config
 
 SENTIMENT_PROMPT = """Eres un analista de comunicación política en Cali, Colombia.
-Clasifica el siguiente texto sobre un candidato a la alcaldía.
+Clasifica el sentimiento del siguiente texto HACIA el candidato a la alcaldía {candidate}.
+Si el texto es informativo sin juicio de valor, es "neutral".
 
 Texto: {text}
 
@@ -27,29 +28,68 @@ class SentimentResult:
     model: str
 
 
+def _parse_payload(text: str, model: str) -> SentimentResult:
+    payload = json.loads(_JSON_FENCE.sub("", text).strip())
+    label = str(payload.get("label", "neutral")).lower()
+    if label not in {"positive", "negative", "neutral"}:
+        label = "neutral"
+    score = max(-1.0, min(1.0, float(payload.get("score", 0.0))))
+    return SentimentResult(label=SentimentLabel(label), score=score,
+                           topic=str(payload.get("topic", ""))[:80], model=model)
+
+
+def _prompt(text: str, candidate: str | None) -> str:
+    return SENTIMENT_PROMPT.format(text=text[:3000], candidate=candidate or "mencionado")
+
+
 class SentimentEngine:
-    def __init__(self, model: str = "claude-sonnet-5", client=None):
-        self.model = model
-        self.client = client or Anthropic(api_key=ANTHROPIC_API_KEY)
+    """Backend Claude (Anthropic API)."""
 
-    def score(self, text: str) -> SentimentResult:
+    def __init__(self, model: str | None = None, client=None):
+        self.model = model or config.CLAUDE_MODEL
+        if client is None:
+            from anthropic import Anthropic
+            client = Anthropic(api_key=config.ANTHROPIC_API_KEY)
+        self.client = client
+
+    def score(self, text: str, candidate: str | None = None) -> SentimentResult:
         response = self.client.messages.create(
-            model=self.model,
-            max_tokens=256,
-            messages=[{"role": "user", "content": SENTIMENT_PROMPT.format(text=text)}],
+            model=self.model, max_tokens=256,
+            messages=[{"role": "user", "content": _prompt(text, candidate)}],
         )
-        payload = json.loads(_extract_text(response))
-        return SentimentResult(
-            label=SentimentLabel(payload["label"]),
-            score=float(payload["score"]),
-            topic=payload["topic"],
-            model=self.model,
-        )
+        # Los modelos actuales pueden devolver bloques `thinking` antes del texto.
+        for block in response.content:
+            if getattr(block, "type", "text") == "text":
+                return _parse_payload(block.text, self.model)
+        raise ValueError("La respuesta de Claude no contiene un bloque de texto")
 
 
-def _extract_text(response) -> str:
-    # Los modelos actuales pueden devolver bloques `thinking` antes del texto.
-    for block in response.content:
-        if getattr(block, "type", "text") == "text":
-            return _JSON_FENCE.sub("", block.text).strip()
-    raise ValueError("La respuesta de Claude no contiene un bloque de texto")
+def _ollama_post(url: str, json_body: dict, timeout: int) -> dict:
+    req = urllib.request.Request(url, data=json.dumps(json_body).encode(),
+                                 headers={"Content-Type": "application/json"})
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
+        return json.load(resp)
+
+
+class OllamaSentimentEngine:
+    """Backend local (Ollama). Sin costo; ~3 s por mención con qwen2.5:14b."""
+
+    def __init__(self, model: str | None = None, base_url: str | None = None, timeout: int = 180):
+        self.model = model or config.OLLAMA_MODEL
+        self.base_url = (base_url or config.OLLAMA_URL).rstrip("/")
+        self.timeout = timeout
+
+    def score(self, text: str, candidate: str | None = None) -> SentimentResult:
+        data = _ollama_post(f"{self.base_url}/api/chat", {
+            "model": self.model, "stream": False, "format": "json",
+            "options": {"temperature": 0},
+            "messages": [{"role": "user", "content": _prompt(text, candidate)}],
+        }, timeout=self.timeout)
+        return _parse_payload(data["message"]["content"], f"ollama/{self.model}")
+
+
+def build_sentiment_engine():
+    backend = os.environ.get("SENTIMENT_BACKEND", "ollama").lower()
+    if backend == "claude" and os.environ.get("ANTHROPIC_API_KEY"):
+        return SentimentEngine()
+    return OllamaSentimentEngine()

@@ -1,7 +1,25 @@
 import os
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///monitor.db")
+
+# Sentimiento: "ollama" (local, gratis) o "claude" (requiere ANTHROPIC_API_KEY)
+SENTIMENT_BACKEND = os.environ.get("SENTIMENT_BACKEND", "ollama")
+OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
+OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "qwen2.5:14b")
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
+CLAUDE_MODEL = os.environ.get("CLAUDE_MODEL", "claude-sonnet-5")
+
+# Google Cloud (gratis): Custom Search JSON API + YouTube Data API v3
+GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
+GOOGLE_CSE_ID = os.environ.get("GOOGLE_CSE_ID")
+GOOGLE_CSE_DAILY_LIMIT = int(os.environ.get("GOOGLE_CSE_DAILY_LIMIT", "95"))
+CSE_SITES = ["instagram.com", "facebook.com", "x.com"]
+
+# Bright Data (de pago, opcional)
 BRIGHTDATA_API_TOKEN = os.environ.get("BRIGHTDATA_API_TOKEN")
 
 # Candidatos a monitorear — fuente: @noticalioficial (Instagram, 13 sep 2026),
@@ -50,8 +68,12 @@ CANDIDATES = [
     },
 ]
 
-# Fuentes RSS iniciales — verificar la URL real del feed de cada medio antes de correr
+# Feeds RSS directos de medios locales — se verifican en Task 12; los que no respondan se quitan.
 RSS_SOURCES = [
     {"name": "El País Cali", "url": "https://www.elpais.com.co/rss/cali.xml"},
     {"name": "El Tiempo Cali", "url": "https://www.eltiempo.com/rss/colombia_cali.xml"},
+    {"name": "Caracol Radio Cali", "url": "https://caracol.com.co/emisora/cali/rss/"},
+    {"name": "Blu Radio Cali", "url": "https://www.bluradio.com/rss/cali"},
+    {"name": "Q'hubo Cali", "url": "https://www.qhubocali.com/feed/"},
+    {"name": "Caliescribe", "url": "https://caliescribe.com/feed/"},
 ]
