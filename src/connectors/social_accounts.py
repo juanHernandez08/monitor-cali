@@ -139,7 +139,8 @@ class SocialAccountConnector:
                     author=_pick(c, "comment_author"),
                     published_at=_parse_date(_pick(c, "comment_date")),
                     raw={"kind": "comment", "platform": platform, "account": account["url"],
-                         "post_title": post_title, "record": c},  # contexto para el clasificador
+                         "account_candidate": candidate,  # comentario en un post del propio candidato
+                         "post_title": post_title, "record": c},
                     search_term=candidate,
                 ))
         return items

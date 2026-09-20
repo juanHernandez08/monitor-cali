@@ -101,3 +101,18 @@ def test_tangential_youtube_comment_is_irrelevant_but_tangential_news_is_kept(db
     score_pending(db_session, FakeEngine(topic="mención tangencial"), limit=10)
     assert db_session.query(Mention).filter_by(external_id="yt:comment:1").one().relevant is False
     assert db_session.query(Mention).filter_by(external_id="g1").one().relevant is True
+
+
+def test_comment_on_candidates_own_post_gets_own_post_context_and_stays_relevant(db_session):
+    c = Candidate(name="Carlos Arias", aliases=[])
+    ig = Source(type=SourceType.SOCIAL, name="IG")
+    db_session.add_all([c, ig])
+    db_session.commit()
+    ingest(db_session, ig, ListConnector([RawItem(
+        external_id="ig:comment:1", text="👏👏", search_term="Carlos Arias",
+        raw={"kind": "comment", "post_title": "Cali unida", "account_candidate": "Carlos Arias"},
+    )]))
+    engine = FakeEngine(topic="mención tangencial")
+    score_pending(db_session, engine, limit=10)
+    assert "publicación del propio candidato Carlos Arias" in engine.calls[0]
+    assert db_session.query(Mention).one().relevant is True

@@ -77,7 +77,12 @@ def score_pending(session, engine, limit: int = 20) -> int:
         if raw.get("video_title"):  # comentario de YouTube: el título del video da el contexto
             text = f"[Comentario en el video: {raw['video_title']}]\n{text}"
         elif raw.get("post_title"):  # comentario de Instagram/Facebook: el post da el contexto
-            text = f"[Comentario en la publicación: {raw['post_title']}]\n{text}"
+            if raw.get("account_candidate") == mention.candidate.name:
+                text = (f"[Comentario en una publicación del propio candidato {mention.candidate.name}: "
+                        f"{raw['post_title']}] (aplausos, gracias o apoyo aquí son POSITIVOS hacia él; "
+                        f"críticas o burlas son NEGATIVAS; no es tangencial)\n{text}")
+            else:
+                text = f"[Comentario en la publicación: {raw['post_title']}]\n{text}"
         try:
             result = engine.score(text, candidate=mention.candidate.name)
         except Exception:
@@ -87,7 +92,8 @@ def score_pending(session, engine, limit: int = 20) -> int:
         is_comment = (mention.raw or {}).get("kind") == "comment"
         # Homónimo → fuera. Un comentario "tangencial" habla del video, no del candidato → fuera.
         # Una nota de prensa tangencial sí menciona al candidato → se conserva.
-        if "homónimo" in topic or "homonimo" in topic or (is_comment and "tangencial" in topic):
+        own_post = is_comment and raw.get("account_candidate") == mention.candidate.name
+        if "homónimo" in topic or "homonimo" in topic or (is_comment and not own_post and "tangencial" in topic):
             mention.relevant = False
         session.add(SentimentScore(mention_id=mention.id, label=result.label, score=result.score,
                                    topic=result.topic, model=result.model))
