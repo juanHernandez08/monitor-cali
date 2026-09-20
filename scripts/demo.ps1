@@ -14,6 +14,10 @@ if (-not (Get-Command cloudflared -ErrorAction SilentlyContinue)) {
     $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
 }
 
+# Que el PC no se suspenda ni apague la pantalla durante la demo (solo con corriente)
+powercfg /change standby-timeout-ac 0
+powercfg /change monitor-timeout-ac 0
+
 Start-Process -FilePath ".\.venv\Scripts\python.exe" -ArgumentList "-m uvicorn src.api:app --host 0.0.0.0 --port 8000" -WindowStyle Minimized
 Start-Sleep 4
 Write-Host ""
