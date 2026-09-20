@@ -17,7 +17,7 @@ class RedditConnector:
 
     async def _fetch_async(self, search_terms: list[str]) -> list[RawItem]:
         items: list[RawItem] = []
-        async with BrightDataClient(token=self.api_token) as client:
+        async with BrightDataClient(token=self.api_token, auto_create_zones=False) as client:
             for term in search_terms:
                 result = await client.scrape.reddit.posts_by_keyword(
                     keyword=term, sort_by=self.sort_by,

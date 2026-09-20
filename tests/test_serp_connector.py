@@ -25,7 +25,7 @@ def test_serp_connector_restricts_by_site(monkeypatch):
 
     import src.connectors.serp as serp_module
     monkeypatch.setattr(
-        serp_module, "SyncBrightDataClient", lambda token: FakeSyncClient(fake_results),
+        serp_module, "SyncBrightDataClient", lambda token, auto_create_zones: FakeSyncClient(fake_results),
     )
 
     connector = SerpConnector(api_token="fake-token", site="instagram.com")

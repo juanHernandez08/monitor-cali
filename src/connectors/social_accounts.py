@@ -69,7 +69,7 @@ class SocialAccountConnector:
 
     async def _fetch_async(self) -> list[RawItem]:
         items: list[RawItem] = []
-        async with BrightDataClient(token=self.api_token) as client:
+        async with BrightDataClient(token=self.api_token, auto_create_zones=False) as client:
             for account in self.accounts:
                 try:
                     items.extend(await self._fetch_account(client, account))
@@ -81,14 +81,19 @@ class SocialAccountConnector:
         platform = account["platform"]
         candidate = account.get("candidate")
         prefix = "ig" if platform == "instagram" else "fb"
+        # Firmas verificadas contra brightdata-sdk 2.5: Instagram lista posts de un perfil con
+        # search.instagram.posts(url, num_of_posts) y comentarios con scrape.instagram.comments(url)
+        # (sin límite); Facebook usa scrape.facebook.posts_by_profile / comments(num_of_comments).
         if platform == "instagram":
-            posts_fn, comments_fn = client.scrape.instagram.posts, client.scrape.instagram.comments
+            async def posts_fn(url): return await client.search.instagram.posts(url=url, num_of_posts=self.max_posts)
+            async def comments_fn(url): return await client.scrape.instagram.comments(url=url)
         elif platform == "facebook":
-            posts_fn, comments_fn = client.scrape.facebook.posts_by_profile, client.scrape.facebook.comments
+            async def posts_fn(url): return await client.scrape.facebook.posts_by_profile(url=url, num_of_posts=self.max_posts)
+            async def comments_fn(url): return await client.scrape.facebook.comments(url=url, num_of_comments=self.max_comments)
         else:
             raise ValueError(f"plataforma no soportada: {platform}")
 
-        result = await posts_fn(url=account["url"], num_of_posts=self.max_posts)
+        result = await posts_fn(account["url"])
         posts = [p for p in (result.data or []) if isinstance(p, dict)]
         items: list[RawItem] = []
         for post in posts:
@@ -112,7 +117,7 @@ class SocialAccountConnector:
         )[: self.comment_posts]
         for post in with_comments:
             post_url = _pick(post, "url")
-            result = await comments_fn(url=post_url, num_of_comments=self.max_comments)
+            result = await comments_fn(post_url)
             post_title = str(_pick(post, "text") or "")[:120]
             for c in (result.data or []):
                 if not isinstance(c, dict):
@@ -121,6 +126,8 @@ class SocialAccountConnector:
                 text = str(_pick(c, "comment_text") or "").strip()
                 if not cid or not text:
                     continue
+                if sum(1 for i in items if i.raw.get("kind") == "comment" and i.url == post_url) >= self.max_comments:
+                    break  # Instagram no acepta límite en la API; se recorta aquí
                 items.append(RawItem(
                     external_id=f"{prefix}:comment:{cid}",
                     text=text,

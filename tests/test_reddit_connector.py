@@ -31,7 +31,7 @@ def test_reddit_connector_normalizes_posts(monkeypatch):
 
     import src.connectors.reddit as reddit_module
     monkeypatch.setattr(
-        reddit_module, "BrightDataClient", lambda token: FakeAsyncClient(fake_posts),
+        reddit_module, "BrightDataClient", lambda token, auto_create_zones: FakeAsyncClient(fake_posts),
     )
 
     connector = RedditConnector(api_token="fake-token")

@@ -12,7 +12,7 @@ class SerpConnector:
 
     def fetch(self, search_terms: list[str]) -> list[RawItem]:
         items: list[RawItem] = []
-        with SyncBrightDataClient(token=self.api_token) as client:
+        with SyncBrightDataClient(token=self.api_token, auto_create_zones=False) as client:
             for term in search_terms:
                 query = f'"{term}"' + (f" site:{self.site}" if self.site else "")
                 result = client.search.google(query=query)
