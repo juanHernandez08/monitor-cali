@@ -24,6 +24,15 @@ copy .env.example .env      # y completar las keys que tengas
 
 Ollama: instalar desde ollama.com y `ollama pull qwen2.5:14b`.
 
+## Instalación en macOS
+
+```bash
+bash scripts/setup_mac.sh     # Homebrew → Python 3.11, Ollama, cloudflared, venv, modelo, tests
+bash scripts/demo.sh          # Ollama + servidor + tunnel público; Ctrl+C termina todo
+```
+
+Para llevar el proyecto de Windows a Mac: copiar la carpeta **sin** `.venv/` (se recrea) y **con** `monitor.db` (los datos ya capturados) y `.env`. En Macs con 16 GB o menos, poner `OLLAMA_MODEL=llama3.1:8b` en `.env` antes de correr el setup.
+
 ## Uso
 
 ```powershell
@@ -68,4 +77,5 @@ docs/              presupuesto.md, despliegue.md, specs y planes
 - Instagram/Facebook/X: solo se ve lo que Google tiene indexado (posts públicos), no comentarios ni historias.
 - Nombres comunes ("Carlos Arias", "Carlos Paz") traen homónimos; el clasificador recibe el nombre del candidato y suele marcarlos como neutrales, pero cuentan como mención. Ajustar alias en `config.py`.
 - Reddit limita la tasa (429); el conector se detiene y reintenta en el siguiente ciclo.
+- Las notas de Google News se enriquecen con el cuerpo del artículo antes de clasificar (`src/enrich.py`); si el medio bloquea la descarga, se clasifica solo con el titular.
 - Radio/TV no está cubierto (ver `docs/presupuesto.md`).
