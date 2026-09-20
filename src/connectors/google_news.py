@@ -11,9 +11,13 @@ from src.connectors.base import RawItem
 _TAG = re.compile(r"<[^>]+>")
 
 
-def build_query_url(term: str, window: str = "30d", context: str = "Cali") -> str:
-    """Búsqueda de Google News acotada a Colombia, con contexto ("Cali") y ventana (when:30d)."""
-    query = f'"{term}" {context} when:{window}'.strip()
+def build_query_url(term: str, window: str | None = None, context: str = "Cali") -> str:
+    """Búsqueda de Google News acotada a Colombia con contexto ("Cali").
+
+    `when:Nd` se comporta mal con frases entre comillas (devuelve 1 resultado donde sin
+    ventana devuelve 48), así que por defecto no se usa; el dashboard filtra por fecha.
+    """
+    query = f'"{term}" {context}' + (f" when:{window}" if window else "")
     return (
         "https://news.google.com/rss/search?q=" + quote(query)
         + "&hl=es-419&gl=CO&ceid=" + quote("CO:es-419")
@@ -28,7 +32,7 @@ class GoogleNewsConnector:
     """Prensa vía Google News RSS: una búsqueda por término, restringida a Colombia."""
     source_name = "google_news"
 
-    def __init__(self, pause_seconds: float = 1.0, window: str = "30d", context: str = "Cali"):
+    def __init__(self, pause_seconds: float = 1.0, window: str | None = None, context: str = "Cali"):
         self.pause_seconds = pause_seconds
         self.window = window
         self.context = context

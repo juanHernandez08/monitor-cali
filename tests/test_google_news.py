@@ -13,7 +13,8 @@ def test_build_query_url_targets_colombia():
     url = build_query_url("Carlos Arias")
     assert "news.google.com/rss/search" in url
     assert "gl=CO" in url and "ceid=CO%3Aes-419" in url
-    assert "Cali" in url and "when%3A30d" in url
+    assert "Cali" in url and "when" not in url
+    assert "when%3A7d" in build_query_url("Carlos Arias", window="7d")
 
 
 def test_google_news_connector_one_item_per_term(monkeypatch):
