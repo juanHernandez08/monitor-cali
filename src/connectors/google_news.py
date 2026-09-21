@@ -60,9 +60,12 @@ class GoogleNewsConnector:
                     published = dt.datetime(*entry.published_parsed[:6])
                 source_title = getattr(getattr(entry, "source", None), "title", None)
                 title = _clean(entry.get("title", ""))
+                summary = _clean(entry.get("summary", ""))
+                if summary.startswith(title[:40]):  # Google News repite el titular en el resumen
+                    summary = ""
                 items.append(RawItem(
                     external_id=ext_id,
-                    text=f"{title} {_clean(entry.get('summary', ''))}".strip(),
+                    text=f"{title} {summary}".strip(),
                     url=entry.get("link"),
                     author=source_title,
                     published_at=published,

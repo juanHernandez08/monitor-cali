@@ -4,35 +4,60 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Monitor Alcaldía Cali 2027</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/dashboard.css?v={{ v }}">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body>
 <header class="top">
-  <div>
-    <h1>Monitor de menciones · Alcaldía de Cali 2027</h1>
-    <p class="sub">Prensa · Reddit · YouTube · Instagram / Facebook / X · <span id="last-run">—</span></p>
+  <div class="brand">
+    <div class="logo">M</div>
+    <div>
+      <h1>Monitor de menciones</h1>
+      <div class="sub">Alcaldía de Cali 2027 · prensa, Reddit, YouTube, Instagram y Facebook</div>
+    </div>
   </div>
   <div class="controls">
-    <select id="days">
+    <span id="last-run" class="lastrun">—</span>
+    <select id="days" aria-label="Período">
       <option value="1">Últimas 24 h</option>
-      <option value="7" selected>7 días</option>
-      <option value="30">30 días</option>
+      <option value="7">Últimos 7 días</option>
+      <option value="30" selected>Últimos 30 días</option>
     </select>
     <button id="refresh">Actualizar ahora</button>
   </div>
 </header>
+
 <main>
+  <section class="kpis" id="kpis"></section>
+
+  <section id="hero" class="hero"></section>
+
   <section id="cards" class="cards"></section>
-  <section class="grid">
-    <div class="panel"><h2>Menciones por día</h2><canvas id="chart-timeline"></canvas></div>
-    <div class="panel"><h2>Sentimiento por candidato</h2><canvas id="chart-sentiment"></canvas></div>
-    <div class="panel"><h2>Temas más frecuentes</h2><canvas id="chart-topics"></canvas></div>
-    <div class="panel alerts"><h2>Alertas · menciones negativas sobre Carlos Arias</h2><ul id="alerts"></ul></div>
+
+  <section class="grid2">
+    <div class="panel">
+      <div class="panel-head"><h2>Menciones por día</h2><span class="hint">Carlos Arias y los 4 rivales con más menciones</span></div>
+      <div class="chart-box"><canvas id="chart-timeline"></canvas></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h2>Sentimiento por candidato</h2><span class="hint">% de menciones clasificadas</span></div>
+      <div class="chart-box tall"><canvas id="chart-sentiment"></canvas></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h2>Temas más frecuentes</h2><span class="hint">según el clasificador</span></div>
+      <div class="chart-box"><canvas id="chart-topics"></canvas></div>
+    </div>
+    <div class="panel alerts">
+      <div class="panel-head"><h2>Alertas</h2><span class="hint">menciones negativas sobre Carlos Arias</span></div>
+      <ul id="alerts"></ul>
+    </div>
   </section>
-  <section class="panel">
+
+  <section class="panel feed-panel">
     <div class="feed-head">
-      <h2>Publicaciones y notas <span class="hint">· clic en "comentarios" para ver el detalle</span></h2>
+      <div><h2>Publicaciones y notas</h2><span class="hint">una fila por publicación; despliega sus comentarios</span></div>
       <div class="filters">
         <select id="f-candidate"><option value="">Todos los candidatos</option></select>
         <select id="f-source">
@@ -42,7 +67,6 @@
           <option value="reddit">Reddit</option>
           <option value="youtube">YouTube</option>
           <option value="social">Instagram / Facebook</option>
-          <option value="google_cse">IG / FB / X (búsqueda)</option>
         </select>
         <select id="f-label">
           <option value="">Todo sentimiento</option>
@@ -52,11 +76,9 @@
         </select>
       </div>
     </div>
-    <table id="feed">
-      <thead><tr><th>Fecha</th><th>Candidato</th><th>Fuente</th><th>Publicación</th><th>Sentimiento</th><th>Comentarios</th><th></th></tr></thead>
-      <tbody></tbody>
-    </table>
+    <div id="feed" class="feed"></div>
   </section>
+
   <footer id="status"></footer>
 </main>
 <script src="/static/dashboard.js?v={{ v }}"></script>
