@@ -25,7 +25,8 @@ if [ "$RAM_GB" -le 8 ]; then DEFAULT_MODEL="qwen2.5:7b"
 elif [ "$RAM_GB" -le 16 ]; then DEFAULT_MODEL="llama3.1:8b"
 else DEFAULT_MODEL="qwen2.5:14b"; fi
 MODEL="$(grep -E '^OLLAMA_MODEL=' .env | cut -d= -f2)"
-if [ -z "$MODEL" ]; then
+# Si el .env viene de otro equipo con un modelo que no cabe en esta RAM, se reemplaza.
+if [ -z "$MODEL" ] || { [ "$RAM_GB" -le 8 ] && echo "$MODEL" | grep -qE '14b|32b|70b'; } || { [ "$RAM_GB" -le 16 ] && echo "$MODEL" | grep -qE '32b|70b'; }; then
   MODEL="$DEFAULT_MODEL"
   if grep -q '^OLLAMA_MODEL=' .env; then sed -i '' "s|^OLLAMA_MODEL=.*|OLLAMA_MODEL=$MODEL|" .env; else echo "OLLAMA_MODEL=$MODEL" >> .env; fi
 fi
