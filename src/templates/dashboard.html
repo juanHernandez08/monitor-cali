@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Monitor Alcaldía Cali 2027</title>
-<link rel="stylesheet" href="/static/dashboard.css">
+<link rel="stylesheet" href="/static/dashboard.css?v={{ v }}">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body>
@@ -32,7 +32,7 @@
   </section>
   <section class="panel">
     <div class="feed-head">
-      <h2>Menciones</h2>
+      <h2>Publicaciones y notas <span class="hint">· clic en "comentarios" para ver el detalle</span></h2>
       <div class="filters">
         <select id="f-candidate"><option value="">Todos los candidatos</option></select>
         <select id="f-source">
@@ -53,12 +53,12 @@
       </div>
     </div>
     <table id="feed">
-      <thead><tr><th>Fecha</th><th>Candidato</th><th>Fuente</th><th>Texto</th><th>Sentimiento</th><th></th></tr></thead>
+      <thead><tr><th>Fecha</th><th>Candidato</th><th>Fuente</th><th>Publicación</th><th>Sentimiento</th><th>Comentarios</th><th></th></tr></thead>
       <tbody></tbody>
     </table>
   </section>
   <footer id="status"></footer>
 </main>
-<script src="/static/dashboard.js"></script>
+<script src="/static/dashboard.js?v={{ v }}"></script>
 </body>
 </html>

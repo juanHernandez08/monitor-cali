@@ -66,3 +66,63 @@ def test_topics_and_status(db_session):
     st = status(db_session)
     assert st["pending"] == 1 and st["total_mentions"] == 5
     assert st["sources"][0]["name"] == "Google News" and st["sources"][0]["last_new"] == 4
+
+
+def test_feed_groups_comments_under_their_publication(db_session):
+    from src.queries import feed
+    carlos = Candidate(name="Carlos Arias", aliases=[])
+    ig = Source(type=SourceType.SOCIAL, name="IG")
+    yt = Source(type=SourceType.YOUTUBE, name="YouTube")
+    gn = Source(type=SourceType.GOOGLE_NEWS, name="Google News")
+    db_session.add_all([carlos, ig, yt, gn])
+    db_session.commit()
+    now = dt.datetime.utcnow()
+
+    def add(src, ext, text, raw, label, score, url=None, when=now):
+        m = Mention(candidate_id=carlos.id, source_id=src.id, external_id=ext, text=text, url=url,
+                    raw=raw, published_at=when, fetched_at=when, author="a")
+        db_session.add(m)
+        db_session.flush()
+        db_session.add(SentimentScore(mention_id=m.id, label=label, score=score, topic="t", model="f"))
+        return m
+
+    add(ig, "ig:post:1", "Cali unida", {"kind": "post"}, SentimentLabel.POSITIVE, 0.3, url="https://instagram.com/p/1/")
+    add(ig, "ig:comment:1", "👏", {"kind": "comment", "post_title": "Cali unida"}, SentimentLabel.POSITIVE, 0.5, url="https://instagram.com/p/1/", when=now - dt.timedelta(hours=1))
+    add(ig, "ig:comment:2", "no", {"kind": "comment", "post_title": "Cali unida"}, SentimentLabel.NEGATIVE, -0.6, url="https://instagram.com/p/1/", when=now - dt.timedelta(hours=2))
+    # comentario de YouTube cuyo video no está guardado → fila sintética con el título del video
+    add(yt, "yt:comment:9", "qué bien", {"kind": "comment", "video_id": "v9", "video_title": "Entrevista"}, SentimentLabel.POSITIVE, 0.4,
+        url="https://www.youtube.com/watch?v=v9&lc=9", when=now - dt.timedelta(days=1))
+    add(gn, "g1", "Nota de prensa", {}, SentimentLabel.NEUTRAL, 0.0, url="https://elpais.com.co/n/1", when=now - dt.timedelta(days=2))
+    db_session.commit()
+
+    rows = feed(db_session, days=7, limit=10)
+
+    assert [r["kind"] for r in rows] == ["post", "comments", "news"]
+    post = rows[0]
+    assert post["text"] == "Cali unida" and post["url"] == "https://instagram.com/p/1/" and post["label"] == "positive"
+    assert post["comments_summary"] == {"total": 2, "positive": 1, "negative": 1, "neutral": 0}
+    assert [c["text"] for c in post["comments"]] == ["👏", "no"]
+    video = rows[1]
+    assert video["text"] == "Entrevista" and video["url"] == "https://www.youtube.com/watch?v=v9"
+    assert video["comments_summary"]["total"] == 1 and video["label"] is None
+    assert rows[2]["comments_summary"]["total"] == 0 and rows[2]["comments"] == []
+
+
+def test_feed_label_filter_keeps_publication_with_matching_comments(db_session):
+    from src.queries import feed
+    carlos = Candidate(name="Carlos Arias", aliases=[])
+    ig = Source(type=SourceType.SOCIAL, name="IG")
+    db_session.add_all([carlos, ig])
+    db_session.commit()
+    now = dt.datetime.utcnow()
+    p = Mention(candidate_id=carlos.id, source_id=ig.id, external_id="ig:post:1", text="post", url="https://instagram.com/p/1/", raw={"kind": "post"}, published_at=now, fetched_at=now)
+    c = Mention(candidate_id=carlos.id, source_id=ig.id, external_id="ig:comment:1", text="malo", url="https://instagram.com/p/1/", raw={"kind": "comment", "post_title": "post"}, published_at=now, fetched_at=now)
+    db_session.add_all([p, c])
+    db_session.flush()
+    db_session.add_all([SentimentScore(mention_id=p.id, label=SentimentLabel.POSITIVE, score=0.3, topic="t", model="f"),
+                        SentimentScore(mention_id=c.id, label=SentimentLabel.NEGATIVE, score=-0.6, topic="t", model="f")])
+    db_session.commit()
+
+    rows = feed(db_session, days=7, label="negative")
+    assert len(rows) == 1 and rows[0]["text"] == "post"
+    assert [x["text"] for x in rows[0]["comments"]] == ["malo"]

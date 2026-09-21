@@ -4,6 +4,7 @@ from collections import Counter, defaultdict
 
 from sqlalchemy import func
 
+from src.urlnorm import normalize_url
 from src.models import (
     ApiUsage, Candidate, Mention, Run, SentimentLabel, SentimentScore, Source, SourceType,
 )
@@ -141,3 +142,91 @@ def status(session) -> dict:
         "cse_used_today": cse.count if cse else 0,
         "sources": sources,
     }
+
+
+# ---------- Feed agrupado por publicación ----------
+
+def _parent_key(m: Mention) -> str | None:
+    """Clave que une un comentario con su publicación (o una publicación consigo misma)."""
+    raw = m.raw or {}
+    kind = raw.get("kind")
+    if kind == "comment":
+        if raw.get("video_id"):
+            return f"yt:video:{raw['video_id']}"
+        return f"url:{normalize_url(m.url)}" if m.url else None
+    if kind == "video":
+        return m.external_id  # yt:video:<id>
+    if kind == "post":
+        return f"url:{normalize_url(m.url)}" if m.url else m.external_id
+    return None
+
+
+def _summary_of(comments: list[dict]) -> dict:
+    c = Counter(x["label"] for x in comments)
+    return {"total": len(comments), "positive": c.get("positive", 0),
+            "negative": c.get("negative", 0), "neutral": c.get("neutral", 0)}
+
+
+def feed(session, candidate_id: int | None = None, source_type: str | None = None,
+         label: str | None = None, days: int = 30, limit: int = 100, offset: int = 0) -> list[dict]:
+    """Filas = publicaciones (post, video, nota); los comentarios cuelgan de su publicación.
+
+    Los filtros se aplican a las menciones; una publicación aparece si ella o alguno de sus
+    comentarios pasa el filtro. Comentarios sin publicación guardada forman una fila sintética
+    (kind="comments") con el título del video/post.
+    """
+    q = (session.query(Mention).outerjoin(SentimentScore).join(Source)
+         .filter(WHEN >= _since(days), Mention.relevant.is_(True)))
+    if candidate_id:
+        q = q.filter(Mention.candidate_id == candidate_id)
+    if source_type:
+        q = q.filter(Source.type == SourceType(source_type))
+    filtered = q.order_by(WHEN.desc(), Mention.id.desc()).limit(3000).all()
+
+    def passes_label(m: Mention) -> bool:
+        return not label or (m.sentiment is not None and m.sentiment.label.value == label)
+
+    rows: dict[str, dict] = {}
+    order: list[str] = []
+    comments_by_parent: dict[str, list[Mention]] = defaultdict(list)
+    for m in filtered:
+        if (m.raw or {}).get("kind") == "comment":
+            key = _parent_key(m) or f"solo:{m.id}"
+            comments_by_parent[key].append(m)
+        elif passes_label(m):
+            key = _parent_key(m) or f"solo:{m.id}"
+            raw = m.raw or {}
+            row = _mention_dict(m)
+            row["kind"] = raw.get("kind") or "news"
+            row["comments"], row["comments_summary"] = [], _summary_of([])
+            rows[key] = row
+            order.append(key)
+
+    for key, comments in comments_by_parent.items():
+        matching = [c for c in comments if passes_label(c)]
+        if not matching and key not in rows:
+            continue
+        if key not in rows:  # publicación no guardada: fila sintética a partir del primer comentario
+            first = comments[0]
+            raw = first.raw or {}
+            title = raw.get("video_title") or raw.get("post_title") or "(publicación)"
+            url = f"https://www.youtube.com/watch?v={raw['video_id']}" if raw.get("video_id") else first.url
+            rows[key] = {
+                "id": None, "kind": "comments", "candidate": first.candidate.name,
+                "candidate_id": first.candidate_id, "source": first.source.name,
+                "source_type": first.source.type.value, "text": title, "url": url, "author": None,
+                "published_at": max(_when(c) for c in comments).isoformat(),
+                "label": None, "score": None, "topic": None, "model": None,
+                "comments": [], "comments_summary": _summary_of([]),
+            }
+            order.append(key)
+        shown = matching if label else comments
+        rows[key]["comments"] = [_mention_dict(c) for c in shown]
+        rows[key]["comments_summary"] = _summary_of([_mention_dict(c) for c in comments])
+        rows[key]["last_activity"] = max(rows[key]["published_at"], max(_when(c) for c in comments).isoformat())
+
+    result = [rows[k] for k in order]
+    for r in result:
+        r.setdefault("last_activity", r["published_at"])  # una publicación con actividad reciente sube
+    result.sort(key=lambda r: r["last_activity"], reverse=True)
+    return result[offset:offset + limit]

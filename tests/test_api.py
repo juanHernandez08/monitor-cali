@@ -27,6 +27,7 @@ def test_json_routes(client):
     assert client.get("/api/summary?days=7").json()[0]["name"] == "Carlos Arias"
     assert len(client.get("/api/timeline?days=3").json()["labels"]) == 3
     assert client.get("/api/mentions?limit=5").json()[0]["text"] == "hola"
+    assert client.get("/api/feed?days=7").json()[0]["kind"] == "news"
     assert client.get("/api/alerts").json() == []
     assert client.get("/api/topics").json() == []
     assert client.get("/health").json()["total_mentions"] == 1

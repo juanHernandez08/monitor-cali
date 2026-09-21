@@ -25,6 +25,7 @@ async function loadCards() {
     return `<div class="card ${r.name === "Carlos Arias" ? "carlos" : ""}">
       <div class="name">${esc(r.name)}</div><div class="party">${esc(r.party || "")}</div>
       <div class="n">${r.mentions}</div>
+      <div class="what">menciones en el período (notas, posts y comentarios)</div>
       <div class="delta">${delta}${r.pending ? ` · ${r.pending} pendientes` : ""}</div>
       <div class="bar"><i class="p" style="width:${r.positive / t * 100}%"></i><i class="u" style="width:${r.neutral / t * 100}%"></i><i class="g" style="width:${r.negative / t * 100}%"></i></div>
     </div>`;
@@ -70,20 +71,49 @@ async function loadAlerts() {
   </li>`).join("") : "<li>Sin alertas en el período.</li>";
 }
 
+function sentTag(m) {
+  if (!m.label) return `<span class="tag pending">pendiente</span>`;
+  return `<span class="tag ${m.label}">${LABEL[m.label]} ${m.score}</span>${m.topic ? `<div class="topic">${esc(m.topic)}</div>` : ""}`;
+}
+function commentsCell(r, idx) {
+  const s = r.comments_summary;
+  if (!s.total) return `<span class="hint">—</span>`;
+  const t = s.total;
+  return `<button class="toggle" data-idx="${idx}">▸ ${t} comentario${t === 1 ? "" : "s"}</button>
+    <div class="cbar"><i class="p" style="width:${s.positive / t * 100}%"></i><i class="u" style="width:${s.neutral / t * 100}%"></i><i class="g" style="width:${s.negative / t * 100}%"></i></div>
+    <div class="topic">${s.positive} ▲ · ${s.neutral} ● · ${s.negative} ▼</div>`;
+}
+let feedRows = [];
 async function loadFeed() {
-  const p = new URLSearchParams({ days: days(), limit: 150 });
+  const p = new URLSearchParams({ days: days(), limit: 80 });
   if ($("#f-candidate").value) p.set("candidate_id", $("#f-candidate").value);
   if ($("#f-source").value) p.set("source_type", $("#f-source").value);
   if ($("#f-label").value) p.set("label", $("#f-label").value);
-  const rows = await j(`/api/mentions?${p}`);
-  $("#feed tbody").innerHTML = rows.map((m) => `<tr>
-    <td>${fmtDate(m.published_at)}</td>
-    <td>${esc(m.candidate)}</td>
-    <td><span class="tag">${SRC[m.source_type] || esc(m.source)}</span></td>
-    <td class="text">${esc(m.text).slice(0, 260)}${m.author ? `<div class="meta">${esc(m.author)}</div>` : ""}</td>
-    <td>${m.label ? `<span class="tag ${m.label}">${LABEL[m.label]} ${m.score}</span><div class="topic">${esc(m.topic || "")}</div>` : `<span class="tag pending">pendiente</span>`}</td>
-    <td>${m.url ? `<a href="${m.url}" target="_blank" rel="noopener">ver</a>` : ""}</td>
-  </tr>`).join("") || `<tr><td colspan="6">Sin menciones con esos filtros.</td></tr>`;
+  feedRows = await j(`/api/feed?${p}`);
+  const KIND = { post: "Post", video: "Video", comments: "Publicación", news: "Nota" };
+  $("#feed tbody").innerHTML = feedRows.map((r, i) => `<tr data-row="${i}">
+    <td>${fmtDate(r.published_at)}</td>
+    <td>${esc(r.candidate)}</td>
+    <td><span class="tag">${SRC[r.source_type] || esc(r.source)}</span><div class="topic">${KIND[r.kind] || ""}</div></td>
+    <td class="text">${esc(r.text).slice(0, 260)}${r.author ? `<div class="meta">${esc(r.author)}</div>` : ""}</td>
+    <td>${r.kind === "comments" ? `<span class="hint">solo comentarios</span>` : sentTag(r)}</td>
+    <td>${commentsCell(r, i)}</td>
+    <td>${r.url ? `<a href="${r.url}" target="_blank" rel="noopener">ver</a>` : ""}</td>
+  </tr>`).join("") || `<tr><td colspan="7">Sin publicaciones con esos filtros.</td></tr>`;
+  $("#feed tbody").querySelectorAll(".toggle").forEach((b) => b.addEventListener("click", () => toggleComments(Number(b.dataset.idx), b)));
+}
+function toggleComments(idx, btn) {
+  const row = $(`#feed tr[data-row="${idx}"]`);
+  const open = row.nextElementSibling && row.nextElementSibling.classList.contains("detail");
+  if (open) { row.nextElementSibling.remove(); btn.textContent = btn.textContent.replace("▾", "▸"); return; }
+  const r = feedRows[idx];
+  const html = r.comments.map((c) => `<div class="comment">
+      <div>${esc(c.text)}<div class="who">${esc(c.author || "")} · ${fmtDate(c.published_at)}${c.url ? ` · <a href="${c.url}" target="_blank" rel="noopener">ver</a>` : ""}</div></div>
+      <div>${sentTag(c)}</div></div>`).join("");
+  const tr = document.createElement("tr"); tr.className = "detail";
+  tr.innerHTML = `<td colspan="7">${html || "Sin comentarios que cumplan el filtro."}</td>`;
+  row.after(tr);
+  btn.textContent = btn.textContent.replace("▸", "▾");
 }
 
 async function loadStatus() {

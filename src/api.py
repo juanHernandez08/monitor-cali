@@ -17,6 +17,11 @@ log = logging.getLogger(__name__)
 BASE = Path(__file__).parent
 
 
+def _asset_version() -> int:
+    """Cambia cuando cambia algún archivo estático: evita que el navegador use JS/CSS viejo."""
+    return int(max(f.stat().st_mtime for f in (BASE / "static").iterdir()))
+
+
 def create_app(session_factory=None, start_jobs: bool = True) -> FastAPI:
     factory = session_factory or SessionLocal
     owns_session = session_factory is None
@@ -48,7 +53,7 @@ def create_app(session_factory=None, start_jobs: bool = True) -> FastAPI:
 
     @app.get("/", response_class=HTMLResponse)
     def dashboard(request: Request):
-        return templates.TemplateResponse(request, "dashboard.html", {})
+        return templates.TemplateResponse(request, "dashboard.html", {"v": _asset_version()})
 
     @app.get("/api/summary")
     def api_summary(days: int = Query(7, ge=1, le=90)):
@@ -67,6 +72,14 @@ def create_app(session_factory=None, start_jobs: bool = True) -> FastAPI:
         with session() as s:
             return queries.mentions(s, candidate_id=candidate_id, source_type=source_type,
                                     label=label, days=days, limit=limit, offset=offset)
+
+    @app.get("/api/feed")
+    def api_feed(candidate_id: int | None = None, source_type: str | None = None,
+                 label: str | None = None, days: int = Query(30, ge=1, le=365),
+                 limit: int = Query(60, le=300), offset: int = 0):
+        with session() as s:
+            return queries.feed(s, candidate_id=candidate_id, source_type=source_type,
+                                label=label, days=days, limit=limit, offset=offset)
 
     @app.get("/api/alerts")
     def api_alerts(days: int = Query(30, ge=1, le=365)):
