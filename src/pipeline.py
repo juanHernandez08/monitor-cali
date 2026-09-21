@@ -1,18 +1,27 @@
 import datetime as dt
 import logging
+import re
 
 from src.connectors.base import Connector
 from src.matching import all_search_terms_flat, find_matching_candidate, find_candidate_by_term
 from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
 
-from src.models import Candidate, Mention, Run, SentimentScore, Source, SourceType
+from src.models import Candidate, Mention, Run, SentimentLabel, SentimentScore, Source, SourceType
 from src.urlnorm import normalize_url
 
 log = logging.getLogger(__name__)
 
 
 MAX_AGE_DAYS = 60  # menciones más viejas no se guardan (el dashboard muestra hasta 30 días)
+
+_HANDLE = re.compile(r"@[\w.]+")
+
+
+def is_bare_mention(text: str) -> bool:
+    """True si el comentario es solo etiquetas a otras cuentas ("@a @b"), sin ningún otro texto."""
+    stripped = _HANDLE.sub("", text or "").strip()
+    return bool(_HANDLE.search(text or "")) and stripped == ""
 
 
 def ingest(session, source, connector: Connector, max_age_days: int = MAX_AGE_DAYS) -> int:
@@ -72,8 +81,16 @@ def score_pending(session, engine, limit: int = 20) -> int:
     )
     scored = 0
     for mention in pending:
-        text = f"{mention.text}\n\n{mention.body}" if mention.body else mention.text
         raw = mention.raw or {}
+        if raw.get("kind") == "comment" and is_bare_mention(mention.text):
+            # "@alguien" sin texto: no expresa nada; no gastar modelo ni contarlo.
+            mention.relevant = False
+            session.add(SentimentScore(mention_id=mention.id, label=SentimentLabel.NEUTRAL, score=0.0,
+                                       topic="etiqueta a otra cuenta", model="regla"))
+            session.commit()
+            scored += 1
+            continue
+        text = f"{mention.text}\n\n{mention.body}" if mention.body else mention.text
         if raw.get("video_title"):  # comentario de YouTube: el título del video da el contexto
             text = f"[Comentario en el video: {raw['video_title']}]\n{text}"
         elif raw.get("post_title"):  # comentario de Instagram/Facebook: el post da el contexto

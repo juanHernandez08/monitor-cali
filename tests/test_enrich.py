@@ -116,3 +116,22 @@ def test_comment_on_candidates_own_post_gets_own_post_context_and_stays_relevant
     score_pending(db_session, engine, limit=10)
     assert "publicación del propio candidato Carlos Arias" in engine.calls[0]
     assert db_session.query(Mention).one().relevant is True
+
+
+def test_bare_mention_comment_is_neutral_and_irrelevant_without_calling_model(db_session):
+    from src.pipeline import is_bare_mention
+    assert is_bare_mention("@vallescout")
+    assert is_bare_mention("@a @b ")
+    assert not is_bare_mention("@vallescout mira esto")
+    assert not is_bare_mention("👏👏")  # los aplausos sí expresan apoyo
+    c = Candidate(name="Carlos Arias", aliases=[])
+    ig = Source(type=SourceType.SOCIAL, name="IG")
+    db_session.add_all([c, ig])
+    db_session.commit()
+    ingest(db_session, ig, ListConnector([RawItem(external_id="ig:comment:1", text="@vallescout", search_term="Carlos Arias",
+                                                   raw={"kind": "comment", "post_title": "x", "account_candidate": "Carlos Arias"})]))
+    engine = FakeEngine()
+    assert score_pending(db_session, engine, limit=10) == 1
+    assert engine.calls == []
+    m = db_session.query(Mention).one()
+    assert m.relevant is False and m.sentiment.label == SentimentLabel.NEUTRAL and m.sentiment.topic == "etiqueta a otra cuenta"
