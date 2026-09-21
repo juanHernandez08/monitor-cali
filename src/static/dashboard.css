@@ -136,3 +136,20 @@ footer { color: var(--muted); font-size: 12px; line-height: 1.7; }
   .cbar { width: 100%; }
   .chart-box, .chart-box.tall { height: 240px; }
 }
+
+/* ---------- pestañas y análisis ---------- */
+.tabs { display: flex; gap: 6px; padding: 10px 24px 0; background: var(--panel); border-bottom: 1px solid var(--line); }
+.tab { background: none; color: var(--muted); border: none; border-bottom: 3px solid transparent; border-radius: 0; padding: 10px 14px; font-weight: 600; }
+.tab:hover { background: none; color: var(--ink); }
+.tab.active { color: var(--brand); border-bottom-color: var(--brand); }
+.tabpane { display: none; }
+.tabpane.active { display: grid; gap: 16px; }
+.intro p { margin: 6px 0 0; color: var(--ink); font-size: 14px; line-height: 1.6; }
+.panel.big .panel-head { align-items: flex-start; }
+.panel.big h2 { font-size: 18px; }
+.panel.big .hint { display: block; margin-top: 4px; font-size: 13px; max-width: 900px; }
+.reading { margin: 4px 0 12px; padding: 10px 14px; background: var(--brand-soft); border-left: 3px solid var(--brand); border-radius: 8px; font-size: 14px; line-height: 1.5; }
+.reading b { color: var(--brand-2); }
+.chart-box.xl { height: 380px; }
+@media (max-width: 860px) { .tabs { padding: 6px 14px 0; } .chart-box.xl { height: 320px; } }
+@media (max-width: 560px) { .chart-box.xl { height: 300px; } }

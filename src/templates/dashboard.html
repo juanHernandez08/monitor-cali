@@ -8,6 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/dashboard.css?v={{ v }}">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
 </head>
 <body>
 <header class="top">
@@ -29,55 +30,87 @@
   </div>
 </header>
 
+<nav class="tabs">
+  <button class="tab active" data-tab="resumen">Resumen</button>
+  <button class="tab" data-tab="analisis">Análisis en gráficas</button>
+</nav>
+
 <main>
-  <section class="kpis" id="kpis"></section>
-
-  <section id="hero" class="hero"></section>
-
-  <section id="cards" class="cards"></section>
-
-  <section class="grid2">
-    <div class="panel">
-      <div class="panel-head"><h2>Menciones por día</h2><span class="hint">Carlos Arias y los 4 rivales con más menciones</span></div>
-      <div class="chart-box"><canvas id="chart-timeline"></canvas></div>
-    </div>
-    <div class="panel">
-      <div class="panel-head"><h2>Sentimiento por candidato</h2><span class="hint">% de menciones clasificadas</span></div>
-      <div class="chart-box tall"><canvas id="chart-sentiment"></canvas></div>
-    </div>
-    <div class="panel">
-      <div class="panel-head"><h2>Temas más frecuentes</h2><span class="hint">según el clasificador</span></div>
-      <div class="chart-box"><canvas id="chart-topics"></canvas></div>
-    </div>
-    <div class="panel alerts">
-      <div class="panel-head"><h2>Alertas</h2><span class="hint">menciones negativas sobre Carlos Arias</span></div>
-      <ul id="alerts"></ul>
-    </div>
-  </section>
-
-  <section class="panel feed-panel">
-    <div class="feed-head">
-      <div><h2>Publicaciones y notas</h2><span class="hint">una fila por publicación; despliega sus comentarios</span></div>
-      <div class="filters">
-        <select id="f-candidate"><option value="">Todos los candidatos</option></select>
-        <select id="f-source">
-          <option value="">Todas las fuentes</option>
-          <option value="google_news">Prensa (Google News)</option>
-          <option value="rss">Prensa (RSS)</option>
-          <option value="reddit">Reddit</option>
-          <option value="youtube">YouTube</option>
-          <option value="social">Instagram / Facebook</option>
-        </select>
-        <select id="f-label">
-          <option value="">Todo sentimiento</option>
-          <option value="negative">Negativo</option>
-          <option value="neutral">Neutral</option>
-          <option value="positive">Positivo</option>
-        </select>
+  <div id="tab-resumen" class="tabpane active">
+    <section class="kpis" id="kpis"></section>
+    <section id="hero" class="hero"></section>
+    <section id="cards" class="cards"></section>
+    <section class="grid2">
+      <div class="panel alerts">
+        <div class="panel-head"><h2>Alertas</h2><span class="hint">menciones negativas fuertes sobre Carlos Arias</span></div>
+        <ul id="alerts"></ul>
       </div>
+      <div class="panel">
+        <div class="panel-head"><h2>Temas más frecuentes</h2><span class="hint">de qué hablan las menciones, según el clasificador</span></div>
+        <div class="chart-box"><canvas id="chart-topics"></canvas></div>
+      </div>
+    </section>
+    <section class="panel feed-panel">
+      <div class="feed-head">
+        <div><h2>Publicaciones y notas</h2><span class="hint">una fila por publicación; despliega sus comentarios</span></div>
+        <div class="filters">
+          <select id="f-candidate"><option value="">Todos los candidatos</option></select>
+          <select id="f-source">
+            <option value="">Todas las fuentes</option>
+            <option value="google_news">Prensa (Google News)</option>
+            <option value="rss">Prensa (RSS)</option>
+            <option value="reddit">Reddit</option>
+            <option value="youtube">YouTube</option>
+            <option value="social">Instagram / Facebook</option>
+          </select>
+          <select id="f-label">
+            <option value="">Todo sentimiento</option>
+            <option value="negative">Negativo</option>
+            <option value="neutral">Neutral</option>
+            <option value="positive">Positivo</option>
+          </select>
+        </div>
+      </div>
+      <div id="feed" class="feed"></div>
+    </section>
+  </div>
+
+  <div id="tab-analisis" class="tabpane">
+    <div class="intro panel">
+      <h2>Cómo leer estas gráficas</h2>
+      <p>Cada <b>mención</b> es una nota de prensa, un post, un video o un comentario donde aparece un candidato. Un clasificador de lenguaje lee cada mención y decide si deja al candidato <span class="tag positive">bien parado</span>, <span class="tag negative">mal parado</span> o si es <span class="tag neutral">informativa</span>. Las cifras corresponden al período elegido arriba y se actualizan solas cada 15 minutos.</p>
     </div>
-    <div id="feed" class="feed"></div>
-  </section>
+
+    <section class="panel big">
+      <div class="panel-head"><div><h2>¿De quién se habla más?</h2><div class="hint">Número de menciones por candidato en el período. Incluye prensa, Reddit, YouTube, Instagram y Facebook.</div></div></div>
+      <p class="reading" id="read-volume"></p>
+      <div class="chart-box xl"><canvas id="chart-volume"></canvas></div>
+    </section>
+
+    <section class="panel big">
+      <div class="panel-head"><div><h2>¿Cómo se habla de cada candidato?</h2><div class="hint">De cada 100 menciones clasificadas, cuántas son positivas, neutrales o negativas. Entre paréntesis, el total de menciones clasificadas.</div></div></div>
+      <p class="reading" id="read-sentiment"></p>
+      <div class="chart-box xl"><canvas id="chart-sentiment"></canvas></div>
+    </section>
+
+    <section class="panel big">
+      <div class="panel-head"><div><h2>¿En qué canales aparece cada candidato?</h2><div class="hint">Dónde se generan las menciones: prensa (medios de comunicación), YouTube (videos y comentarios), Instagram / Facebook (posts y comentarios) o Reddit.</div></div></div>
+      <p class="reading" id="read-sources"></p>
+      <div class="chart-box xl"><canvas id="chart-sources"></canvas></div>
+    </section>
+
+    <section class="panel big">
+      <div class="panel-head"><div><h2>¿Cuándo se habló de ellos?</h2><div class="hint">Menciones por día de Carlos Arias (línea gruesa) y de los 4 rivales con más menciones. Los picos suelen coincidir con una noticia o una publicación viral.</div></div></div>
+      <p class="reading" id="read-timeline"></p>
+      <div class="chart-box xl"><canvas id="chart-timeline"></canvas></div>
+    </section>
+
+    <section class="panel big">
+      <div class="panel-head"><div><h2>¿De qué temas se habla?</h2><div class="hint">Temas más frecuentes asignados por el clasificador a las menciones del período (todos los candidatos).</div></div></div>
+      <p class="reading" id="read-topics"></p>
+      <div class="chart-box xl"><canvas id="chart-topics-big"></canvas></div>
+    </section>
+  </div>
 
   <footer id="status"></footer>
 </main>

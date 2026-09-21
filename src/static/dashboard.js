@@ -2,16 +2,22 @@ const $ = (s) => document.querySelector(s);
 const CARLOS = "Carlos Arias";
 const COLORS = ["#1f4fa3", "#d9483b", "#22a06b", "#e0a020", "#8b5cf6", "#0ea5a4", "#f97316", "#64748b", "#be185d"];
 const SRC = { google_news: "Prensa", rss: "Prensa", reddit: "Reddit", youtube: "YouTube", social: "Instagram / Facebook", google_cse: "Redes", serp: "Redes" };
+const SRC_LABEL = { google_news: "Prensa", rss: "Prensa", reddit: "Reddit", youtube: "YouTube", social: "Instagram / Facebook", google_cse: "Redes (búsqueda)", serp: "Redes (búsqueda)" };
+const SRC_COLOR = { Prensa: "#1f4fa3", YouTube: "#d9483b", "Instagram / Facebook": "#8b5cf6", Reddit: "#f97316", "Redes (búsqueda)": "#0ea5a4" };
 const LABEL = { negative: "Negativo", positive: "Positivo", neutral: "Neutral" };
 const KIND = { post: "Post", video: "Video", comments: "Publicación", news: "Nota" };
 const charts = {};
 let feedRows = [];
 
+Chart.register(ChartDataLabels);
 Chart.defaults.font.family = "Inter, system-ui, sans-serif";
 Chart.defaults.color = "#66718a";
+Chart.defaults.plugins.datalabels.display = false;
 
 async function j(url) { const r = await fetch(url); return r.json(); }
 function days() { return Number($("#days").value); }
+function periodLabel() { const d = days(); return d === 1 ? "las últimas 24 horas" : `los últimos ${d} días`; }
+function ordinal(i) { return `${i + 1}.º`; }
 function esc(s) { return (s || "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
 function ago(iso) {
   if (!iso) return "sin datos";
@@ -32,8 +38,9 @@ function bar(r) {
   const t = r.positive + r.negative + r.neutral || 1;
   return `<div class="bar"><i class="p" style="width:${r.positive / t * 100}%"></i><i class="u" style="width:${r.neutral / t * 100}%"></i><i class="g" style="width:${r.negative / t * 100}%"></i></div>`;
 }
+const share = (r, k) => pct(r[k], r.positive + r.negative + r.neutral);
 
-/* ---------- KPIs + panel de Carlos + tarjetas ---------- */
+/* ---------- KPIs + panel de Carlos + tarjetas + gráficas de candidatos ---------- */
 async function loadSummary() {
   const rows = await j(`/api/summary?days=${days()}`);
   const alerts = await j(`/api/alerts?days=${days()}`);
@@ -83,17 +90,42 @@ async function loadSummary() {
   sel.innerHTML = `<option value="">Todos los candidatos</option>` + rows.map((r) => `<option value="${r.candidate_id}">${esc(r.name)}</option>`).join("");
   sel.value = cur;
 
+  // ¿De quién se habla más?
+  const byVol = [...rows].sort((a, b) => b.mentions - a.mentions);
+  chart("#chart-volume", {
+    type: "bar",
+    data: { labels: byVol.map((r) => r.name), datasets: [{ data: byVol.map((r) => r.mentions), backgroundColor: byVol.map((r) => r.name === CARLOS ? "#1f4fa3" : "#b8c4d9"), borderRadius: 6, barThickness: 22 }] },
+    options: { indexAxis: "y", responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, datalabels: { display: true, anchor: "end", align: "end", color: "#172033", font: { weight: 600 }, formatter: (v) => v } },
+      scales: { x: { beginAtZero: true, grid: { color: "#eef1f5" }, ticks: { precision: 0 }, grace: "12%", title: { display: true, text: "menciones en el período" } }, y: { grid: { display: false } } } },
+  });
+  const vRank = byVol.findIndex((r) => r.name === CARLOS);
+  const tied = byVol.filter((r) => r.mentions === carlos.mentions && r.name !== CARLOS);
+  $("#read-volume").innerHTML = `En ${periodLabel()} se registraron <b>${total} menciones</b> de los ${rows.length} candidatos. ` +
+    (vRank === 0
+      ? `<b>Carlos Arias</b> es de quien más se habla, con ${carlos.mentions} menciones${tied.length ? ` (empatado con ${tied.map((r) => esc(r.name)).join(" y ")})` : ""}; le sigue ${esc((byVol.find((r) => r.mentions < carlos.mentions) || {}).name || "")}.`
+      : `<b>${esc(byVol[0].name)}</b> es de quien más se habla (${byVol[0].mentions}). <b>Carlos Arias</b> ocupa el ${ordinal(vRank)} lugar con ${carlos.mentions} menciones, ${byVol[0].mentions - carlos.mentions} menos.`);
+
+  // ¿Cómo se habla de cada candidato?
   const scored = rows.filter((r) => r.positive + r.negative + r.neutral > 0);
   chart("#chart-sentiment", {
     type: "bar",
     data: { labels: scored.map((r) => `${r.name} (${r.positive + r.negative + r.neutral})`), datasets: [
-      { label: "Positivo", data: scored.map((r) => pct(r.positive, r.positive + r.negative + r.neutral)), backgroundColor: "#22a06b" },
-      { label: "Neutral", data: scored.map((r) => pct(r.neutral, r.positive + r.negative + r.neutral)), backgroundColor: "#c3cad6" },
-      { label: "Negativo", data: scored.map((r) => pct(r.negative, r.positive + r.negative + r.neutral)), backgroundColor: "#d9483b" }] },
+      { label: "Positivas", data: scored.map((r) => share(r, "positive")), backgroundColor: "#22a06b" },
+      { label: "Neutrales", data: scored.map((r) => share(r, "neutral")), backgroundColor: "#c3cad6" },
+      { label: "Negativas", data: scored.map((r) => share(r, "negative")), backgroundColor: "#d9483b" }] },
     options: { indexAxis: "y", responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { position: "bottom" }, tooltip: { callbacks: { label: (c) => `${c.dataset.label}: ${c.raw}%` } } },
-      scales: { x: { stacked: true, max: 100, ticks: { callback: (v) => v + "%" }, grid: { color: "#eef1f5" } }, y: { stacked: true, grid: { display: false } } } },
+      plugins: { legend: { position: "bottom" }, tooltip: { callbacks: { label: (c) => `${c.dataset.label}: ${c.raw}%` } },
+        datalabels: { display: (c) => c.dataset.data[c.dataIndex] >= 8, color: (c) => c.datasetIndex === 1 ? "#334155" : "#fff", font: { weight: 600, size: 12 }, formatter: (v) => v + "%" } },
+      scales: { x: { stacked: true, max: 100, ticks: { callback: (v) => v + "%" }, grid: { color: "#eef1f5" }, title: { display: true, text: "de cada 100 menciones clasificadas" } }, y: { stacked: true, grid: { display: false } } } },
   });
+  const byPos = [...scored].sort((a, b) => share(b, "positive") - share(a, "positive"));
+  const byNeg = [...scored].sort((a, b) => share(b, "negative") - share(a, "negative"));
+  const cRank = byPos.findIndex((r) => r.name === CARLOS);
+  $("#read-sentiment").innerHTML = scored.length ? `<b>${esc(byPos[0].name)}</b> tiene la mejor imagen: ${share(byPos[0], "positive")}% de sus menciones son positivas. ` +
+    `<b>${esc(byNeg[0].name)}</b> concentra la mayor carga negativa (${share(byNeg[0], "negative")}% negativas). ` +
+    (cRank >= 0 ? `<b>Carlos Arias</b> es ${ordinal(cRank)} en positividad, con ${share(carlos, "positive")}% positivas y ${share(carlos, "negative")}% negativas sobre ${cScored} menciones clasificadas.` : "")
+    : "Aún no hay menciones clasificadas en el período.";
   return rows;
 }
 
@@ -105,21 +137,61 @@ async function loadTimeline(rows) {
     type: "line",
     data: { labels: d.labels.map((l) => l.slice(5).replace("-", "/")), datasets: series.map((s, i) => ({
       label: s.name, data: s.data, borderColor: COLORS[i % COLORS.length], backgroundColor: COLORS[i % COLORS.length],
-      tension: .35, borderWidth: s.name === CARLOS ? 3 : 1.5, pointRadius: s.name === CARLOS ? 3 : 0, pointHoverRadius: 4 })) },
+      tension: .35, borderWidth: s.name === CARLOS ? 3.5 : 1.5, pointRadius: s.name === CARLOS ? 3 : 0, pointHoverRadius: 4 })) },
     options: { responsive: true, maintainAspectRatio: false, interaction: { mode: "index", intersect: false },
       plugins: { legend: { position: "bottom" } },
-      scales: { y: { beginAtZero: true, grid: { color: "#eef1f5" } }, x: { ticks: { maxTicksLimit: 8, maxRotation: 0 }, grid: { display: false } } } },
+      scales: { y: { beginAtZero: true, grid: { color: "#eef1f5" }, ticks: { precision: 0 }, title: { display: true, text: "menciones por día" } }, x: { ticks: { maxTicksLimit: 10, maxRotation: 0 }, grid: { display: false } } } },
   });
+  const cs = series.find((s) => s.name === CARLOS);
+  if (cs) {
+    const peak = cs.data.reduce((best, v, i) => (v > cs.data[best] ? i : best), 0);
+    const peakDate = new Date(d.labels[peak] + "T12:00:00").toLocaleDateString("es-CO", { day: "numeric", month: "long" });
+    const active = cs.data.filter((v) => v > 0).length;
+    $("#read-timeline").innerHTML = `<b>Carlos Arias</b> tuvo su pico el <b>${peakDate}</b> con ${cs.data[peak]} menciones en un día, y apareció en ${active} de los ${d.labels.length} días mostrados. ` +
+      (series.length > 1 ? `Se comparan además ${series.slice(1).map((s) => s.name).join(", ")}.` : "");
+  }
+}
+
+async function loadSources() {
+  const d = await j(`/api/sources?days=${days()}`);
+  const groups = {};
+  for (const [type, counts] of Object.entries(d.series)) {
+    const label = SRC_LABEL[type] || type;
+    groups[label] = (groups[label] || Array(d.candidates.length).fill(0)).map((v, i) => v + counts[i]);
+  }
+  const labels = Object.keys(groups);
+  chart("#chart-sources", {
+    type: "bar",
+    data: { labels: d.candidates, datasets: labels.map((l) => ({ label: l, data: groups[l], backgroundColor: SRC_COLOR[l] || "#64748b", borderRadius: 3 })) },
+    options: { responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: "bottom" }, datalabels: { display: (c) => c.dataset.data[c.dataIndex] >= 6, color: "#fff", font: { weight: 600, size: 11 } } },
+      scales: { x: { stacked: true, grid: { display: false } }, y: { stacked: true, beginAtZero: true, grid: { color: "#eef1f5" }, ticks: { precision: 0 }, title: { display: true, text: "menciones" } } } },
+  });
+  const ci = d.candidates.indexOf(CARLOS);
+  const totalsByChannel = labels.map((l) => [l, groups[l].reduce((a, b) => a + b, 0)]).sort((a, b) => b[1] - a[1]);
+  const carlosByChannel = labels.map((l) => [l, groups[l][ci] || 0]).sort((a, b) => b[1] - a[1]);
+  const cTotal = carlosByChannel.reduce((a, x) => a + x[1], 0);
+  $("#read-sources").innerHTML = totalsByChannel.length ? `El canal con más conversación es <b>${totalsByChannel[0][0]}</b> (${totalsByChannel[0][1]} menciones en total). ` +
+    (cTotal ? `Las menciones de <b>Carlos Arias</b> vienen sobre todo de <b>${carlosByChannel[0][0]}</b> (${pct(carlosByChannel[0][1], cTotal)}% de sus ${cTotal})` +
+      (carlosByChannel[1] && carlosByChannel[1][1] ? `, seguido de ${carlosByChannel[1][0]} (${pct(carlosByChannel[1][1], cTotal)}%).` : ".") : "")
+    : "Sin datos en el período.";
 }
 
 async function loadTopics() {
   const t = await j(`/api/topics?days=${days()}`);
-  chart("#chart-topics", {
+  const cfg = (thick) => ({
     type: "bar",
-    data: { labels: t.map((x) => x.topic), datasets: [{ data: t.map((x) => x.count), backgroundColor: "#1f4fa3", borderRadius: 4, barThickness: 14 }] },
-    options: { indexAxis: "y", responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
-      scales: { x: { beginAtZero: true, grid: { color: "#eef1f5" }, ticks: { precision: 0 } }, y: { grid: { display: false } } } },
+    data: { labels: t.map((x) => x.topic), datasets: [{ data: t.map((x) => x.count), backgroundColor: "#1f4fa3", borderRadius: 4, barThickness: thick }] },
+    options: { indexAxis: "y", responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, datalabels: { display: true, anchor: "end", align: "end", color: "#172033", font: { weight: 600 } } },
+      scales: { x: { beginAtZero: true, grid: { color: "#eef1f5" }, ticks: { precision: 0 }, grace: "12%" }, y: { grid: { display: false } } } },
   });
+  chart("#chart-topics", cfg(14));
+  chart("#chart-topics-big", cfg(20));
+  const total = t.reduce((a, x) => a + x.count, 0);
+  $("#read-topics").innerHTML = t.length ? `El tema más frecuente es <b>${esc(t[0].topic)}</b> (${t[0].count} menciones)` +
+    (t[1] ? `, seguido de <b>${esc(t[1].topic)}</b> (${t[1].count})` : "") + (t[2] ? ` y <b>${esc(t[2].topic)}</b> (${t[2].count})` : "") +
+    `. Estos ${t.length} temas reúnen ${total} menciones clasificadas.` : "Sin temas en el período.";
 }
 
 async function loadAlerts() {
@@ -193,9 +265,15 @@ async function loadStatus() {
 
 async function loadAll() {
   const rows = await loadSummary();
-  await Promise.all([loadTimeline(rows), loadTopics(), loadAlerts(), loadFeed(), loadStatus()]);
+  await Promise.all([loadTimeline(rows), loadSources(), loadTopics(), loadAlerts(), loadFeed(), loadStatus()]);
 }
 
+document.querySelectorAll(".tab").forEach((b) => b.addEventListener("click", () => {
+  document.querySelectorAll(".tab").forEach((x) => x.classList.toggle("active", x === b));
+  document.querySelectorAll(".tabpane").forEach((p) => p.classList.toggle("active", p.id === `tab-${b.dataset.tab}`));
+  Object.values(charts).forEach((c) => c.resize());  // los canvas ocultos no tienen tamaño hasta mostrarse
+  window.scrollTo({ top: 0 });
+}));
 $("#days").addEventListener("change", loadAll);
 ["#f-candidate", "#f-source", "#f-label"].forEach((id) => $(id).addEventListener("change", loadFeed));
 $("#refresh").addEventListener("click", async () => {

@@ -86,6 +86,11 @@ def create_app(session_factory=None, start_jobs: bool = True) -> FastAPI:
         with session() as s:
             return queries.alerts(s, days=days)
 
+    @app.get("/api/sources")
+    def api_sources(days: int = Query(30, ge=1, le=365)):
+        with session() as s:
+            return queries.sources_by_candidate(s, days=days)
+
     @app.get("/api/topics")
     def api_topics(days: int = Query(7, ge=1, le=90)):
         with session() as s:

@@ -164,3 +164,25 @@ def test_feed_rows_carry_thumbnails(db_session):
     assert thumbs["p"] == "https://cdn/t.jpg"
     assert thumbs["v"] == "https://i.ytimg.com/vi/v1/hqdefault.jpg"
     assert thumbs["t"] == "https://i.ytimg.com/vi/v9/hqdefault.jpg"
+
+
+def test_sources_by_candidate_counts_relevant_mentions_per_source_type(db_session):
+    from src.queries import sources_by_candidate
+    carlos = Candidate(name="Carlos Arias", aliases=[])
+    ana = Candidate(name="Ana Pérez", aliases=[])
+    gn = Source(type=SourceType.GOOGLE_NEWS, name="Google News")
+    yt = Source(type=SourceType.YOUTUBE, name="YouTube")
+    db_session.add_all([carlos, ana, gn, yt])
+    db_session.commit()
+    now = dt.datetime.utcnow()
+    db_session.add_all([
+        Mention(candidate_id=carlos.id, source_id=gn.id, external_id="1", text="a", fetched_at=now),
+        Mention(candidate_id=carlos.id, source_id=yt.id, external_id="2", text="b", fetched_at=now),
+        Mention(candidate_id=carlos.id, source_id=yt.id, external_id="3", text="c", fetched_at=now, relevant=False),
+        Mention(candidate_id=ana.id, source_id=gn.id, external_id="4", text="d", fetched_at=now),
+    ])
+    db_session.commit()
+    data = sources_by_candidate(db_session, days=7)
+    assert data["candidates"][0] == "Carlos Arias"
+    assert data["series"]["google_news"] == [1, 1]
+    assert data["series"]["youtube"] == [1, 0]

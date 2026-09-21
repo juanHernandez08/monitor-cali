@@ -266,3 +266,22 @@ def feed(session, candidate_id: int | None = None, source_type: str | None = Non
         r.setdefault("last_activity", r["published_at"])  # una publicación con actividad reciente sube
     result.sort(key=lambda r: r["last_activity"], reverse=True)
     return result[offset:offset + limit]
+
+
+def sources_by_candidate(session, days: int = 30) -> dict:
+    """Menciones relevantes por candidato y tipo de fuente (para la gráfica de canales)."""
+    names = [c.name for c in session.query(Candidate).filter_by(active=True).all()]
+    names.sort(key=lambda n: n != CARLOS)
+    idx = {n: i for i, n in enumerate(names)}
+    series: dict[str, list[int]] = {}
+    rows = (
+        session.query(Candidate.name, Source.type, func.count(Mention.id))
+        .select_from(Mention).join(Candidate).join(Source)
+        .filter(WHEN >= _since(days), Mention.relevant.is_(True))
+        .group_by(Candidate.name, Source.type).all()
+    )
+    for name, stype, n in rows:
+        key = stype.value
+        series.setdefault(key, [0] * len(names))
+        series[key][idx[name]] = n
+    return {"candidates": names, "series": series}
