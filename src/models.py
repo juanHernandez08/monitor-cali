@@ -35,6 +35,7 @@ class Candidate(Base):
     party = Column(String, nullable=True)
     active = Column(Boolean, default=True, nullable=False)
     aliases = Column(JSON, default=list)
+    exclusions = Column(JSON, default=list)  # frases que identifican homónimos ("Arias Orjuela")
 
     mentions = relationship("Mention", back_populates="candidate")
 

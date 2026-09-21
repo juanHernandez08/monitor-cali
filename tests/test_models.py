@@ -69,3 +69,14 @@ def test_run_and_api_usage_tables(db_session):
     db_session.commit()
     assert run.started_at is not None
     assert db_session.query(ApiUsage).filter_by(service="google_cse", day="2026-09-19").one().count == 27
+
+
+def test_init_db_adds_missing_columns(tmp_path, monkeypatch):
+    from sqlalchemy import create_engine, text, inspect
+    import src.db as dbmod
+    engine = create_engine(f"sqlite:///{tmp_path/'old.db'}", future=True)
+    with engine.begin() as conn:
+        conn.execute(text("CREATE TABLE candidates (id INTEGER PRIMARY KEY, name VARCHAR NOT NULL, party VARCHAR, active BOOLEAN NOT NULL, aliases JSON)"))
+    monkeypatch.setattr(dbmod, "engine", engine)
+    dbmod.init_db()
+    assert "exclusions" in {c["name"] for c in inspect(engine).get_columns("candidates")}

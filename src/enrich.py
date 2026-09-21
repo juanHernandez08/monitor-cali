@@ -6,6 +6,7 @@ Antes de clasificar, resolvemos el link, descargamos el artículo y extraemos el
 """
 import logging
 
+from src.matching import is_excluded
 from src.models import Mention, Source, SourceType
 from src.urlnorm import normalize_url
 
@@ -82,6 +83,8 @@ def enrich_pending(session, limit: int = 20) -> int:
 
         body, image = fetch_article(real_url) if real_url else (None, None)
         mention.body = (body or "")[:MAX_BODY_CHARS]
+        if is_excluded(f"{mention.text} {mention.body}", mention.candidate):
+            mention.relevant = False  # el cuerpo revela un homónimo conocido
         if image:
             mention.raw = {**(mention.raw or {}), "image": image}
         session.commit()

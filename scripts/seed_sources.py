@@ -17,9 +17,11 @@ def seed(session):
         if row is None:
             session.add(Candidate(
                 name=c["name"], party=c.get("party"), aliases=c.get("aliases", []),
+                exclusions=c.get("exclusions", []),
             ))
-        else:  # config.py es la fuente de verdad de alias y partido
+        else:  # config.py es la fuente de verdad de alias, exclusiones y partido
             row.aliases = c.get("aliases", [])
+            row.exclusions = c.get("exclusions", [])
             row.party = c.get("party")
     for s in RSS_SOURCES:
         exists = session.query(Source).filter_by(

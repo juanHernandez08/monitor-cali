@@ -29,3 +29,11 @@ def test_all_search_terms_flat_includes_aliases():
 
     assert "Carlos Arias" in terms
     assert "@soycarlosaarias" in terms
+
+
+def test_is_excluded_matches_homonym_phrases_case_insensitive():
+    from src.matching import is_excluded
+    carlos = Candidate(id=1, name="Carlos Arias", aliases=[], exclusions=["Arias Orjuela", "Jhon Arias"])
+    assert is_excluded("Mauricio Maestre asumirá el cargo que deja Carlos Andrés ARIAS ORJUELA", carlos)
+    assert not is_excluded("la mayor Marta Orejuela y el concejal Carlos Andrés Arias Rueda", carlos)
+    assert not is_excluded("texto", Candidate(id=2, name="X", aliases=[], exclusions=None))

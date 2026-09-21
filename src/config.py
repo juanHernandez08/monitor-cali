@@ -35,6 +35,11 @@ CANDIDATES = [
             "Carlos Andrés Arias Rueda", "Carlos Andrés Arias", "Carlos Andres Arias",
             "@soycarlosaarias", "Buenos Ciudadanos",
         ],
+        # Homónimos conocidos: si aparecen en el titular o el cuerpo, la mención se descarta.
+        "exclusions": [
+            "Arias Orjuela", "Arias Orejuela", "Arias Navarro", "Jhon Arias", "Alfredo Arias",
+            "Pastor Carlos Arias", "Carlos Miguel Arias", "Juan Carlos Arias",
+        ],
     },
     {
         "name": "Alfredo Mondragón", "party": "Pacto Histórico",

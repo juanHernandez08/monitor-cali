@@ -88,3 +88,22 @@ def test_ingest_does_not_dedup_comments_by_url(db_session):
     c1 = RawItem(external_id="ig:comment:1", text="bien", url="https://instagram.com/p/X/", search_term="Carlos Arias", raw={"kind": "comment"})
     c2 = RawItem(external_id="ig:comment:2", text="mal", url="https://instagram.com/p/X/", search_term="Carlos Arias", raw={"kind": "comment"})
     assert ingest(db_session, s1, ListConnector([post, c1, c2])) == 3
+
+
+def test_ingest_skips_excluded_homonyms_and_enrich_discards_them(db_session, monkeypatch):
+    from src.enrich import enrich_pending
+    carlos = Candidate(name="Carlos Arias", aliases=[], exclusions=["Arias Orjuela"])
+    s1 = Source(type=SourceType.GOOGLE_NEWS, name="Google News")
+    db_session.add_all([carlos, s1])
+    db_session.commit()
+    items = [
+        RawItem(external_id="a", text="Carlos Andrés Arias Orjuela deja la gerencia", url="https://x.co/a"),
+        RawItem(external_id="b", text="Nueva gerencia en la firma", url="https://news.google.com/rss/articles/BBB", search_term="Carlos Arias"),
+    ]
+    assert ingest(db_session, s1, ListConnector(items)) == 1  # "a" se descarta por el titular
+    import src.enrich as m
+    monkeypatch.setattr(m, "resolve_url", lambda url: "https://x.co/b")
+    monkeypatch.setattr(m, "fetch_article", lambda url: ("El cargo que deja Carlos Andrés Arias Orjuela", None))
+    enrich_pending(db_session, limit=10)
+    b = db_session.query(Mention).filter_by(external_id="b").one()
+    assert b.relevant is False  # el cuerpo revela el homónimo

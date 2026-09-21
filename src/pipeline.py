@@ -3,7 +3,7 @@ import logging
 import re
 
 from src.connectors.base import Connector
-from src.matching import all_search_terms_flat, find_matching_candidate, find_candidate_by_term
+from src.matching import all_search_terms_flat, find_matching_candidate, find_candidate_by_term, is_excluded
 from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
 
@@ -48,7 +48,7 @@ def ingest(session, source, connector: Connector, max_age_days: int = MAX_AGE_DA
                 continue
             candidate = (find_matching_candidate(item.text, candidates)
                          or find_candidate_by_term(item.search_term, candidates))
-            if candidate is None:
+            if candidate is None or is_excluded(item.text, candidate):
                 continue
             session.add(Mention(
                 candidate_id=candidate.id, source_id=source.id, external_id=item.external_id,
@@ -82,6 +82,13 @@ def score_pending(session, engine, limit: int = 20) -> int:
     scored = 0
     for mention in pending:
         raw = mention.raw or {}
+        if is_excluded(f"{mention.text} {mention.body or ''}", mention.candidate):
+            mention.relevant = False
+            session.add(SentimentScore(mention_id=mention.id, label=SentimentLabel.NEUTRAL, score=0.0,
+                                       topic="homónimo", model="regla"))
+            session.commit()
+            scored += 1
+            continue
         if raw.get("kind") == "comment" and is_bare_mention(mention.text):
             # "@alguien" sin texto: no expresa nada; no gastar modelo ni contarlo.
             mention.relevant = False

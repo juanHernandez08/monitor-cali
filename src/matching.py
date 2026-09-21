@@ -29,3 +29,9 @@ def find_candidate_by_term(term: str | None, candidates: list[Candidate]) -> Can
         if any(t.lower() == lowered for t in all_search_terms(candidate)):
             return candidate
     return None
+
+
+def is_excluded(text: str, candidate: Candidate) -> bool:
+    """True si el texto contiene una frase de exclusión del candidato (homónimo conocido)."""
+    lowered = (text or "").lower()
+    return any(phrase.lower() in lowered for phrase in (candidate.exclusions or []))
