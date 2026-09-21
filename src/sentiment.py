@@ -23,10 +23,10 @@ SOLO si el texto claramente habla de OTRA persona con el mismo nombre (otra ciud
 Texto: {text}
 
 El "topic" es el ASUNTO concreto del que trata el texto, en 2-4 palabras (p. ej. "seguridad", "agua en Terrón Colorado", "reconstrucción tras el terremoto", "empleo juvenil", "transporte público").
-NUNCA uses el tono como topic (no escribas "apoyo", "elogio", "crítica", "rechazo", "felicitación"). Si el texto no trata ningún asunto (solo aplausos, insultos o saludos), usa topic "sin tema".
+NUNCA uses el tono como topic (no escribas "apoyo", "elogio", "crítica", "rechazo", "felicitación"). Si el texto es un insulto, burla o ataque personal sin ningún asunto concreto, usa topic "insultos y ataques". Si solo son aplausos, saludos o emojis de apoyo sin asunto, usa topic "sin tema".
 
 Responde SOLO con un JSON de la forma:
-{{"label": "positive" | "negative" | "neutral", "score": <float entre -1.0 y 1.0>, "topic": "<asunto en 2-4 palabras o 'sin tema'>"}}
+{{"label": "positive" | "negative" | "neutral", "score": <float entre -1.0 y 1.0>, "topic": "<asunto en 2-4 palabras, 'insultos y ataques' o 'sin tema'>"}}
 """
 _JSON_FENCE = re.compile(r"^```(?:json)?\s*|\s*```$", re.MULTILINE)
 
