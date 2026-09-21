@@ -136,3 +136,21 @@ def test_bare_mention_comment_is_neutral_and_irrelevant_without_calling_model(db
     assert engine.calls == []
     m = db_session.query(Mention).one()
     assert m.relevant is False and m.sentiment.label == SentimentLabel.NEUTRAL and m.sentiment.topic == "etiqueta a otra cuenta"
+
+
+def test_enrich_discards_news_whose_full_text_never_names_the_candidate(db_session, monkeypatch):
+    c = Candidate(name="Francia Márquez", aliases=["Francia Marquez"])
+    gn = Source(type=SourceType.GOOGLE_NEWS, name="Google News")
+    db_session.add_all([c, gn])
+    db_session.commit()
+    ingest(db_session, gn, ListConnector([
+        RawItem(external_id="a", text="Cortes de agua en Cali este lunes", url="https://news.google.com/rss/articles/A", search_term="Francia Márquez"),
+        RawItem(external_id="b", text="Emergencia en Cali", url="https://news.google.com/rss/articles/B", search_term="Francia Márquez"),
+    ]))
+    import src.enrich as m
+    monkeypatch.setattr(m, "resolve_url", lambda url: url.replace("news.google.com/rss/articles/", "pulzo.com/"))
+    monkeypatch.setattr(m, "fetch_article", lambda url: ("Emcali informó horarios por barrio.", None) if url.endswith("/A")
+                        else ("La vicepresidenta Francia Marquez visitó la zona.", None))
+    enrich_pending(db_session, limit=10)
+    assert db_session.query(Mention).filter_by(external_id="a").one().relevant is False  # no la nombra
+    assert db_session.query(Mention).filter_by(external_id="b").one().relevant is True

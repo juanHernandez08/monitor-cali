@@ -35,3 +35,9 @@ def is_excluded(text: str, candidate: Candidate) -> bool:
     """True si el texto contiene una frase de exclusión del candidato (homónimo conocido)."""
     lowered = (text or "").lower()
     return any(phrase.lower() in lowered for phrase in (candidate.exclusions or []))
+
+
+def mentions_candidate(text: str, candidate: Candidate) -> bool:
+    """True si el texto contiene el nombre del candidato o alguno de sus alias."""
+    lowered = (text or "").lower()
+    return any(term.lower() in lowered for term in all_search_terms(candidate))

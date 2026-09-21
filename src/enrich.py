@@ -6,7 +6,7 @@ Antes de clasificar, resolvemos el link, descargamos el artículo y extraemos el
 """
 import logging
 
-from src.matching import is_excluded
+from src.matching import is_excluded, mentions_candidate
 from src.models import Mention, Source, SourceType
 from src.urlnorm import normalize_url
 
@@ -83,8 +83,13 @@ def enrich_pending(session, limit: int = 20) -> int:
 
         body, image = fetch_article(real_url) if real_url else (None, None)
         mention.body = (body or "")[:MAX_BODY_CHARS]
-        if is_excluded(f"{mention.text} {mention.body}", mention.candidate):
+        full_text = f"{mention.text} {mention.body}"
+        if is_excluded(full_text, mention.candidate):
             mention.relevant = False  # el cuerpo revela un homónimo conocido
+        elif mention.body and not mentions_candidate(full_text, mention.candidate):
+            # Google News la devolvió por el término de búsqueda, pero el artículo completo
+            # no nombra al candidato (enlaces relacionados, etiquetas del medio): no cuenta.
+            mention.relevant = False
         if image:
             mention.raw = {**(mention.raw or {}), "image": image}
         session.commit()
