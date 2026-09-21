@@ -92,9 +92,9 @@ def create_app(session_factory=None, start_jobs: bool = True) -> FastAPI:
             return queries.sources_by_candidate(s, days=days)
 
     @app.get("/api/topics")
-    def api_topics(days: int = Query(7, ge=1, le=90)):
+    def api_topics(days: int = Query(7, ge=1, le=90), kind: str | None = None):
         with session() as s:
-            return queries.topics(s, days=days)
+            return queries.topics(s, days=days, kind=kind)
 
     @app.get("/health")
     def health():

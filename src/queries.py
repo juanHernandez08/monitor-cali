@@ -2,7 +2,7 @@
 import datetime as dt
 from collections import Counter, defaultdict
 
-from sqlalchemy import func
+from sqlalchemy import func, or_
 
 from src import config
 from src.urlnorm import normalize_url
@@ -11,7 +11,7 @@ from src.models import (
 )
 
 CARLOS = "Carlos Arias"
-META_TOPICS = ("mención tangencial", "mencion tangencial", "homónimo", "homonimo")  # etiquetas de control, no temas
+META_TOPICS = ("mención tangencial", "mencion tangencial", "homónimo", "homonimo", "sin tema", "etiqueta a otra cuenta")  # etiquetas de control, no temas
 BOGOTA = dt.timezone(dt.timedelta(hours=-5))
 
 
@@ -120,16 +120,21 @@ def alerts(session, candidate_name: str = CARLOS, threshold: float = -0.5,
     return [_mention_dict(m) for m in rows]
 
 
-def topics(session, days: int = 7, limit: int = 10) -> list[dict]:
+def topics(session, days: int = 7, limit: int = 10, kind: str | None = None) -> list[dict]:
+    """Temas más frecuentes. kind="publications" (notas, posts, videos) o "comments"; None = todo."""
     topic = func.lower(SentimentScore.topic)
+    is_comment = func.json_extract(Mention.raw, "$.kind") == "comment"
     rows = (
         session.query(topic, func.count(SentimentScore.id))
         .join(Mention)
         .filter(WHEN >= _since(days), SentimentScore.topic != "", Mention.relevant.is_(True))
         .filter(topic.notin_(META_TOPICS))
-        .group_by(topic).order_by(func.count(SentimentScore.id).desc())
-        .limit(limit).all()
     )
+    if kind == "comments":
+        rows = rows.filter(is_comment)
+    elif kind == "publications":
+        rows = rows.filter(or_(func.json_extract(Mention.raw, "$.kind").is_(None), func.json_extract(Mention.raw, "$.kind") != "comment"))
+    rows = rows.group_by(topic).order_by(func.count(SentimentScore.id).desc()).limit(limit).all()
     return [{"topic": t, "count": n} for t, n in rows]
 
 

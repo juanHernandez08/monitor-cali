@@ -186,3 +186,21 @@ def test_sources_by_candidate_counts_relevant_mentions_per_source_type(db_sessio
     assert data["candidates"][0] == "Carlos Arias"
     assert data["series"]["google_news"] == [1, 1]
     assert data["series"]["youtube"] == [1, 0]
+
+
+def test_topics_can_split_publications_from_comments(db_session):
+    carlos = Candidate(name="Carlos Arias", aliases=[])
+    ig = Source(type=SourceType.SOCIAL, name="IG")
+    db_session.add_all([carlos, ig])
+    db_session.commit()
+    now = dt.datetime.utcnow()
+    rows = [("p1", {"kind": "post"}, "reconstrucción"), ("c1", {"kind": "comment"}, "agua en terrón colorado"),
+            ("c2", {"kind": "comment"}, "sin tema"), ("n1", {}, "seguridad")]
+    for ext, raw, topic in rows:
+        m = Mention(candidate_id=carlos.id, source_id=ig.id, external_id=ext, text="x", raw=raw, published_at=now, fetched_at=now)
+        db_session.add(m)
+        db_session.flush()
+        db_session.add(SentimentScore(mention_id=m.id, label=SentimentLabel.NEUTRAL, score=0, topic=topic, model="f"))
+    db_session.commit()
+    assert {t["topic"] for t in topics(db_session, days=7, kind="publications")} == {"reconstrucción", "seguridad"}
+    assert {t["topic"] for t in topics(db_session, days=7, kind="comments")} == {"agua en terrón colorado"}  # "sin tema" fuera

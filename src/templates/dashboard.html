@@ -46,7 +46,7 @@
         <ul id="alerts"></ul>
       </div>
       <div class="panel">
-        <div class="panel-head"><h2>Temas más frecuentes</h2><span class="hint">de qué hablan las menciones, según el clasificador</span></div>
+        <div class="panel-head"><h2>Qué piden o reclaman los ciudadanos</h2><span class="hint">asuntos más mencionados en los comentarios</span></div>
         <div class="chart-box"><canvas id="chart-topics"></canvas></div>
       </div>
     </section>
@@ -106,9 +106,15 @@
     </section>
 
     <section class="panel big">
-      <div class="panel-head"><div><h2>¿De qué temas se habla?</h2><div class="hint">Temas más frecuentes asignados por el clasificador a las menciones del período (todos los candidatos).</div></div></div>
-      <p class="reading" id="read-topics"></p>
-      <div class="chart-box xl"><canvas id="chart-topics-big"></canvas></div>
+      <div class="panel-head"><div><h2>¿De qué hablan las noticias y publicaciones?</h2><div class="hint">Asuntos más frecuentes en las notas de prensa, posts de Instagram / Facebook y videos de YouTube del período (todos los candidatos). No incluye comentarios.</div></div></div>
+      <p class="reading" id="read-topics-pub"></p>
+      <div class="chart-box xl"><canvas id="chart-topics-pub"></canvas></div>
+    </section>
+
+    <section class="panel big">
+      <div class="panel-head"><div><h2>¿Qué piden o reclaman los ciudadanos?</h2><div class="hint">Asuntos concretos que aparecen en los comentarios de la gente (Instagram, Facebook, YouTube). Los comentarios que solo aplauden o insultan, sin tratar un asunto, no se cuentan aquí.</div></div></div>
+      <p class="reading" id="read-topics-com"></p>
+      <div class="chart-box xl"><canvas id="chart-topics-com"></canvas></div>
     </section>
   </div>
 

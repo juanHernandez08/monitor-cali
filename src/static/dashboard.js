@@ -178,20 +178,22 @@ async function loadSources() {
 }
 
 async function loadTopics() {
-  const t = await j(`/api/topics?days=${days()}`);
-  const cfg = (thick) => ({
+  const [pub, com] = await Promise.all([j(`/api/topics?days=${days()}&kind=publications`), j(`/api/topics?days=${days()}&kind=comments`)]);
+  const cfg = (t, thick, color) => ({
     type: "bar",
-    data: { labels: t.map((x) => x.topic), datasets: [{ data: t.map((x) => x.count), backgroundColor: "#1f4fa3", borderRadius: 4, barThickness: thick }] },
+    data: { labels: t.map((x) => x.topic), datasets: [{ data: t.map((x) => x.count), backgroundColor: color, borderRadius: 4, barThickness: thick }] },
     options: { indexAxis: "y", responsive: true, maintainAspectRatio: false,
       plugins: { legend: { display: false }, datalabels: { display: true, anchor: "end", align: "end", color: "#172033", font: { weight: 600 } } },
-      scales: { x: { beginAtZero: true, grid: { color: "#eef1f5" }, ticks: { precision: 0 }, grace: "12%" }, y: { grid: { display: false } } } },
+      scales: { x: { beginAtZero: true, grid: { color: "#eef1f5" }, ticks: { precision: 0 }, grace: "12%", title: { display: true, text: "menciones" } }, y: { grid: { display: false } } } },
   });
-  chart("#chart-topics", cfg(14));
-  chart("#chart-topics-big", cfg(20));
-  const total = t.reduce((a, x) => a + x.count, 0);
-  $("#read-topics").innerHTML = t.length ? `El tema más frecuente es <b>${esc(t[0].topic)}</b> (${t[0].count} menciones)` +
-    (t[1] ? `, seguido de <b>${esc(t[1].topic)}</b> (${t[1].count})` : "") + (t[2] ? ` y <b>${esc(t[2].topic)}</b> (${t[2].count})` : "") +
-    `. Estos ${t.length} temas reúnen ${total} menciones clasificadas.` : "Sin temas en el período.";
+  chart("#chart-topics", cfg(com, 14, "#8b5cf6"));
+  chart("#chart-topics-pub", cfg(pub, 20, "#1f4fa3"));
+  chart("#chart-topics-com", cfg(com, 20, "#8b5cf6"));
+  const reading = (t, what) => t.length
+    ? `El asunto más frecuente en ${what} es <b>${esc(t[0].topic)}</b> (${t[0].count})` + (t[1] ? `, seguido de <b>${esc(t[1].topic)}</b> (${t[1].count})` : "") + (t[2] ? ` y <b>${esc(t[2].topic)}</b> (${t[2].count})` : "") + "."
+    : `Sin asuntos identificados en ${what} para el período.`;
+  $("#read-topics-pub").innerHTML = reading(pub, "las noticias y publicaciones");
+  $("#read-topics-com").innerHTML = reading(com, "los comentarios de la gente");
 }
 
 async function loadAlerts() {
