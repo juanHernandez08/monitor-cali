@@ -4,6 +4,7 @@ from collections import Counter, defaultdict
 
 from sqlalchemy import func
 
+from src import config
 from src.urlnorm import normalize_url
 from src.models import (
     ApiUsage, Candidate, Mention, Run, SentimentLabel, SentimentScore, Source, SourceType,
@@ -30,9 +31,25 @@ def _local_day(ts: dt.datetime) -> str:
     return ts.replace(tzinfo=dt.timezone.utc).astimezone(BOGOTA).strftime("%Y-%m-%d")
 
 
+def _avatars(session) -> dict[str, str]:
+    """Foto de perfil por candidato, tomada del último post de su cuenta de Instagram/Facebook."""
+    accounts = {a["url"]: a["candidate"] for a in config.SOCIAL_ACCOUNTS if a.get("candidate")}
+    avatars: dict[str, str] = {}
+    posts = (session.query(Mention).join(Source).filter(Source.type == SourceType.SOCIAL)
+             .order_by(Mention.id.desc()).all())
+    for m in posts:
+        raw = m.raw or {}
+        cand = accounts.get(raw.get("account"))
+        pic = (raw.get("record") or {}).get("profile_image_link")
+        if raw.get("kind") == "post" and cand and pic and cand not in avatars:
+            avatars[cand] = pic
+    return avatars
+
+
 def summary(session, days: int = 7) -> list[dict]:
     since = _since(days)
     prev_since = since - dt.timedelta(days=days)
+    avatars = _avatars(session)
     rows = []
     for c in session.query(Candidate).filter_by(active=True).all():
         q = session.query(Mention).filter(Mention.candidate_id == c.id, Mention.relevant.is_(True))
@@ -40,7 +57,7 @@ def summary(session, days: int = 7) -> list[dict]:
         previous = q.filter(WHEN >= prev_since, WHEN < since).count()
         counts = Counter(m.sentiment.label for m in current if m.sentiment)
         rows.append({
-            "candidate_id": c.id, "name": c.name, "party": c.party,
+            "candidate_id": c.id, "name": c.name, "party": c.party, "avatar": avatars.get(c.name),
             "mentions": len(current), "previous": previous,
             "positive": counts.get(SentimentLabel.POSITIVE, 0),
             "negative": counts.get(SentimentLabel.NEGATIVE, 0),
@@ -161,6 +178,23 @@ def _parent_key(m: Mention) -> str | None:
     return None
 
 
+def _thumbnail(m: Mention) -> str | None:
+    raw = m.raw or {}
+    kind = raw.get("kind")
+    if kind == "video":
+        return f"https://i.ytimg.com/vi/{m.external_id.split(':')[-1]}/hqdefault.jpg"
+    if kind == "comment" and raw.get("video_id"):
+        return f"https://i.ytimg.com/vi/{raw['video_id']}/hqdefault.jpg"
+    rec = raw.get("record") or {}
+    if kind == "post":
+        images = rec.get("images") or rec.get("photos") or []
+        first = images[0] if isinstance(images, list) and images else None
+        if isinstance(first, dict):
+            first = first.get("url") or first.get("src")
+        return rec.get("thumbnail") or rec.get("post_image") or first
+    return raw.get("image")  # notas de prensa: imagen principal si el enriquecimiento la trajo
+
+
 def _summary_of(comments: list[dict]) -> dict:
     c = Counter(x["label"] for x in comments)
     return {"total": len(comments), "positive": c.get("positive", 0),
@@ -198,6 +232,7 @@ def feed(session, candidate_id: int | None = None, source_type: str | None = Non
             raw = m.raw or {}
             row = _mention_dict(m)
             row["kind"] = raw.get("kind") or "news"
+            row["thumbnail"] = _thumbnail(m)
             row["comments"], row["comments_summary"] = [], _summary_of([])
             rows[key] = row
             order.append(key)
@@ -217,6 +252,7 @@ def feed(session, candidate_id: int | None = None, source_type: str | None = Non
                 "source_type": first.source.type.value, "text": title, "url": url, "author": None,
                 "published_at": max(_when(c) for c in comments).isoformat(),
                 "label": None, "score": None, "topic": None, "model": None,
+                "thumbnail": _thumbnail(first),
                 "comments": [], "comments_summary": _summary_of([]),
             }
             order.append(key)

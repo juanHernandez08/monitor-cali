@@ -126,3 +126,41 @@ def test_feed_label_filter_keeps_publication_with_matching_comments(db_session):
     rows = feed(db_session, days=7, label="negative")
     assert len(rows) == 1 and rows[0]["text"] == "post"
     assert [x["text"] for x in rows[0]["comments"]] == ["malo"]
+
+
+def test_summary_includes_avatar_from_instagram_posts(db_session, monkeypatch):
+    from src import queries
+    monkeypatch.setattr(queries.config, "SOCIAL_ACCOUNTS", [
+        {"platform": "instagram", "url": "https://www.instagram.com/soycarlosaarias/", "candidate": "Carlos Arias"}])
+    carlos = Candidate(name="Carlos Arias", aliases=[])
+    ig = Source(type=SourceType.SOCIAL, name="IG")
+    db_session.add_all([carlos, ig])
+    db_session.commit()
+    db_session.add(Mention(candidate_id=carlos.id, source_id=ig.id, external_id="ig:post:1", text="x",
+                           raw={"kind": "post", "account": "https://www.instagram.com/soycarlosaarias/",
+                                "record": {"profile_image_link": "https://cdn/pic.jpg", "thumbnail": "https://cdn/t.jpg"}}))
+    db_session.commit()
+    row = summary(db_session, days=7)[0]
+    assert row["avatar"] == "https://cdn/pic.jpg"
+
+
+def test_feed_rows_carry_thumbnails(db_session):
+    from src.queries import feed
+    carlos = Candidate(name="Carlos Arias", aliases=[])
+    ig = Source(type=SourceType.SOCIAL, name="IG")
+    yt = Source(type=SourceType.YOUTUBE, name="YouTube")
+    db_session.add_all([carlos, ig, yt])
+    db_session.commit()
+    now = dt.datetime.utcnow()
+    db_session.add(Mention(candidate_id=carlos.id, source_id=ig.id, external_id="ig:post:1", text="p", url="https://instagram.com/p/1/",
+                           raw={"kind": "post", "record": {"thumbnail": "https://cdn/t.jpg"}}, published_at=now, fetched_at=now))
+    db_session.add(Mention(candidate_id=carlos.id, source_id=yt.id, external_id="yt:video:v1", text="v", url="https://www.youtube.com/watch?v=v1",
+                           raw={"kind": "video"}, published_at=now, fetched_at=now))
+    db_session.add(Mention(candidate_id=carlos.id, source_id=yt.id, external_id="yt:comment:9", text="c", url="https://www.youtube.com/watch?v=v9&lc=9",
+                           raw={"kind": "comment", "video_id": "v9", "video_title": "t"}, published_at=now, fetched_at=now))
+    db_session.commit()
+    rows = {r["external_id"] if r.get("external_id") else r["kind"]: r for r in feed(db_session, days=7)}
+    thumbs = {r["text"]: r["thumbnail"] for r in feed(db_session, days=7)}
+    assert thumbs["p"] == "https://cdn/t.jpg"
+    assert thumbs["v"] == "https://i.ytimg.com/vi/v1/hqdefault.jpg"
+    assert thumbs["t"] == "https://i.ytimg.com/vi/v9/hqdefault.jpg"

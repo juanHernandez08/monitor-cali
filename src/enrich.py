@@ -30,16 +30,24 @@ def resolve_url(url: str) -> str | None:
 
 def fetch_body(url: str) -> str | None:
     """Descarga y extrae el texto principal del artículo. None si no se pudo."""
+    text, _ = fetch_article(url)
+    return text
+
+
+def fetch_article(url: str) -> tuple[str | None, str | None]:
+    """(texto principal, URL de la imagen principal) del artículo; None en lo que no se pudo."""
     import trafilatura
     try:
         html = trafilatura.fetch_url(url)
         if not html:
-            return None
+            return None, None
         text = trafilatura.extract(html, include_comments=False, include_tables=False)
+        meta = trafilatura.extract_metadata(html)
+        image = getattr(meta, "image", None) if meta else None
     except Exception:
         log.exception("trafilatura falló para %s", url)
-        return None
-    return text.strip() if text else None
+        return None, None
+    return (text.strip() if text else None), image
 
 
 def enrich_pending(session, limit: int = 20) -> int:
@@ -72,7 +80,9 @@ def enrich_pending(session, limit: int = 20) -> int:
             mention.url = real_url
             mention.url_normalized = url_norm
 
-        body = fetch_body(real_url) if real_url else None
+        body, image = fetch_article(real_url) if real_url else (None, None)
         mention.body = (body or "")[:MAX_BODY_CHARS]
+        if image:
+            mention.raw = {**(mention.raw or {}), "image": image}
         session.commit()
     return processed

@@ -35,12 +35,13 @@ def test_enrich_resolves_url_fetches_body_and_dedups(db_session, monkeypatch):
     import src.enrich as m
     real = {"AAA": "https://www.elpais.com.co/n/1/", "BBB": "https://x.co/2"}
     monkeypatch.setattr(m, "resolve_url", lambda url: real[url[-3:]] if "news.google.com" in url else url)
-    monkeypatch.setattr(m, "fetch_body", lambda url: "Cuerpo del artículo sobre Carlos Arias" if "x.co" in url else None)
+    monkeypatch.setattr(m, "fetch_article", lambda url: ("Cuerpo del artículo sobre Carlos Arias", "https://x.co/img.jpg") if "x.co" in url else (None, None))
 
     assert enrich_pending(db_session, limit=10) == 3  # 1 RSS + 2 Google News
     assert db_session.query(Mention).filter_by(external_id="g1").first() is None  # duplicado del RSS → eliminado
     g2 = db_session.query(Mention).filter_by(external_id="g2").one()
     assert g2.url == "https://x.co/2" and g2.body == "Cuerpo del artículo sobre Carlos Arias"
+    assert g2.raw["image"] == "https://x.co/img.jpg"
     assert enrich_pending(db_session, limit=10) == 0
 
 
@@ -49,7 +50,7 @@ def test_enrich_marks_failed_fetch_as_empty_body(db_session, monkeypatch):
     ingest(db_session, gn, ListConnector([RawItem(external_id="g1", text="Carlos Arias", url="https://news.google.com/rss/articles/AAA")]))
     import src.enrich as m
     monkeypatch.setattr(m, "resolve_url", lambda url: None)
-    monkeypatch.setattr(m, "fetch_body", lambda url: None)
+    monkeypatch.setattr(m, "fetch_article", lambda url: (None, None))
     enrich_pending(db_session, limit=10)
     assert db_session.query(Mention).one().body == ""
 
