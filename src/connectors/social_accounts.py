@@ -15,12 +15,19 @@ tolera variantes por si cambian).
 import asyncio
 import datetime as dt
 import logging
+import time
 
+import requests
 from brightdata import BrightDataClient
 
 from src.connectors.base import RawItem
 
 log = logging.getLogger(__name__)
+
+# X no está en el SDK de Python; se usa la API REST del Web Scraper con el dataset
+# "X (formerly Twitter) - Posts" (verificado el 2026-09-22: discover_by=profile_url + fechas).
+BRIGHTDATA_API = "https://api.brightdata.com/datasets/v3"
+X_POSTS_DATASET = "gd_lwxkxvnf1cynvib9co"
 
 ACCOUNT_KEYS = {
     "text": ("description", "caption", "content", "post_text", "text"),
@@ -67,7 +74,8 @@ class SocialAccountConnector:
 
     def __init__(self, api_token: str, accounts: list[dict], window_days: int = 60, max_posts: int = 40,
                  max_comments: int = 60, comment_posts: int = 10, known_post_ids: dict[str, list[str]] | None = None,
-                 pending_comment_posts: list[dict] | None = None, credits=None):
+                 pending_comment_posts: list[dict] | None = None, credits=None,
+                 known_last_dates: dict[str, str] | None = None):
         self.api_token = api_token
         self.accounts = accounts  # [{"platform": "instagram"|"facebook", "url": ..., "candidate": name|None}]
         self.window_days = window_days
@@ -78,6 +86,7 @@ class SocialAccountConnector:
         # posts ya guardados sin comentarios: [{"url", "platform", "candidate", "account", "title", "num_comments"}]
         self.pending_comment_posts = pending_comment_posts or []
         self.credits = credits  # QuotaTracker mensual; None = sin límite
+        self.known_last_dates = known_last_dates or {}  # account url -> fecha del último post guardado (X)
         self.comments_attempted: set[str] = set()  # URLs de posts cuyos comentarios se pidieron en esta corrida
 
     def _remaining(self) -> int:
@@ -93,8 +102,14 @@ class SocialAccountConnector:
     async def _fetch_async(self) -> list[RawItem]:
         items: list[RawItem] = []
         candidates_for_comments: list[dict] = list(self.pending_comment_posts)
+        x_accounts = [a for a in self.accounts if a["platform"] == "x"]
+        if x_accounts and self._remaining() > 0:
+            try:
+                items.extend(self._fetch_x_posts(x_accounts))
+            except Exception:
+                log.exception("X falló")
         async with BrightDataClient(token=self.api_token, auto_create_zones=False) as client:
-            for account in self.accounts:
+            for account in [a for a in self.accounts if a["platform"] != "x"]:
                 if self._remaining() <= 0:
                     log.warning("Bright Data: tope mensual de créditos alcanzado; se omite %s", account.get("url"))
                     break
@@ -183,4 +198,63 @@ class SocialAccountConnector:
                      "post_title": post.get("title", ""), "record": c},
                 search_term=candidate,
             ))
+        return items
+
+    # ---------- X (REST) ----------
+
+    def _fetch_x_posts(self, accounts: list[dict]) -> list[RawItem]:
+        """Posts de varias cuentas de X en una sola consulta (hasta 20 perfiles por lote)."""
+        end = dt.date.today()
+        default_start = end - dt.timedelta(days=self.window_days)
+        inputs = []
+        for a in accounts:
+            last = self.known_last_dates.get(a["url"])
+            start = (dt.date.fromisoformat(last) + dt.timedelta(days=1)) if last else default_start
+            if start > end:
+                continue  # ya está al día
+            inputs.append({"url": a["url"], "start_date": start.isoformat(), "end_date": end.isoformat()})
+        if not inputs:
+            return []
+        headers = {"Authorization": f"Bearer {self.api_token}", "Content-Type": "application/json"}
+        by_url = {a["url"].rstrip("/").lower(): a for a in accounts}
+        items: list[RawItem] = []
+        for i in range(0, len(inputs), 20):
+            batch = inputs[i:i + 20]
+            r = requests.post(f"{BRIGHTDATA_API}/trigger", headers=headers, timeout=60,
+                              params={"dataset_id": X_POSTS_DATASET, "type": "discover_new",
+                                      "discover_by": "profile_url", "include_errors": "true"}, json=batch)
+            r.raise_for_status()
+            snapshot = r.json()["snapshot_id"]
+            progress = {}
+            for _ in range(90):  # hasta 15 min
+                time.sleep(10)
+                progress = requests.get(f"{BRIGHTDATA_API}/progress/{snapshot}", headers=headers, timeout=30).json()
+                if progress.get("status") in ("ready", "failed"):
+                    break
+            if progress.get("status") != "ready":
+                log.warning("X: snapshot %s terminó en %s", snapshot, progress.get("status"))
+                continue
+            d = requests.get(f"{BRIGHTDATA_API}/snapshot/{snapshot}", headers=headers,
+                             params={"format": "json"}, timeout=120)
+            d.raise_for_status()
+            records = [x for x in d.json() if isinstance(x, dict) and x.get("id")]
+            self._consume(len(records))
+            for rec in records:
+                input_url = str(((rec.get("input") or {}).get("url")) or ((rec.get("discovery_input") or {}).get("url")) or "")
+                account = by_url.get(input_url.rstrip("/").lower())
+                if account is None:  # asociar por handle si la API no devolvió el input
+                    handle = str(rec.get("user_posted") or "").lower()
+                    account = next((a for a in accounts if a["url"].rstrip("/").lower().endswith("/" + handle)), None)
+                if account is None:
+                    continue
+                items.append(RawItem(
+                    external_id=f"x:post:{rec['id']}",
+                    text=str(rec.get("description") or "").strip(),
+                    url=rec.get("url"),
+                    author=rec.get("user_posted"),
+                    published_at=_parse_date(rec.get("date_posted")),
+                    raw={"kind": "post", "platform": "x", "account": account["url"],
+                         "num_comments": rec.get("replies"), "record": rec},
+                    search_term=account.get("candidate"),
+                ))
         return items

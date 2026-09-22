@@ -88,6 +88,7 @@ def _mention_dict(m: Mention) -> dict:
     return {
         "id": m.id, "candidate": m.candidate.name, "candidate_id": m.candidate_id,
         "source": m.source.name, "source_type": m.source.type.value,
+        "platform": (m.raw or {}).get("platform"),
         "text": m.text, "url": m.url, "author": m.author,
         "published_at": _when(m).isoformat(),
         "label": s.label.value if s else None, "score": s.score if s else None,
@@ -279,14 +280,15 @@ def sources_by_candidate(session, days: int = 30) -> dict:
     names.sort(key=lambda n: n != CARLOS)
     idx = {n: i for i, n in enumerate(names)}
     series: dict[str, list[int]] = {}
+    platform = func.json_extract(Mention.raw, "$.platform")
     rows = (
-        session.query(Candidate.name, Source.type, func.count(Mention.id))
+        session.query(Candidate.name, Source.type, platform, func.count(Mention.id))
         .select_from(Mention).join(Candidate).join(Source)
         .filter(WHEN >= _since(days), Mention.relevant.is_(True))
-        .group_by(Candidate.name, Source.type).all()
+        .group_by(Candidate.name, Source.type, platform).all()
     )
-    for name, stype, n in rows:
-        key = stype.value
+    for name, stype, plat, n in rows:
+        key = plat if (stype == SourceType.SOCIAL and plat) else stype.value  # instagram / facebook / x
         series.setdefault(key, [0] * len(names))
-        series[key][idx[name]] = n
+        series[key][idx[name]] += n
     return {"candidates": names, "series": series}

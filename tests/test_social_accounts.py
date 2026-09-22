@@ -101,3 +101,43 @@ def test_media_account_has_no_candidate_hint(monkeypatch):
 
 def test_account_keys_cover_alternative_field_names():
     assert ACCOUNT_KEYS["text"][0] == "description"
+
+
+def test_x_accounts_fetched_in_one_batch_via_rest(monkeypatch):
+    calls = []
+
+    class R:
+        def __init__(self, payload, status=200): self._p, self.status_code = payload, status
+        def raise_for_status(self): pass
+        def json(self): return self._p
+
+    def fake_post(url, headers, params, json, timeout):
+        calls.append(("trigger", params, json)); return R({"snapshot_id": "sd_1"})
+
+    def fake_get(url, headers, params=None, timeout=None):
+        if "/progress/" in url:
+            return R({"status": "ready", "records": 1})
+        return R([{"id": "111", "url": "https://x.com/claraluzroldan/status/111", "description": "Cali avanza",
+                   "user_posted": "ClaraLuzRoldan", "date_posted": "2026-09-19T20:11:49.000Z", "likes": "51",
+                   "views": "3624", "replies": "2", "reposts": "9", "photos": ["https://pbs/img.jpg"]}])
+
+    import src.connectors.social_accounts as m
+    monkeypatch.setattr(m.requests, "post", fake_post)
+    monkeypatch.setattr(m.requests, "get", fake_get)
+    monkeypatch.setattr(m.time, "sleep", lambda s: None)
+    _patch(monkeypatch, FakeAsyncClient([], []))
+
+    accounts = [{"platform": "x", "url": "https://x.com/claraluzroldan", "candidate": "Clara Luz Roldán"},
+                {"platform": "x", "url": "https://x.com/otro", "candidate": "Roberto Ortiz"}]
+    credits = FakeCredits(100)
+    c = SocialAccountConnector(api_token="t", accounts=accounts, credits=credits,
+                               known_last_dates={"https://x.com/claraluzroldan": "2026-09-10"})
+    items = c.fetch([])
+
+    trigger = calls[0]
+    assert trigger[1]["dataset_id"] == "gd_lwxkxvnf1cynvib9co" and trigger[1]["discover_by"] == "profile_url"
+    assert [i["url"] for i in trigger[2]] == ["https://x.com/claraluzroldan", "https://x.com/otro"]
+    assert trigger[2][0]["start_date"] == "2026-09-11"  # solo posts nuevos desde la última fecha conocida
+    assert items[0].external_id == "x:post:111" and items[0].search_term == "Clara Luz Roldán"
+    assert items[0].raw["platform"] == "x" and items[0].raw["record"]["views"] == "3624"
+    assert credits.used == 1

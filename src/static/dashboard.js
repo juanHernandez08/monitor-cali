@@ -2,8 +2,8 @@ const $ = (s) => document.querySelector(s);
 const CARLOS = "Carlos Arias";
 const COLORS = ["#1f4fa3", "#d9483b", "#22a06b", "#e0a020", "#8b5cf6", "#0ea5a4", "#f97316", "#64748b", "#be185d"];
 const SRC = { google_news: "Prensa", rss: "Prensa", reddit: "Reddit", youtube: "YouTube", social: "Instagram / Facebook", google_cse: "Redes", serp: "Redes" };
-const SRC_LABEL = { google_news: "Prensa", rss: "Prensa", reddit: "Reddit", youtube: "YouTube", social: "Instagram / Facebook", google_cse: "Redes (búsqueda)", serp: "Redes (búsqueda)" };
-const SRC_COLOR = { Prensa: "#1f4fa3", YouTube: "#d9483b", "Instagram / Facebook": "#8b5cf6", Reddit: "#f97316", "Redes (búsqueda)": "#0ea5a4" };
+const SRC_LABEL = { google_news: "Prensa", rss: "Prensa", reddit: "Reddit", youtube: "YouTube", social: "Instagram / Facebook", instagram: "Instagram", facebook: "Facebook", x: "X", google_cse: "Redes (búsqueda)", serp: "Redes (búsqueda)" };
+const SRC_COLOR = { Prensa: "#1f4fa3", YouTube: "#d9483b", Instagram: "#8b5cf6", Facebook: "#2563eb", X: "#111827", Reddit: "#f97316", "Redes (búsqueda)": "#0ea5a4" };
 const LABEL = { negative: "Negativo", positive: "Positivo", neutral: "Neutral" };
 const KIND = { post: "Post", video: "Video", comments: "Publicación", news: "Nota" };
 const charts = {};
@@ -200,11 +200,12 @@ async function loadAlerts() {
   const a = await j(`/api/alerts?days=${days()}`);
   $("#alerts").innerHTML = a.length ? a.map((m) => `<li>
     <span class="tag negative">${m.score}</span> ${esc(m.text).slice(0, 200)}
-    <div class="meta">${SRC[m.source_type] || esc(m.source)} · ${esc(m.author || "")} · ${ago(m.published_at)}${m.url ? ` · <a href="${m.url}" target="_blank" rel="noopener">ver</a>` : ""}</div>
+    <div class="meta">${srcName(m)} · ${esc(m.author || "")} · ${ago(m.published_at)}${m.url ? ` · <a href="${m.url}" target="_blank" rel="noopener">ver</a>` : ""}</div>
   </li>`).join("") : `<li class="empty">Sin menciones negativas fuertes sobre Carlos Arias en el período.</li>`;
 }
 
 /* ---------- feed ---------- */
+function srcName(m) { return m.platform ? (SRC_LABEL[m.platform] || m.platform) : (SRC[m.source_type] || esc(m.source)); }
 function sentTag(m) {
   if (!m.label) return `<span class="tag pending">pendiente</span>`;
   return `<span class="tag ${m.label}">${LABEL[m.label]} ${m.score}</span>${m.topic ? `<div class="topic">${esc(m.topic)}</div>` : ""}`;
@@ -234,7 +235,7 @@ async function loadFeed() {
   $("#feed").innerHTML = feedRows.map((r, i) => `<article class="item" data-row="${i}">
     ${thumb(r)}
     <div class="body">
-      <div class="meta"><span class="cand">${esc(r.candidate)}</span><span class="tag src">${SRC[r.source_type] || esc(r.source)} · ${KIND[r.kind] || ""}</span><span>${fmtDate(r.published_at)}</span>${r.url ? `<a href="${r.url}" target="_blank" rel="noopener">ver original ↗</a>` : ""}</div>
+      <div class="meta"><span class="cand">${esc(r.candidate)}</span><span class="tag src">${srcName(r)} · ${KIND[r.kind] || ""}</span><span>${fmtDate(r.published_at)}</span>${r.url ? `<a href="${r.url}" target="_blank" rel="noopener">ver original ↗</a>` : ""}</div>
       <div class="text">${esc(r.text)}</div>
       ${r.author ? `<div class="author">${esc(r.author)}</div>` : ""}
     </div>

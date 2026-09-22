@@ -85,6 +85,8 @@ SOCIAL_ACCOUNTS = [
     {"platform": "instagram", "url": "https://www.instagram.com/claraluzroldan/", "candidate": "Clara Luz Roldán"},
     {"platform": "facebook", "url": "https://www.facebook.com/ClaraLuzRoldanG/", "candidate": "Clara Luz Roldán"},
     {"platform": "instagram", "url": "https://www.instagram.com/noticalioficial/", "candidate": None},
+    # X (Twitter): solo posts de la cuenta (Bright Data no trae las respuestas). Completar handles.
+    {"platform": "x", "url": "https://x.com/claraluzroldan", "candidate": "Clara Luz Roldán"},
 ]
 SOCIAL_WINDOW_DAYS = int(os.environ.get("SOCIAL_WINDOW_DAYS", "60"))     # se traen TODOS los posts de esta ventana
 SOCIAL_MAX_POSTS = int(os.environ.get("SOCIAL_MAX_POSTS", "40"))          # tope por cuenta y corrida
