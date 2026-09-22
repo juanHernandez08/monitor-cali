@@ -99,8 +99,22 @@ class SocialAccountConnector:
     def fetch(self, search_terms: list[str]) -> list[RawItem]:
         return asyncio.run(self._fetch_async())
 
+    def estimate_records(self) -> int:
+        """Registros que esta corrida podría pedir (tope): posts nuevos + comentarios de los posts elegidos."""
+        posts = sum(self.max_posts for a in self.accounts if a["platform"] != "x")
+        x_posts = sum(self.max_posts for a in self.accounts if a["platform"] == "x")
+        comments = self.comment_posts * self.max_comments
+        return posts + x_posts + comments
+
     async def _fetch_async(self) -> list[RawItem]:
         items: list[RawItem] = []
+        estimate = self.estimate_records()
+        log.info("Bright Data: esta corrida pedirá como máximo ~%d registros (quedan %s este mes)",
+                 estimate, self._remaining() if self.credits else "sin límite")
+        if self.credits and estimate > self._remaining():
+            # La estimación es un techo; se sigue, pero cada llamada verifica lo disponible y se frena al agotarse.
+            log.warning("Bright Data: el techo de esta corrida (%d) supera lo disponible (%d); se pedirá solo lo que alcance",
+                        estimate, self._remaining())
         candidates_for_comments: list[dict] = list(self.pending_comment_posts)
         x_accounts = [a for a in self.accounts if a["platform"] == "x"]
         if x_accounts and self._remaining() > 0:

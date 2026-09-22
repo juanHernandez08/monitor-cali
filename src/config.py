@@ -88,11 +88,13 @@ SOCIAL_ACCOUNTS = [
     # X (Twitter): solo posts de la cuenta (Bright Data no trae las respuestas). Completar handles.
     {"platform": "x", "url": "https://x.com/claraluzroldan", "candidate": "Clara Luz Roldán"},
 ]
+# Presupuesto: plan gratuito de Bright Data (5.000 registros/mes). Consumo estimado con estos topes y
+# 10 cuentas: ~1.200 registros/mes (solo posts nuevos + comentarios de los posts más comentados).
 SOCIAL_WINDOW_DAYS = int(os.environ.get("SOCIAL_WINDOW_DAYS", "60"))     # se traen TODOS los posts de esta ventana
 SOCIAL_MAX_POSTS = int(os.environ.get("SOCIAL_MAX_POSTS", "40"))          # tope por cuenta y corrida
-SOCIAL_MAX_COMMENTS = int(os.environ.get("SOCIAL_MAX_COMMENTS", "60"))    # tope de comentarios por post
-SOCIAL_COMMENT_POSTS = int(os.environ.get("SOCIAL_COMMENT_POSTS", "10"))  # posts por corrida a los que se piden comentarios
-BRIGHTDATA_MONTHLY_CREDITS = int(os.environ.get("BRIGHTDATA_MONTHLY_CREDITS", "4500"))  # plan gratuito: 5.000
+SOCIAL_MAX_COMMENTS = int(os.environ.get("SOCIAL_MAX_COMMENTS", "30"))    # tope de comentarios por post
+SOCIAL_COMMENT_POSTS = int(os.environ.get("SOCIAL_COMMENT_POSTS", "4"))   # posts por corrida a los que se piden comentarios
+BRIGHTDATA_MONTHLY_CREDITS = int(os.environ.get("BRIGHTDATA_MONTHLY_CREDITS", "4000"))  # freno duro (plan: 5.000)
 
 # Conversación de la ciudad (pestaña Ciudad): lo que no nombra a un candidato en estas fuentes
 # se atribuye al candidato especial "Cali (ciudad)".
