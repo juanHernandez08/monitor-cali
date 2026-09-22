@@ -39,4 +39,5 @@ def test_seed_creates_city_candidate_and_city_sources(db_session):
     assert city.kind == "city"
     assert db_session.query(Source).filter_by(name="Google News Cali").one().config == {"city": True, "terms": ["Cali"], "context": ""}
     assert db_session.query(Source).filter_by(name="YouTube Cali").one().config["city"] is True
-    assert all(s.config.get("city") for s in db_session.query(Source).filter_by(type=SourceType.RSS))
+    assert db_session.query(Source).filter_by(name="El País Cali").one().config["city"] is True
+    assert db_session.query(Source).filter_by(name="Semana").one().config["city"] is False

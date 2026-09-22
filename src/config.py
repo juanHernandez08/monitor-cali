@@ -102,12 +102,14 @@ CITY_SOURCES = [
 ]
 
 # Feeds RSS directos de medios — verificados el 2026-09-19 (todos responden 200 con entradas).
+# "city": True → feed local: todo lo que no nombre a un candidato es conversación de Cali.
+# Feeds nacionales (Caracol, Semana) solo aportan lo que nombre a un candidato.
 RSS_SOURCES = [
-    {"name": "El País Cali", "url": "https://www.elpais.com.co/arc/outboundfeeds/rss/category/cali/?outputType=xml"},
-    {"name": "El Tiempo Cali", "url": "https://www.eltiempo.com/rss/colombia_cali.xml"},
-    {"name": "Caracol Radio", "url": "https://caracol.com.co/arc/outboundfeeds/rss/?outputType=xml"},
-    {"name": "Q'hubo Cali", "url": "https://www.qhubocali.com/feed/"},
-    {"name": "Caliescribe", "url": "https://caliescribe.com/feed/"},
-    {"name": "90 Minutos", "url": "https://90minutos.co/feed/"},
-    {"name": "Semana", "url": "https://www.semana.com/arc/outboundfeeds/rss/?outputType=xml"},
+    {"name": "El País Cali", "url": "https://www.elpais.com.co/arc/outboundfeeds/rss/category/cali/?outputType=xml", "city": True},
+    {"name": "El Tiempo Cali", "url": "https://www.eltiempo.com/rss/colombia_cali.xml", "city": True},
+    {"name": "Caracol Radio", "url": "https://caracol.com.co/arc/outboundfeeds/rss/?outputType=xml", "city": False},
+    {"name": "Q'hubo Cali", "url": "https://www.qhubocali.com/feed/", "city": True},
+    {"name": "Caliescribe", "url": "https://caliescribe.com/feed/", "city": True},
+    {"name": "90 Minutos", "url": "https://90minutos.co/feed/", "city": True},
+    {"name": "Semana", "url": "https://www.semana.com/arc/outboundfeeds/rss/?outputType=xml", "city": False},
 ]

@@ -30,12 +30,11 @@ def seed(session):
         exists = session.query(Source).filter_by(
             type=SourceType.RSS, name=s["name"],
         ).first()
+        city = bool(s.get("city", False))
         if not exists:
-            session.add(Source(
-                type=SourceType.RSS, name=s["name"], config={"feed_url": s["url"], "city": True},
-            ))
-        elif not (exists.config or {}).get("city"):  # feeds locales: todo lo demás es conversación de ciudad
-            exists.config = {**(exists.config or {}), "city": True}
+            session.add(Source(type=SourceType.RSS, name=s["name"], config={"feed_url": s["url"], "city": city}))
+        elif (exists.config or {}).get("city") != city:  # config.py es la fuente de verdad
+            exists.config = {**(exists.config or {}), "city": city}
     for s in CITY_SOURCES:
         if not session.query(Source).filter_by(type=SourceType(s["type"]), name=s["name"]).first():
             session.add(Source(type=SourceType(s["type"]), name=s["name"], config=s["config"]))
