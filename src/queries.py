@@ -51,7 +51,7 @@ def summary(session, days: int = 7) -> list[dict]:
     prev_since = since - dt.timedelta(days=days)
     avatars = _avatars(session)
     rows = []
-    for c in session.query(Candidate).filter_by(active=True).all():
+    for c in session.query(Candidate).filter_by(active=True).filter(Candidate.kind != "city").all():
         q = session.query(Mention).filter(Mention.candidate_id == c.id, Mention.relevant.is_(True))
         current = q.filter(WHEN >= since).all()
         previous = q.filter(WHEN >= prev_since, WHEN < since).count()
@@ -73,9 +73,9 @@ def timeline(session, days: int = 7) -> dict:
     today = dt.datetime.utcnow()
     labels = [_local_day(today - dt.timedelta(days=i)) for i in range(days - 1, -1, -1)]
     per: dict[str, Counter] = defaultdict(Counter)
-    for m in session.query(Mention).filter(WHEN >= since, Mention.relevant.is_(True)).all():
+    for m in session.query(Mention).join(Candidate).filter(WHEN >= since, Mention.relevant.is_(True), Candidate.kind != "city").all():
         per[m.candidate.name][_local_day(_when(m))] += 1
-    names = [c.name for c in session.query(Candidate).filter_by(active=True).all()]
+    names = [c.name for c in session.query(Candidate).filter_by(active=True).filter(Candidate.kind != "city").all()]
     names.sort(key=lambda n: n != CARLOS)
     return {
         "labels": labels,
@@ -98,10 +98,9 @@ def _mention_dict(m: Mention) -> dict:
 
 def mentions(session, candidate_id: int | None = None, source_type: str | None = None,
              label: str | None = None, days: int = 30, limit: int = 100, offset: int = 0) -> list[dict]:
-    q = (session.query(Mention).outerjoin(SentimentScore).join(Source)
+    q = (session.query(Mention).outerjoin(SentimentScore).join(Source).join(Candidate)
          .filter(WHEN >= _since(days), Mention.relevant.is_(True)))
-    if candidate_id:
-        q = q.filter(Mention.candidate_id == candidate_id)
+    q = q.filter(Mention.candidate_id == candidate_id) if candidate_id else q.filter(Candidate.kind != "city")
     if source_type:
         q = q.filter(Source.type == SourceType(source_type))
     if label:
@@ -127,8 +126,8 @@ def topics(session, days: int = 7, limit: int = 10, kind: str | None = None) -> 
     is_comment = func.json_extract(Mention.raw, "$.kind") == "comment"
     rows = (
         session.query(topic, func.count(SentimentScore.id))
-        .join(Mention)
-        .filter(WHEN >= _since(days), SentimentScore.topic != "", Mention.relevant.is_(True))
+        .join(Mention).join(Candidate)
+        .filter(WHEN >= _since(days), SentimentScore.topic != "", Mention.relevant.is_(True), Candidate.kind != "city")
         .filter(topic.notin_(META_TOPICS))
     )
     if kind == "comments":
@@ -215,10 +214,9 @@ def feed(session, candidate_id: int | None = None, source_type: str | None = Non
     comentarios pasa el filtro. Comentarios sin publicación guardada forman una fila sintética
     (kind="comments") con el título del video/post.
     """
-    q = (session.query(Mention).outerjoin(SentimentScore).join(Source)
+    q = (session.query(Mention).outerjoin(SentimentScore).join(Source).join(Candidate)
          .filter(WHEN >= _since(days), Mention.relevant.is_(True)))
-    if candidate_id:
-        q = q.filter(Mention.candidate_id == candidate_id)
+    q = q.filter(Mention.candidate_id == candidate_id) if candidate_id else q.filter(Candidate.kind != "city")
     if source_type:
         q = q.filter(Source.type == SourceType(source_type))
     filtered = q.order_by(WHEN.desc(), Mention.id.desc()).limit(3000).all()
@@ -276,7 +274,7 @@ def feed(session, candidate_id: int | None = None, source_type: str | None = Non
 
 def sources_by_candidate(session, days: int = 30) -> dict:
     """Menciones relevantes por candidato y tipo de fuente (para la gráfica de canales)."""
-    names = [c.name for c in session.query(Candidate).filter_by(active=True).all()]
+    names = [c.name for c in session.query(Candidate).filter_by(active=True).filter(Candidate.kind != "city").all()]
     names.sort(key=lambda n: n != CARLOS)
     idx = {n: i for i, n in enumerate(names)}
     series: dict[str, list[int]] = {}
@@ -284,7 +282,7 @@ def sources_by_candidate(session, days: int = 30) -> dict:
     rows = (
         session.query(Candidate.name, Source.type, platform, func.count(Mention.id))
         .select_from(Mention).join(Candidate).join(Source)
-        .filter(WHEN >= _since(days), Mention.relevant.is_(True))
+        .filter(WHEN >= _since(days), Mention.relevant.is_(True), Candidate.kind != "city")
         .group_by(Candidate.name, Source.type, platform).all()
     )
     for name, stype, plat, n in rows:
@@ -292,3 +290,96 @@ def sources_by_candidate(session, days: int = 30) -> dict:
         series.setdefault(key, [0] * len(names))
         series[key][idx[name]] += n
     return {"candidates": names, "series": series}
+
+
+# ---------- Ciudad: temas y percepción ----------
+
+def _city_id(session) -> int | None:
+    c = session.query(Candidate).filter_by(kind="city").first()
+    return c.id if c else None
+
+
+def _city_rows(session, since: dt.datetime, until: dt.datetime | None = None) -> list[Mention]:
+    cid = _city_id(session)
+    if cid is None:
+        return []
+    q = (session.query(Mention).join(SentimentScore)
+         .filter(Mention.candidate_id == cid, Mention.relevant.is_(True), WHEN >= since))
+    if until is not None:
+        q = q.filter(WHEN < until)
+    return q.all()
+
+
+def city_topics(session, days: int = 7, samples_per: int = 3, subtopics_per: int = 5) -> list[dict]:
+    """Por categoría: volumen, tendencia vs período anterior, percepción, subtemas y comentarios de muestra."""
+    since = _since(days)
+    current = _city_rows(session, since)
+    previous = Counter(m.sentiment.category or "otro" for m in _city_rows(session, since - dt.timedelta(days=days), since))
+    by_cat: dict[str, list[Mention]] = defaultdict(list)
+    for m in current:
+        by_cat[m.sentiment.category or "otro"].append(m)
+    rows = []
+    for cat, ms in by_cat.items():
+        labels = Counter(m.sentiment.label for m in ms)
+        prev = previous.get(cat, 0)
+        trend = None if prev == 0 else round((len(ms) - prev) / prev * 100)
+        sub = Counter((m.sentiment.topic or "").lower() for m in ms if (m.sentiment.topic or "").lower() not in META_TOPICS and m.sentiment.topic)
+        comments = [m for m in ms if (m.raw or {}).get("kind") == "comment"]
+        pool = comments or ms
+        samples = sorted(pool, key=lambda m: -abs(m.sentiment.score))[:samples_per]
+        rows.append({
+            "category": cat, "count": len(ms), "previous": prev, "trend_pct": trend,
+            "positive": labels.get(SentimentLabel.POSITIVE, 0), "neutral": labels.get(SentimentLabel.NEUTRAL, 0),
+            "negative": labels.get(SentimentLabel.NEGATIVE, 0),
+            "subtopics": [{"topic": t, "count": n} for t, n in sub.most_common(subtopics_per)],
+            "samples": [_mention_dict(m) for m in samples],
+            "sources": dict(Counter(((m.raw or {}).get("platform") or m.source.type.value) for m in ms)),
+        })
+    rows.sort(key=lambda r: -r["count"])
+    return rows
+
+
+def city_opportunities(session, days: int = 7, min_negative_pct: int = 40, carlos_min: int = 3, carlos_pos_pct: int = 60) -> dict:
+    """Temas calientes donde Carlos no aparece, y temas donde Carlos ya tiene presencia positiva."""
+    topics = city_topics(session, days=days, samples_per=1, subtopics_per=3)
+    carlos = session.query(Candidate).filter_by(name=CARLOS).first()
+    carlos_by_cat: dict[str, Counter] = defaultdict(Counter)
+    if carlos:
+        for m in (session.query(Mention).join(SentimentScore)
+                  .filter(Mention.candidate_id == carlos.id, Mention.relevant.is_(True), WHEN >= _since(days))):
+            carlos_by_cat[m.sentiment.category or "otro"][m.sentiment.label] += 1
+    counts = sorted(r["count"] for r in topics) or [0]
+    median = counts[len(counts) // 2]
+    hot, strong = [], []
+    for r in topics:
+        carlos_n = sum(carlos_by_cat[r["category"]].values())
+        neg_pct = pct(r["negative"], r["count"])
+        if r["count"] >= median and neg_pct >= min_negative_pct and carlos_n <= 2 and r["category"] != "otro":
+            hot.append({**r, "negative_pct": neg_pct, "carlos_mentions": carlos_n})
+    for cat, c in carlos_by_cat.items():
+        n = sum(c.values())
+        if n >= carlos_min and pct(c[SentimentLabel.POSITIVE], n) >= carlos_pos_pct:
+            city = next((r for r in topics if r["category"] == cat), None)
+            strong.append({"category": cat, "carlos_mentions": n, "carlos_positive_pct": pct(c[SentimentLabel.POSITIVE], n),
+                           "city_count": city["count"] if city else 0})
+    hot.sort(key=lambda r: (-r["negative_pct"], -r["count"]))
+    strong.sort(key=lambda r: -r["carlos_mentions"])
+    return {"hot_without_carlos": hot, "carlos_strong": strong}
+
+
+def city_kpis(session, days: int = 7) -> dict:
+    topics = city_topics(session, days=days, samples_per=0, subtopics_per=0)
+    total = sum(r["count"] for r in topics)
+    negative = sum(r["negative"] for r in topics)
+    rising = [r for r in topics if r["trend_pct"] is not None]
+    rising.sort(key=lambda r: -r["trend_pct"])
+    return {
+        "total": total, "top_category": topics[0]["category"] if topics else None,
+        "rising_category": rising[0]["category"] if rising else None,
+        "rising_pct": rising[0]["trend_pct"] if rising else None,
+        "negative_pct": pct(negative, total),
+    }
+
+
+def pct(n: int, t: int) -> int:
+    return round(n / t * 100) if t else 0
