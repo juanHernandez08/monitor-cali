@@ -204,3 +204,25 @@ def test_topics_can_split_publications_from_comments(db_session):
     db_session.commit()
     assert {t["topic"] for t in topics(db_session, days=7, kind="publications")} == {"reconstrucción", "seguridad"}
     assert {t["topic"] for t in topics(db_session, days=7, kind="comments")} == {"agua en terrón colorado"}  # "sin tema" fuera
+
+
+def test_peak_publication_returns_the_publication_driving_that_day(db_session):
+    from src.queries import peak_publication, _local_day
+    carlos = Candidate(name="Carlos Arias", aliases=[])
+    ig = Source(type=SourceType.SOCIAL, name="IG")
+    db_session.add_all([carlos, ig])
+    db_session.commit()
+    now = dt.datetime.utcnow()
+    day = _local_day(now)
+    post = Mention(candidate_id=carlos.id, source_id=ig.id, external_id="ig:post:1", text="Trincheras en Cali", url="https://instagram.com/p/T/",
+                   raw={"kind": "post"}, published_at=now, fetched_at=now)
+    other = Mention(candidate_id=carlos.id, source_id=ig.id, external_id="ig:post:2", text="otro post", url="https://instagram.com/p/O/",
+                    raw={"kind": "post"}, published_at=now, fetched_at=now)
+    db_session.add_all([post, other])
+    for i in range(3):
+        db_session.add(Mention(candidate_id=carlos.id, source_id=ig.id, external_id=f"ig:comment:{i}", text="👏", url="https://instagram.com/p/T/",
+                               raw={"kind": "comment", "post_title": "Trincheras en Cali"}, published_at=now, fetched_at=now))
+    db_session.commit()
+    p = peak_publication(db_session, "Carlos Arias", day)
+    assert p["text"] == "Trincheras en Cali" and p["mentions_that_day"] == 4 and p["url"] == "https://instagram.com/p/T/"
+    assert peak_publication(db_session, "Carlos Arias", "2000-01-01") is None

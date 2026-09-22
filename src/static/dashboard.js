@@ -142,13 +142,33 @@ async function loadTimeline(rows) {
       plugins: { legend: { position: "bottom" } },
       scales: { y: { beginAtZero: true, grid: { color: "#eef1f5" }, ticks: { precision: 0 }, title: { display: true, text: "menciones por día" } }, x: { ticks: { maxTicksLimit: 10, maxRotation: 0 }, grid: { display: false } } } },
   });
+  // Pico de cada serie y la publicación que lo causó (para la lectura y el tooltip)
+  const peaks = {};
+  await Promise.all(series.map(async (s) => {
+    const i = s.data.reduce((best, v, k) => (v > s.data[best] ? k : best), 0);
+    if (!s.data[i]) return;
+    const p = await j(`/api/peak?candidate=${encodeURIComponent(s.name)}&day=${d.labels[i]}`);
+    if (p && p.text) peaks[s.name] = { index: i, count: s.data[i], pub: p };
+  }));
+  charts["#chart-timeline"].options.plugins.tooltip = { callbacks: { afterBody: (items) => {
+    const lines = [];
+    for (const it of items) {
+      const pk = peaks[it.dataset.label];
+      if (pk && pk.index === it.dataIndex) lines.push(`↳ ${pk.pub.mentions_that_day} por: "${pk.pub.text.slice(0, 70)}" (${srcName(pk.pub)})`);
+    }
+    return lines;
+  } } };
+  charts["#chart-timeline"].update();
   const cs = series.find((s) => s.name === CARLOS);
   if (cs) {
-    const peak = cs.data.reduce((best, v, i) => (v > cs.data[best] ? i : best), 0);
-    const peakDate = new Date(d.labels[peak] + "T12:00:00").toLocaleDateString("es-CO", { day: "numeric", month: "long" });
+    const pk = peaks[CARLOS];
+    const peakIdx = cs.data.reduce((best, v, i) => (v > cs.data[best] ? i : best), 0);
+    const peakDate = new Date(d.labels[peakIdx] + "T12:00:00").toLocaleDateString("es-CO", { day: "numeric", month: "long" });
     const active = cs.data.filter((v) => v > 0).length;
-    $("#read-timeline").innerHTML = `<b>Carlos Arias</b> tuvo su pico el <b>${peakDate}</b> con ${cs.data[peak]} menciones en un día, y apareció en ${active} de los ${d.labels.length} días mostrados. ` +
-      (series.length > 1 ? `Se comparan además ${series.slice(1).map((s) => s.name).join(", ")}.` : "");
+    const cause = pk ? ` ${pk.pub.mentions_that_day} de ellas vinieron de ${pk.pub.kind === "news" ? "la nota" : pk.pub.kind === "video" ? "el video" : "la publicación"} <b>«${esc(pk.pub.text).slice(0, 90)}»</b> (${srcName(pk.pub)})${pk.pub.url ? ` — <a href="${pk.pub.url}" target="_blank" rel="noopener">ver ↗</a>` : ""}.` : "";
+    const others = series.filter((s) => s.name !== CARLOS && peaks[s.name]).map((s) => `${s.name}: ${peaks[s.name].count} el ${new Date(d.labels[peaks[s.name].index] + "T12:00:00").toLocaleDateString("es-CO", { day: "numeric", month: "short" })} por «${esc(peaks[s.name].pub.text).slice(0, 50)}»`);
+    $("#read-timeline").innerHTML = `<b>Carlos Arias</b> tuvo su pico el <b>${peakDate}</b> con ${cs.data[peakIdx]} menciones en un día, y apareció en ${active} de los ${d.labels.length} días mostrados.${cause}` +
+      (others.length ? `<br><span class="hint">Picos de los rivales — ${others.join(" · ")}.</span>` : "");
   }
 }
 

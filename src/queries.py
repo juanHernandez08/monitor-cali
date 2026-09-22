@@ -383,3 +383,33 @@ def city_kpis(session, days: int = 7) -> dict:
 
 def pct(n: int, t: int) -> int:
     return round(n / t * 100) if t else 0
+
+
+def peak_publication(session, candidate_name: str, day: str) -> dict | None:
+    """La publicación (post/video/nota + sus comentarios) que más menciones generó ese día (hora Bogotá)."""
+    cand = session.query(Candidate).filter_by(name=candidate_name).first()
+    if cand is None:
+        return None
+    start_local = dt.datetime.fromisoformat(day).replace(tzinfo=BOGOTA)
+    start = start_local.astimezone(dt.timezone.utc).replace(tzinfo=None)
+    end = start + dt.timedelta(days=1)
+    ms = (session.query(Mention).filter(Mention.candidate_id == cand.id, Mention.relevant.is_(True),
+                                        WHEN >= start, WHEN < end).all())
+    if not ms:
+        return None
+    groups: dict[str, list[Mention]] = defaultdict(list)
+    for m in ms:
+        groups[_parent_key(m) or f"solo:{m.id}"].append(m)
+    key, members = max(groups.items(), key=lambda kv: len(kv[1]))
+    parent = next((m for m in members if (m.raw or {}).get("kind") != "comment"), None)
+    if parent is None:  # solo comentarios: describir por el título del video/post
+        first = members[0]
+        raw = first.raw or {}
+        title = raw.get("video_title") or raw.get("post_title") or first.text
+        url = f"https://www.youtube.com/watch?v={raw['video_id']}" if raw.get("video_id") else first.url
+        return {"text": title, "url": url, "kind": "comments", "source_type": first.source.type.value,
+                "platform": raw.get("platform"), "mentions_that_day": len(members), "day": day}
+    row = _mention_dict(parent)
+    row.update({"kind": (parent.raw or {}).get("kind") or "news", "mentions_that_day": len(members), "day": day,
+                "thumbnail": _thumbnail(parent)})
+    return row
