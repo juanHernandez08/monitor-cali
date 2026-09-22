@@ -268,7 +268,7 @@ async function loadStatus() {
 
 async function loadAll() {
   const rows = await loadSummary();
-  await Promise.all([loadTimeline(rows), loadSources(), loadTopics(), loadAlerts(), loadFeed(), loadStatus()]);
+  await Promise.all([loadTimeline(rows), loadSources(), loadTopics(), loadAlerts(), loadFeed(), loadStatus(), loadCity()]);
 }
 
 document.querySelectorAll(".tab").forEach((b) => b.addEventListener("click", () => {
@@ -286,3 +286,71 @@ $("#refresh").addEventListener("click", async () => {
 });
 loadAll();
 setInterval(loadAll, 120000);
+
+/* ---------- ciudad ---------- */
+const CAT_COLOR = "#1f4fa3";
+function trendTag(t) {
+  if (t === null || t === undefined) return `<span class="trend flat">nuevo</span>`;
+  if (t > 5) return `<span class="trend up">▲ ${t}%</span>`;
+  if (t < -5) return `<span class="trend down">▼ ${Math.abs(t)}%</span>`;
+  return `<span class="trend flat">= estable</span>`;
+}
+function cap(s) { return s ? s[0].toUpperCase() + s.slice(1) : s; }
+
+async function loadCity() {
+  if (!$("#city-kpis")) return;
+  const d = days();
+  const [topics, opps, kpis] = await Promise.all([j(`/api/city/topics?days=${d}`), j(`/api/city/opportunities?days=${d}`), j(`/api/city/kpis?days=${d}`)]);
+
+  $("#city-kpis").innerHTML = `
+    <div class="kpi"><div class="label">Menciones sobre la ciudad</div><div class="value">${kpis.total}</div><div class="foot">noticias, videos, posts y comentarios · ${periodLabel()}</div></div>
+    <div class="kpi"><div class="label">Tema del que más se habla</div><div class="value" style="font-size:20px">${cap(kpis.top_category || "—")}</div><div class="foot">por número de menciones</div></div>
+    <div class="kpi"><div class="label">Tema que más crece</div><div class="value" style="font-size:20px">${cap(kpis.rising_category || "—")}</div><div class="foot">${kpis.rising_pct !== null && kpis.rising_pct !== undefined ? `▲ ${kpis.rising_pct}% vs período anterior` : "sin período anterior"}</div></div>
+    <div class="kpi"><div class="label">Molestia ciudadana</div><div class="value ${kpis.negative_pct >= 40 ? "neg" : ""}">${kpis.total ? kpis.negative_pct + "%" : "—"}</div><div class="foot">menciones con queja, miedo o indignación</div></div>`;
+
+  chart("#chart-city-topics", {
+    type: "bar",
+    data: { labels: topics.map((t) => cap(t.category)), datasets: [{ data: topics.map((t) => t.count), backgroundColor: CAT_COLOR, borderRadius: 6, barThickness: 20 }] },
+    options: { indexAxis: "y", responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, datalabels: { display: true, anchor: "end", align: "end", color: "#172033", font: { weight: 600 },
+        formatter: (v, c) => { const t = topics[c.dataIndex]; const tr = t.trend_pct; return tr === null ? `${v}` : `${v}  ${tr > 5 ? "▲" : tr < -5 ? "▼" : "="} ${Math.abs(tr)}%`; } } },
+      scales: { x: { beginAtZero: true, grid: { color: "#eef1f5" }, ticks: { precision: 0 }, grace: "25%", title: { display: true, text: "menciones" } }, y: { grid: { display: false } } } },
+  });
+  const rising = topics.filter((t) => t.trend_pct !== null).sort((a, b) => b.trend_pct - a.trend_pct)[0];
+  $("#read-city-topics").innerHTML = topics.length
+    ? `En ${periodLabel()}, Cali habló sobre todo de <b>${topics[0].category}</b> (${topics[0].count} menciones)` + (topics[1] ? `, luego de <b>${topics[1].category}</b> (${topics[1].count})` : "") + (topics[2] ? ` y <b>${topics[2].category}</b> (${topics[2].count})` : "") + ". " +
+      (rising && rising.trend_pct > 5 ? `El tema que más crece es <b>${rising.category}</b> (▲ ${rising.trend_pct}% frente al período anterior).` : "Ningún tema muestra un crecimiento marcado frente al período anterior.")
+    : "Aún no hay menciones de ciudad clasificadas en el período.";
+
+  const scored = topics.filter((t) => t.count > 0);
+  chart("#chart-city-perception", {
+    type: "bar",
+    data: { labels: scored.map((t) => `${cap(t.category)} (${t.count})`), datasets: [
+      { label: "Molestia", data: scored.map((t) => pct(t.negative, t.count)), backgroundColor: "#d9483b" },
+      { label: "Informativa", data: scored.map((t) => pct(t.neutral, t.count)), backgroundColor: "#c3cad6" },
+      { label: "A favor", data: scored.map((t) => pct(t.positive, t.count)), backgroundColor: "#22a06b" }] },
+    options: { indexAxis: "y", responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: "bottom" }, tooltip: { callbacks: { label: (c) => `${c.dataset.label}: ${c.raw}%` } },
+        datalabels: { display: (c) => c.dataset.data[c.dataIndex] >= 8, color: (c) => c.datasetIndex === 1 ? "#334155" : "#fff", font: { weight: 600, size: 12 }, formatter: (v) => v + "%" } },
+      scales: { x: { stacked: true, max: 100, ticks: { callback: (v) => v + "%" }, grid: { color: "#eef1f5" } }, y: { stacked: true, grid: { display: false } } } },
+  });
+  const angriest = [...scored].sort((a, b) => pct(b.negative, b.count) - pct(a.negative, a.count))[0];
+  const happiest = [...scored].sort((a, b) => pct(b.positive, b.count) - pct(a.positive, a.count))[0];
+  $("#read-city-perception").innerHTML = scored.length
+    ? `Donde más molestia hay es en <b>${angriest.category}</b> (${pct(angriest.negative, angriest.count)}% de las menciones son quejas o denuncias). ` +
+      `El tema mejor recibido es <b>${happiest.category}</b> (${pct(happiest.positive, happiest.count)}% a favor).`
+    : "Sin datos en el período.";
+
+  const hot = opps.hot_without_carlos, strong = opps.carlos_strong;
+  $("#city-opps").innerHTML = `
+    <div class="opp hot"><h3>La ciudad está molesta y Carlos no está hablando de esto</h3>
+      ${hot.length ? `<ul>${hot.map((t) => `<li><b>${cap(t.category)}</b>: ${t.count} menciones, ${t.negative_pct}% de molestia · Carlos: ${t.carlos_mentions} menciones${t.subtopics.length ? ` · ej. ${t.subtopics.map((s) => s.topic).slice(0, 2).join(", ")}` : ""}</li>`).join("")}</ul>` : `<div class="empty">No hay temas calientes sin presencia de Carlos en el período.</div>`}</div>
+    <div class="opp strong"><h3>Temas donde Carlos ya suma</h3>
+      ${strong.length ? `<ul>${strong.map((t) => `<li><b>${cap(t.category)}</b>: ${t.carlos_mentions} menciones de Carlos, ${t.carlos_positive_pct}% positivas · la ciudad habló ${t.city_count} veces del tema</li>`).join("")}</ul>` : `<div class="empty">Aún no hay temas con presencia positiva sostenida de Carlos en el período.</div>`}</div>`;
+
+  $("#city-detail").innerHTML = topics.map((t) => `<div class="topic-card">
+      <div class="head"><h3>${t.category}</h3><div>${trendTag(t.trend_pct)} · ${t.count} menciones · <span class="tag negative">${pct(t.negative, t.count)}% molestia</span></div></div>
+      <div class="subs">${t.subtopics.map((s) => `<span class="tag">${esc(s.topic)} · ${s.count}</span>`).join("") || `<span class="hint">sin subtemas identificados</span>`}</div>
+      ${t.samples.map((m) => `<div class="comment"><div>${esc(m.text).slice(0, 240)}<div class="who">${srcName(m)} · ${esc(m.author || "")} · ${fmtDate(m.published_at)}${m.url ? ` · <a href="${m.url}" target="_blank" rel="noopener">ver</a>` : ""}</div></div><div>${sentTag(m)}</div></div>`).join("")}
+    </div>`).join("") || `<div class="empty">Sin temas en el período.</div>`;
+}

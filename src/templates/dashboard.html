@@ -33,6 +33,7 @@
 <nav class="tabs">
   <button class="tab active" data-tab="resumen">Resumen</button>
   <button class="tab" data-tab="analisis">Análisis en gráficas</button>
+  <button class="tab" data-tab="ciudad">Ciudad: temas y percepción</button>
 </nav>
 
 <main>
@@ -115,6 +116,32 @@
       <div class="panel-head"><div><h2>¿Qué piden o reclaman los ciudadanos?</h2><div class="hint">Asuntos concretos que aparecen en los comentarios de la gente (Instagram, Facebook, YouTube). Los comentarios que solo aplauden o insultan, sin tratar un asunto, no se cuentan aquí.</div></div></div>
       <p class="reading" id="read-topics-com"></p>
       <div class="chart-box xl"><canvas id="chart-topics-com"></canvas></div>
+    </section>
+  </div>
+
+  <div id="tab-ciudad" class="tabpane">
+    <div class="intro panel">
+      <h2>De qué habla Cali y cómo lo siente la gente</h2>
+      <p>Aquí no se mira a los candidatos sino a la <b>ciudad</b>: noticias locales, videos de noticieros y publicaciones de medios, con los comentarios de la gente. Cada mención se ubica en un <b>tema</b> fijo (seguridad, movilidad, servicios públicos…) y se lee su <b>percepción</b>: <span class="tag negative">molestia</span> (queja, miedo, indignación), <span class="tag positive">a favor</span> (orgullo, celebración) o <span class="tag neutral">informativa</span>. Sirve para decidir de qué hablar y en qué tono.</p>
+    </div>
+    <section class="kpis" id="city-kpis"></section>
+    <section class="panel big">
+      <div class="panel-head"><div><h2>¿De qué habla Cali en este período?</h2><div class="hint">Menciones por tema. La flecha compara con el período inmediatamente anterior de la misma duración.</div></div></div>
+      <p class="reading" id="read-city-topics"></p>
+      <div class="chart-box xl"><canvas id="chart-city-topics"></canvas></div>
+    </section>
+    <section class="panel big">
+      <div class="panel-head"><div><h2>¿Cómo lo siente la gente?</h2><div class="hint">De cada 100 menciones del tema, cuántas expresan molestia, cuántas son informativas y cuántas están a favor.</div></div></div>
+      <p class="reading" id="read-city-perception"></p>
+      <div class="chart-box xl"><canvas id="chart-city-perception"></canvas></div>
+    </section>
+    <section class="panel big">
+      <div class="panel-head"><div><h2>Oportunidades para Carlos Arias</h2><div class="hint">Cruce entre lo que preocupa a la ciudad y de lo que habla Carlos en el mismo período.</div></div></div>
+      <div class="grid2" id="city-opps"></div>
+    </section>
+    <section class="panel big">
+      <div class="panel-head"><div><h2>Detalle por tema</h2><div class="hint">Subtemas más frecuentes y comentarios ciudadanos representativos, con link al original.</div></div></div>
+      <div id="city-detail" class="feed"></div>
     </section>
   </div>
 

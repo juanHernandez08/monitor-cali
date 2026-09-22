@@ -153,3 +153,15 @@ footer { color: var(--muted); font-size: 12px; line-height: 1.7; }
 .chart-box.xl { height: 380px; }
 @media (max-width: 860px) { .tabs { padding: 6px 14px 0; } .chart-box.xl { height: 320px; } }
 @media (max-width: 560px) { .chart-box.xl { height: 300px; } }
+
+/* ---------- ciudad ---------- */
+.opp { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
+.opp h3 { margin: 0 0 8px; font-size: 14px; }
+.opp.hot h3 { color: var(--neg); } .opp.strong h3 { color: var(--pos); }
+.opp ul { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.6; }
+.topic-card { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; background: #fff; }
+.topic-card .head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.topic-card .head h3 { margin: 0; font-size: 15px; text-transform: capitalize; }
+.topic-card .subs { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0; }
+.trend { font-size: 12px; font-weight: 600; }
+.trend.up { color: var(--neg); } .trend.down { color: var(--pos); } .trend.flat { color: var(--muted); }
