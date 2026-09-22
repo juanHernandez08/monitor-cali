@@ -11,6 +11,7 @@ from src.connectors.google_news import GoogleNewsConnector
 from src.connectors.news_rss import RSSConnector
 from src.connectors.reddit_rss import RedditRSSConnector
 from src.connectors.social_accounts import SocialAccountConnector
+from src.connectors.x_apify import XApifyConnector
 from src.connectors.youtube import YouTubeConnector
 from src.db import get_session
 from src.enrich import enrich_pending
@@ -24,6 +25,30 @@ FAST_GROUP = [SourceType.GOOGLE_NEWS, SourceType.RSS, SourceType.REDDIT]
 CSE_GROUP = [SourceType.GOOGLE_CSE]
 YT_GROUP = [SourceType.YOUTUBE]
 SOCIAL_GROUP = [SourceType.SOCIAL]
+
+
+class Combined:
+    """Varios conectores para una misma fuente (p. ej. Bright Data para IG/FB + Apify para X)."""
+
+    def __init__(self, connectors: list):
+        self.connectors = [c for c in connectors if c is not None]
+        self.source_name = "combined"
+
+    def fetch(self, search_terms):
+        items = []
+        for c in self.connectors:
+            try:
+                items.extend(c.fetch(search_terms))
+            except Exception:
+                log.exception("conector %s falló", type(c).__name__)
+        return items
+
+    @property
+    def comments_attempted(self) -> set:
+        out: set = set()
+        for c in self.connectors:
+            out |= getattr(c, "comments_attempted", set())
+        return out
 
 
 class FixedTerms:
@@ -70,27 +95,37 @@ def _build(source: Source, session):
         return YouTubeConnector(api_key=google_key, context=cfg["context"]) if "context" in cfg else YouTubeConnector(api_key=google_key)
     if source.type == SourceType.SOCIAL:
         token = os.environ.get("BRIGHTDATA_API_TOKEN")
-        if not (token and config.SOCIAL_ACCOUNTS):
+        apify = os.environ.get("APIFY_TOKEN")
+        if not config.SOCIAL_ACCOUNTS or not (token or apify):
             return None
-        known, pending, last_dates = _social_state(session, source)
-        credits = QuotaTracker(session, "brightdata", config.BRIGHTDATA_MONTHLY_CREDITS,
-                               today=dt.datetime.utcnow().strftime("%Y-%m"))  # contador mensual
-        return SocialAccountConnector(api_token=token, accounts=config.SOCIAL_ACCOUNTS,
-                                      window_days=config.SOCIAL_WINDOW_DAYS, max_posts=config.SOCIAL_MAX_POSTS,
-                                      max_comments=config.SOCIAL_MAX_COMMENTS, comment_posts=config.SOCIAL_COMMENT_POSTS,
-                                      known_post_ids=known, pending_comment_posts=pending, credits=credits,
-                                      known_last_dates=last_dates)
+        known, pending, last_dates, post_texts = _social_state(session, source)
+        month = dt.datetime.utcnow().strftime("%Y-%m")
+        connectors = []
+        x_accounts = [a for a in config.SOCIAL_ACCOUNTS if a["platform"] == "x"]
+        if apify and x_accounts:  # X con respuestas de la gente; libera créditos de Bright Data
+            connectors.append(XApifyConnector(token=apify, accounts=x_accounts, window_days=config.SOCIAL_WINDOW_DAYS,
+                                              known_last_dates=last_dates, known_post_texts=post_texts,
+                                              credits=QuotaTracker(session, "apify", config.APIFY_MONTHLY_ITEMS, today=month)))
+        if token:
+            accounts = [a for a in config.SOCIAL_ACCOUNTS if not (apify and a["platform"] == "x")]
+            connectors.append(SocialAccountConnector(
+                api_token=token, accounts=accounts, window_days=config.SOCIAL_WINDOW_DAYS, max_posts=config.SOCIAL_MAX_POSTS,
+                max_comments=config.SOCIAL_MAX_COMMENTS, comment_posts=config.SOCIAL_COMMENT_POSTS,
+                known_post_ids=known, pending_comment_posts=pending, known_last_dates=last_dates,
+                credits=QuotaTracker(session, "brightdata", config.BRIGHTDATA_MONTHLY_CREDITS, today=month)))
+        return Combined(connectors) if connectors else None
     if source.type == SourceType.SERP and os.environ.get("BRIGHTDATA_API_TOKEN"):
         from src.connectors.serp import SerpConnector
         return SerpConnector(api_token=os.environ["BRIGHTDATA_API_TOKEN"], site=cfg.get("site"))
     return None
 
 
-def _social_state(session, source: Source) -> tuple[dict[str, list[str]], list[dict], dict[str, str]]:
+def _social_state(session, source: Source) -> tuple[dict[str, list[str]], list[dict], dict[str, str], dict[str, str]]:
     """Posts ya guardados por cuenta (para no volver a pagarlos) y posts sin comentarios pedidos."""
     accounts = {a["url"]: a.get("candidate") for a in config.SOCIAL_ACCOUNTS}
     known: dict[str, list[str]] = {}
     last_dates: dict[str, str] = {}
+    post_texts: dict[str, str] = {}
     pending: list[dict] = []
     for m in session.query(Mention).filter(Mention.source_id == source.id):
         raw = m.raw or {}
@@ -99,9 +134,11 @@ def _social_state(session, source: Source) -> tuple[dict[str, list[str]], list[d
         account = raw.get("account")
         post_id = (raw.get("record") or {}).get("post_id") or m.external_id.split(":")[-1]
         known.setdefault(account, []).append(post_id)
-        if raw.get("platform") == "x" and m.published_at:
-            day = m.published_at.strftime("%Y-%m-%d")
-            last_dates[account] = max(last_dates.get(account, ""), day)
+        if raw.get("platform") == "x":
+            post_texts[post_id] = m.text
+            if m.published_at:
+                day = m.published_at.strftime("%Y-%m-%d")
+                last_dates[account] = max(last_dates.get(account, ""), day)
         num = raw.get("num_comments")
         try:
             num = int(str(num).replace(",", "")) if num is not None else 0
@@ -110,7 +147,7 @@ def _social_state(session, source: Source) -> tuple[dict[str, list[str]], list[d
         if m.url and num > 0 and not raw.get("comments_fetched") and raw.get("platform") != "x":  # X no tiene scraper de respuestas
             pending.append({"url": m.url, "platform": raw.get("platform"), "candidate": accounts.get(account),
                             "account": account, "title": m.text[:120], "num_comments": num})
-    return known, pending, last_dates
+    return known, pending, last_dates, post_texts
 
 
 def mark_comments_fetched(session, connector) -> None:

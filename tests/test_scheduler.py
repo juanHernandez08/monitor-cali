@@ -41,7 +41,7 @@ def test_social_connector_gets_known_posts_pending_comments_and_marks_attempted(
                            raw={"kind": "post", "account": "https://www.instagram.com/x/", "num_comments": "5", "comments_fetched": True, "record": {"post_id": "p2"}}, published_at=now, fetched_at=now))
     db_session.commit()
 
-    conn = build_connector(src, db_session)
+    conn = build_connector(src, db_session).connectors[0]  # Combined → Bright Data
     assert conn.known_post_ids == {"https://www.instagram.com/x/": ["p1", "p2"]}
     assert [p["url"] for p in conn.pending_comment_posts] == ["https://www.instagram.com/p/T/"]
     assert conn.pending_comment_posts[0]["title"] == "Trincheras en Cali" and conn.pending_comment_posts[0]["candidate"] == "Carlos Arias"
@@ -63,3 +63,23 @@ def test_city_sources_use_their_own_terms(db_session, monkeypatch):
     conn.inner = Inner()
     conn.fetch(["Carlos Arias", "Roberto Ortiz"])
     assert captured["terms"] == ["Cali"]
+
+
+def test_social_connector_routes_x_to_apify_when_token_present(db_session, monkeypatch):
+    import src.scheduler as m
+    from src.connectors.x_apify import XApifyConnector
+    from src.connectors.social_accounts import SocialAccountConnector
+    monkeypatch.setenv("BRIGHTDATA_API_TOKEN", "t")
+    monkeypatch.setenv("APIFY_TOKEN", "a")
+    monkeypatch.setattr(m.config, "SOCIAL_ACCOUNTS", [
+        {"platform": "instagram", "url": "https://www.instagram.com/x/", "candidate": "Carlos Arias"},
+        {"platform": "x", "url": "https://x.com/x", "candidate": "Carlos Arias"}])
+    src = Source(type=SourceType.SOCIAL, name="IG")
+    db_session.add(src)
+    db_session.commit()
+    conn = build_connector(src, db_session)
+    kinds = {type(c).__name__ for c in conn.connectors}
+    assert kinds == {"SocialAccountConnector", "XApifyConnector"}
+    bd = next(c for c in conn.connectors if isinstance(c, SocialAccountConnector))
+    assert all(a["platform"] != "x" for a in bd.accounts)  # X ya no gasta créditos de Bright Data
+    assert next(c for c in conn.connectors if isinstance(c, XApifyConnector)).accounts[0]["url"] == "https://x.com/x"

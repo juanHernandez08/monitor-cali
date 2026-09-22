@@ -96,6 +96,10 @@ SOCIAL_MAX_COMMENTS = int(os.environ.get("SOCIAL_MAX_COMMENTS", "30"))    # tope
 SOCIAL_COMMENT_POSTS = int(os.environ.get("SOCIAL_COMMENT_POSTS", "4"))   # posts por corrida a los que se piden comentarios
 BRIGHTDATA_MONTHLY_CREDITS = int(os.environ.get("BRIGHTDATA_MONTHLY_CREDITS", "4000"))  # freno duro (plan: 5.000)
 
+# Apify (X con respuestas): USD 5/mes gratis ≈ 12.000 tuits a USD 0,40/1.000.
+APIFY_TOKEN = os.environ.get("APIFY_TOKEN")
+APIFY_MONTHLY_ITEMS = int(os.environ.get("APIFY_MONTHLY_ITEMS", "10000"))
+
 # Conversación de la ciudad (pestaña Ciudad): lo que no nombra a un candidato en estas fuentes
 # se atribuye al candidato especial "Cali (ciudad)".
 CITY_SOURCES = [
