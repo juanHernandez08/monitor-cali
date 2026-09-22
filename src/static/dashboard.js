@@ -293,7 +293,7 @@ function toggleComments(idx, btn) {
   const r = feedRows[idx];
   const div = document.createElement("div"); div.className = "thread";
   div.innerHTML = r.comments.map((c) => `<div class="comment">
-      <div>${esc(c.text)}<div class="who">${esc(c.author || "")} · ${fmtDate(c.published_at)}${c.url ? ` · <a href="${c.url}" target="_blank" rel="noopener">ver</a>` : ""}</div></div>
+      <div>${esc(c.text)}<div class="who">${esc(c.author || "")} · ${fmtDate(c.published_at)}${(c.link || c.url) ? ` · <a href="${c.link || c.url}" target="_blank" rel="noopener">ver</a>` : ""}</div></div>
       <div>${sentTag(c)}</div></div>`).join("") || `<div class="empty">Sin comentarios que cumplan el filtro.</div>`;
   item.appendChild(div);
   btn.textContent = btn.textContent.replace("▸", "▾");

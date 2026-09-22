@@ -90,6 +90,7 @@ def _mention_dict(m: Mention) -> dict:
         "source": m.source.name, "source_type": m.source.type.value,
         "platform": (m.raw or {}).get("platform"),
         "text": m.text, "url": m.url, "author": m.author,
+        "link": (m.raw or {}).get("reply_url") or m.url,  # para respuestas de X: el link de la respuesta, no del post
         "published_at": _when(m).isoformat(),
         "label": s.label.value if s else None, "score": s.score if s else None,
         "topic": s.topic if s else None, "model": s.model if s else None,
