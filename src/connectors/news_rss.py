@@ -7,15 +7,16 @@ from src.connectors.base import RawItem
 class RSSConnector:
     source_name = "rss"
 
-    def __init__(self, feed_url: str):
+    def __init__(self, feed_url: str, filter_terms: bool = True):
         self.feed_url = feed_url
+        self.filter_terms = filter_terms  # False: entrega todo el feed (fuentes de ciudad)
 
     def fetch(self, search_terms: list[str]) -> list[RawItem]:
         parsed = feedparser.parse(self.feed_url)
         items = []
         for entry in parsed.entries:
             text = f"{entry.get('title', '')} {entry.get('summary', '')}"
-            if not any(term.lower() in text.lower() for term in search_terms):
+            if self.filter_terms and not any(term.lower() in text.lower() for term in search_terms):
                 continue
             published = None
             if getattr(entry, "published_parsed", None):

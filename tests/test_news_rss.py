@@ -37,3 +37,11 @@ def test_rss_connector_filters_by_search_terms(monkeypatch):
 
     ids = {item.external_id for item in items}
     assert ids == {"nota-1", "nota-2"}
+
+
+def test_rss_connector_can_return_whole_feed_for_city_sources(monkeypatch):
+    import feedparser
+    real_parse = feedparser.parse
+    monkeypatch.setattr(feedparser, "parse", lambda url: real_parse(SAMPLE_FEED))
+    items = RSSConnector(feed_url="https://example.com/feed.xml", filter_terms=False).fetch(search_terms=["Ana Pérez"])
+    assert {i.external_id for i in items} == {"nota-1", "nota-2", "nota-3"}

@@ -50,7 +50,7 @@ def _build(source: Source, session):
     if source.type == SourceType.GOOGLE_NEWS:
         return GoogleNewsConnector(context=cfg["context"]) if "context" in cfg else GoogleNewsConnector()
     if source.type == SourceType.RSS:
-        return RSSConnector(feed_url=cfg["feed_url"])
+        return RSSConnector(feed_url=cfg["feed_url"], filter_terms=not cfg.get("city"))
     if source.type == SourceType.REDDIT:
         if cfg.get("via") == "rss":
             return RedditRSSConnector()
