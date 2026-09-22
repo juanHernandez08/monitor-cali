@@ -80,3 +80,6 @@ def test_init_db_adds_missing_columns(tmp_path, monkeypatch):
     monkeypatch.setattr(dbmod, "engine", engine)
     dbmod.init_db()
     assert "exclusions" in {c["name"] for c in inspect(engine).get_columns("candidates")}
+    with engine.begin() as conn:
+        conn.execute(text("INSERT INTO candidates (name, active) VALUES ('X', 1)"))
+        assert conn.execute(text("SELECT kind FROM candidates WHERE name='X'")).scalar() == "candidate"

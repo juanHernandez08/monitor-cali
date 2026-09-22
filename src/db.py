@@ -29,6 +29,11 @@ def _add_missing_columns():
                 if column.name in existing:
                     continue
                 ddl = column.type.compile(engine.dialect)
+                default = column.default.arg if column.default is not None and column.default.is_scalar else None
+                if isinstance(default, str):
+                    ddl += f" DEFAULT '{default}'"  # p. ej. Candidate.kind = 'candidate' para filas existentes
+                elif isinstance(default, (int, float, bool)):
+                    ddl += f" DEFAULT {int(default) if isinstance(default, bool) else default}"
                 conn.execute(text(f'ALTER TABLE {table.name} ADD COLUMN {column.name} {ddl}'))
 
 
