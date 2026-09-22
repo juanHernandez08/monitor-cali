@@ -72,10 +72,23 @@ agrupado por publicación con comentarios desplegables y miniaturas) y **Anális
 (5 gráficas grandes, cada una con explicación y una "lectura" automática en una frase).
 Los estáticos llevan `?v=<mtime>` para evitar caché. Servidor nuevo = reiniciar para tomar código.
 
+## Presupuesto y proveedores (2026-09-22)
+
+Presupuesto del cliente: **1,5 M COP una sola vez**, sin costos mensuales. Por eso todo corre en planes
+gratuitos: Bright Data (5.000 registros/mes) para Instagram/Facebook por cuenta, **Apify** (USD 5/mes)
+para X con posts y respuestas (`src/connectors/x_apify.py`, `APIFY_TOKEN`), y el resto sin costo. Topes en
+`config.py`; una corrida de prueba que consuma créditos deja al cliente sin datos hasta el mes siguiente.
+
+Funcionalidades añadidas tras la demo: pestaña **Ciudad** (candidato especial `Cali (ciudad)`, categorías
+fijas `sentiment.CATEGORIES`, prompt de percepción ciudadana, `city_topics/opportunities/kpis`), picos con
+su publicación (`timeline_details`, `/api/feed?day=`), Instagram/Facebook completos por ventana de fechas.
+
 ## Pendientes conocidos
 
 - Sinónimos de temas ("terremoto", "sismo", "sismo cali") — unificar con lista de equivalencias.
 - Búsqueda abierta en IG/FB/X (Serper o SerpApi cuando el usuario logre registrarse).
+- Concejales de Cali (pestaña Concejo) y alineación concejal × candidato/partido: el usuario aportará nombres, partidos y cuentas.
+- Dominio + Cloudflare Tunnel con nombre para URL fija.
 - Despliegue en nube (Railway + Postgres + Claude) cuando haya presupuesto — `docs/despliegue.md`.
 - Alertas por correo/Telegram; radio/TV (fuera de alcance, ver presupuesto).
 - Afiliación real de Carlos (la U ya tiene a Clara Luz Roldán), y partido de Carlos Paz / Roger Mina.
