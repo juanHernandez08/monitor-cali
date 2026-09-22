@@ -84,7 +84,9 @@ def enrich_pending(session, limit: int = 20) -> int:
         body, image = fetch_article(real_url) if real_url else (None, None)
         mention.body = (body or "")[:MAX_BODY_CHARS]
         full_text = f"{mention.text} {mention.body}"
-        if is_excluded(full_text, mention.candidate):
+        if mention.candidate.kind == "city":
+            pass  # la conversación de ciudad no exige nombre ni tiene homónimos
+        elif is_excluded(full_text, mention.candidate):
             mention.relevant = False  # el cuerpo revela un homónimo conocido
         elif mention.body and not mentions_candidate(full_text, mention.candidate):
             # Google News la devolvió por el término de búsqueda, pero el artículo completo

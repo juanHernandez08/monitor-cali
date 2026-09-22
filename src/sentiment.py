@@ -7,6 +7,30 @@ from dataclasses import dataclass
 from src.models import SentimentLabel
 from src import config
 
+CATEGORIES = [
+    "seguridad", "movilidad y transporte", "terremoto y reconstrucción", "servicios públicos", "salud",
+    "educación", "empleo y economía", "vivienda", "medio ambiente y clima", "cultura y eventos", "deporte",
+    "corrupción y gobierno", "política y elecciones", "orden público y protestas", "infraestructura y obras",
+    "animales", "otro",
+]
+_CATEGORY_LINE = 'Además, asigna una "category" tomada EXACTAMENTE de esta lista: ' + ", ".join(CATEGORIES) + ".\n"
+
+CITY_PROMPT = """Eres un analista de opinión pública de Cali, Colombia.
+El siguiente texto (noticia, post o comentario) habla de la ciudad. Evalúa cómo lo percibe la ciudadanía:
+- "negative": queja, molestia, miedo, preocupación, denuncia, indignación.
+- "positive": orgullo, celebración, agradecimiento, buena noticia recibida con entusiasmo.
+- "neutral": informativo, sin carga.
+Sé decidido: si hay cualquier inclinación, aunque sea leve, no uses "neutral"; usa un score pequeño (±0.2 a ±0.4).
+Lenguaje colombiano: "berraco/berraca", "bacano", "una chimba", "la rompió" son positivos; "qué pereza", "qué vaina", "ni mierda", "descarados" son negativos. Emojis: 👏🔥❤️💪 apoyo; 🤡💩🤮👎 rechazo; 😂🤣 burla si acompañan una crítica.
+
+El "topic" es el ASUNTO concreto en 2-4 palabras (p. ej. "agua en Terrón Colorado", "huecos en la calle 5"). NUNCA uses el tono como topic. Si el texto no trata ningún asunto (solo saludos, emojis o insultos genéricos), usa topic "sin tema".
+""" + _CATEGORY_LINE + """
+Texto: {text}
+
+Responde SOLO con un JSON de la forma:
+{{"label": "positive" | "negative" | "neutral", "score": <float entre -1.0 y 1.0>, "topic": "<asunto o 'sin tema'>", "category": "<una de la lista>"}}
+"""
+
 SENTIMENT_PROMPT = """Eres un analista de comunicación política de una campaña a la Alcaldía de Cali, Colombia.
 Evalúa cómo deja parado al candidato {candidate} el siguiente texto (noticia, post o comentario).
 
@@ -25,8 +49,9 @@ Texto: {text}
 El "topic" es el ASUNTO concreto del que trata el texto, en 2-4 palabras (p. ej. "seguridad", "agua en Terrón Colorado", "reconstrucción tras el terremoto", "empleo juvenil", "transporte público").
 NUNCA uses el tono como topic (no escribas "apoyo", "elogio", "crítica", "rechazo", "felicitación"). Si el texto es un insulto, burla, ataque personal o rechazo al candidato sin ningún asunto concreto, usa topic "rechazo e insultos". Si solo son aplausos, saludos o emojis de apoyo sin asunto, usa topic "sin tema".
 
+""" + _CATEGORY_LINE + """
 Responde SOLO con un JSON de la forma:
-{{"label": "positive" | "negative" | "neutral", "score": <float entre -1.0 y 1.0>, "topic": "<asunto en 2-4 palabras, 'rechazo e insultos' o 'sin tema'>"}}
+{{"label": "positive" | "negative" | "neutral", "score": <float entre -1.0 y 1.0>, "topic": "<asunto en 2-4 palabras, 'rechazo e insultos' o 'sin tema'>", "category": "<una de la lista>"}}
 """
 _JSON_FENCE = re.compile(r"^```(?:json)?\s*|\s*```$", re.MULTILINE)
 
@@ -37,6 +62,7 @@ class SentimentResult:
     score: float
     topic: str
     model: str
+    category: str = "otro"
 
 
 def _parse_payload(text: str, model: str) -> SentimentResult:
@@ -45,11 +71,16 @@ def _parse_payload(text: str, model: str) -> SentimentResult:
     if label not in {"positive", "negative", "neutral"}:
         label = "neutral"
     score = max(-1.0, min(1.0, float(payload.get("score", 0.0))))
+    category = str(payload.get("category", "otro")).strip().lower()
+    if category not in CATEGORIES:
+        category = "otro"
     return SentimentResult(label=SentimentLabel(label), score=score,
-                           topic=str(payload.get("topic", ""))[:80], model=model)
+                           topic=str(payload.get("topic", ""))[:80], model=model, category=category)
 
 
-def _prompt(text: str, candidate: str | None) -> str:
+def _prompt(text: str, candidate: str | None, city: bool = False) -> str:
+    if city:
+        return CITY_PROMPT.format(text=text[:3000])
     return SENTIMENT_PROMPT.format(text=text[:3000], candidate=candidate or "mencionado")
 
 
@@ -63,10 +94,10 @@ class SentimentEngine:
             client = Anthropic(api_key=config.ANTHROPIC_API_KEY)
         self.client = client
 
-    def score(self, text: str, candidate: str | None = None) -> SentimentResult:
+    def score(self, text: str, candidate: str | None = None, city: bool = False) -> SentimentResult:
         response = self.client.messages.create(
             model=self.model, max_tokens=256,
-            messages=[{"role": "user", "content": _prompt(text, candidate)}],
+            messages=[{"role": "user", "content": _prompt(text, candidate, city)}],
         )
         # Los modelos actuales pueden devolver bloques `thinking` antes del texto.
         for block in response.content:
@@ -90,11 +121,11 @@ class OllamaSentimentEngine:
         self.base_url = (base_url or config.OLLAMA_URL).rstrip("/")
         self.timeout = timeout
 
-    def score(self, text: str, candidate: str | None = None) -> SentimentResult:
+    def score(self, text: str, candidate: str | None = None, city: bool = False) -> SentimentResult:
         data = _ollama_post(f"{self.base_url}/api/chat", {
             "model": self.model, "stream": False, "format": "json",
             "options": {"temperature": 0},
-            "messages": [{"role": "user", "content": _prompt(text, candidate)}],
+            "messages": [{"role": "user", "content": _prompt(text, candidate, city)}],
         }, timeout=self.timeout)
         return _parse_payload(data["message"]["content"], f"ollama/{self.model}")
 

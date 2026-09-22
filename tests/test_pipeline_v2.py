@@ -11,7 +11,7 @@ class ListConnector:
 
 class FakeEngine:
     def __init__(self): self.calls = []
-    def score(self, text, candidate=None):
+    def score(self, text, candidate=None, city=False):
         self.calls.append((text, candidate))
         return SentimentResult(SentimentLabel.NEGATIVE, -0.8, "tema", "fake")
 

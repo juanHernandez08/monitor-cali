@@ -6,7 +6,7 @@ from tests.test_news_rss import SAMPLE_FEED
 
 
 class FakeSentimentEngine:
-    def score(self, text, candidate=None):
+    def score(self, text, candidate=None, city=False):
         return SentimentResult(
             label=SentimentLabel.NEUTRAL, score=0.0, topic="general", model="fake",
         )

@@ -36,6 +36,7 @@ class Candidate(Base):
     active = Column(Boolean, default=True, nullable=False)
     aliases = Column(JSON, default=list)
     exclusions = Column(JSON, default=list)  # frases que identifican homónimos ("Arias Orjuela")
+    kind = Column(String, default="candidate", nullable=False)  # "candidate" | "city"
 
     mentions = relationship("Mention", back_populates="candidate")
 
@@ -87,6 +88,7 @@ class SentimentScore(Base):
     label = Column(Enum(SentimentLabel), nullable=False)
     score = Column(Float, nullable=False)  # -1.0 a 1.0
     topic = Column(String, nullable=True)
+    category = Column(String, nullable=True)  # categoría fija (ver sentiment.CATEGORIES)
     model = Column(String, nullable=False)
     created_at = Column(DateTime, default=dt.datetime.utcnow, nullable=False)
 
