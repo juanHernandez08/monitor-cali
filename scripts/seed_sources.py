@@ -1,6 +1,7 @@
-from src.config import CANDIDATES, RSS_SOURCES
+from src.config import CANDIDATES, RSS_SOURCES, CITY_SOURCES
 from src.db import init_db, get_session
 from src.models import Candidate, Source, SourceType
+from src.pipeline import CITY_NAME
 
 EXTRA_SOURCES = [
     {"type": SourceType.GOOGLE_NEWS, "name": "Google News", "config": {}},
@@ -23,14 +24,21 @@ def seed(session):
             row.aliases = c.get("aliases", [])
             row.exclusions = c.get("exclusions", [])
             row.party = c.get("party")
+    if not session.query(Candidate).filter_by(name=CITY_NAME).first():
+        session.add(Candidate(name=CITY_NAME, kind="city", aliases=[], exclusions=[]))
     for s in RSS_SOURCES:
         exists = session.query(Source).filter_by(
             type=SourceType.RSS, name=s["name"],
         ).first()
         if not exists:
             session.add(Source(
-                type=SourceType.RSS, name=s["name"], config={"feed_url": s["url"]},
+                type=SourceType.RSS, name=s["name"], config={"feed_url": s["url"], "city": True},
             ))
+        elif not (exists.config or {}).get("city"):  # feeds locales: todo lo demás es conversación de ciudad
+            exists.config = {**(exists.config or {}), "city": True}
+    for s in CITY_SOURCES:
+        if not session.query(Source).filter_by(type=SourceType(s["type"]), name=s["name"]).first():
+            session.add(Source(type=SourceType(s["type"]), name=s["name"], config=s["config"]))
     for s in EXTRA_SOURCES:
         if not session.query(Source).filter_by(type=s["type"], name=s["name"]).first():
             session.add(Source(type=s["type"], name=s["name"], config=s["config"]))

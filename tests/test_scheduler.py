@@ -50,3 +50,16 @@ def test_social_connector_gets_known_posts_pending_comments_and_marks_attempted(
     conn.comments_attempted = {"https://www.instagram.com/p/T/"}
     m.mark_comments_fetched(db_session, conn)
     assert db_session.query(Mention).filter_by(external_id="ig:post:p1").one().raw["comments_fetched"] is True
+
+
+def test_city_sources_use_their_own_terms(db_session, monkeypatch):
+    from src.scheduler import build_connector
+    gn = Source(type=SourceType.GOOGLE_NEWS, name="Google News Cali", config={"city": True, "terms": ["Cali"], "context": ""})
+    conn = build_connector(gn, db_session)
+    captured = {}
+
+    class Inner:
+        def fetch(self, terms): captured["terms"] = terms; return []
+    conn.inner = Inner()
+    conn.fetch(["Carlos Arias", "Roberto Ortiz"])
+    assert captured["terms"] == ["Cali"]

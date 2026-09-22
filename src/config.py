@@ -94,6 +94,13 @@ SOCIAL_MAX_COMMENTS = int(os.environ.get("SOCIAL_MAX_COMMENTS", "60"))    # tope
 SOCIAL_COMMENT_POSTS = int(os.environ.get("SOCIAL_COMMENT_POSTS", "10"))  # posts por corrida a los que se piden comentarios
 BRIGHTDATA_MONTHLY_CREDITS = int(os.environ.get("BRIGHTDATA_MONTHLY_CREDITS", "4500"))  # plan gratuito: 5.000
 
+# Conversación de la ciudad (pestaña Ciudad): lo que no nombra a un candidato en estas fuentes
+# se atribuye al candidato especial "Cali (ciudad)".
+CITY_SOURCES = [
+    {"type": "google_news", "name": "Google News Cali", "config": {"city": True, "terms": ["Cali"], "context": ""}},
+    {"type": "youtube", "name": "YouTube Cali", "config": {"city": True, "terms": ["Cali noticias", "Cali hoy"], "context": ""}},
+]
+
 # Feeds RSS directos de medios — verificados el 2026-09-19 (todos responden 200 con entradas).
 RSS_SOURCES = [
     {"name": "El País Cali", "url": "https://www.elpais.com.co/arc/outboundfeeds/rss/category/cali/?outputType=xml"},

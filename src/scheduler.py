@@ -26,12 +26,29 @@ YT_GROUP = [SourceType.YOUTUBE]
 SOCIAL_GROUP = [SourceType.SOCIAL]
 
 
+class FixedTerms:
+    """Envuelve un conector para que busque sus propios términos (fuentes de ciudad) y no los de los candidatos."""
+
+    def __init__(self, inner, terms: list[str]):
+        self.inner, self.terms = inner, terms
+        self.source_name = getattr(inner, "source_name", "fixed")
+
+    def fetch(self, search_terms):
+        return self.inner.fetch(self.terms)
+
+
 def build_connector(source: Source, session):
     """Devuelve el conector para una fuente, o None si faltan credenciales."""
+    connector = _build(source, session)
+    terms = (source.config or {}).get("terms")
+    return FixedTerms(connector, terms) if (connector is not None and terms) else connector
+
+
+def _build(source: Source, session):
     google_key = os.environ.get("GOOGLE_API_KEY")
     cfg = source.config or {}
     if source.type == SourceType.GOOGLE_NEWS:
-        return GoogleNewsConnector()
+        return GoogleNewsConnector(context=cfg["context"]) if "context" in cfg else GoogleNewsConnector()
     if source.type == SourceType.RSS:
         return RSSConnector(feed_url=cfg["feed_url"])
     if source.type == SourceType.REDDIT:
@@ -48,7 +65,9 @@ def build_connector(source: Source, session):
         quota = QuotaTracker(session, "google_cse", config.GOOGLE_CSE_DAILY_LIMIT)
         return GoogleCSEConnector(api_key=google_key, cse_id=cse_id, sites=config.CSE_SITES, quota=quota)
     if source.type == SourceType.YOUTUBE:
-        return YouTubeConnector(api_key=google_key) if google_key else None
+        if not google_key:
+            return None
+        return YouTubeConnector(api_key=google_key, context=cfg["context"]) if "context" in cfg else YouTubeConnector(api_key=google_key)
     if source.type == SourceType.SOCIAL:
         token = os.environ.get("BRIGHTDATA_API_TOKEN")
         if not (token and config.SOCIAL_ACCOUNTS):
