@@ -137,8 +137,10 @@ class SocialAccountConnector:
         end = dt.date.today()
         start = end - dt.timedelta(days=self.window_days)
         known = self.known_post_ids.get(account["url"]) or []
-        kwargs = dict(url=account["url"], num_of_posts=self.max_posts, start_date=start.isoformat(),
-                      end_date=end.isoformat(), posts_to_not_include=known or None)
+        # El SDK valida fechas distintas por plataforma: Instagram exige MM-DD-YYYY; Facebook acepta ISO.
+        fmt = "%m-%d-%Y" if platform == "instagram" else "%Y-%m-%d"
+        kwargs = dict(url=account["url"], num_of_posts=self.max_posts, start_date=start.strftime(fmt),
+                      end_date=end.strftime(fmt), posts_to_not_include=known or None)
         # Firmas verificadas contra brightdata-sdk 2.5.
         if platform == "instagram":
             result = await client.search.instagram.posts(**kwargs)

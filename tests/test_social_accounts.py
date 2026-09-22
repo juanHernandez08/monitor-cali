@@ -63,7 +63,7 @@ def test_posts_by_date_window_excluding_known_and_comments_for_new_posts(monkeyp
 
     kw = fake.calls[0][1]
     assert kw["num_of_posts"] == 40 and kw["posts_to_not_include"] == ["old1", "old2"]
-    assert kw["start_date"] < kw["end_date"] and len(kw["start_date"]) == 10  # YYYY-MM-DD
+    assert len(kw["start_date"]) == 10 and kw["start_date"][2] == "-" and kw["start_date"][5] == "-"  # Instagram: MM-DD-YYYY
     assert {i.external_id for i in items} == {"ig:post:p1", "ig:post:p2", "ig:comment:c1"}
     comment = next(i for i in items if i.external_id == "ig:comment:c1")
     assert comment.search_term == "Carlos Arias" and comment.raw["account_candidate"] == "Carlos Arias"
