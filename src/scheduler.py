@@ -1,3 +1,4 @@
+import datetime as dt
 import logging
 import os
 
@@ -5,6 +6,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 
 from src import config
 from src.connectors.google_cse import GoogleCSEConnector, QuotaTracker
+from src.models import Mention
 from src.connectors.google_news import GoogleNewsConnector
 from src.connectors.news_rss import RSSConnector
 from src.connectors.reddit_rss import RedditRSSConnector
@@ -51,13 +53,52 @@ def build_connector(source: Source, session):
         token = os.environ.get("BRIGHTDATA_API_TOKEN")
         if not (token and config.SOCIAL_ACCOUNTS):
             return None
+        known, pending = _social_state(session, source)
+        credits = QuotaTracker(session, "brightdata", config.BRIGHTDATA_MONTHLY_CREDITS,
+                               today=dt.datetime.utcnow().strftime("%Y-%m"))  # contador mensual
         return SocialAccountConnector(api_token=token, accounts=config.SOCIAL_ACCOUNTS,
-                                      max_posts=config.SOCIAL_MAX_POSTS, max_comments=config.SOCIAL_MAX_COMMENTS,
-                                      comment_posts=config.SOCIAL_COMMENT_POSTS)
+                                      window_days=config.SOCIAL_WINDOW_DAYS, max_posts=config.SOCIAL_MAX_POSTS,
+                                      max_comments=config.SOCIAL_MAX_COMMENTS, comment_posts=config.SOCIAL_COMMENT_POSTS,
+                                      known_post_ids=known, pending_comment_posts=pending, credits=credits)
     if source.type == SourceType.SERP and os.environ.get("BRIGHTDATA_API_TOKEN"):
         from src.connectors.serp import SerpConnector
         return SerpConnector(api_token=os.environ["BRIGHTDATA_API_TOKEN"], site=cfg.get("site"))
     return None
+
+
+def _social_state(session, source: Source) -> tuple[dict[str, list[str]], list[dict]]:
+    """Posts ya guardados por cuenta (para no volver a pagarlos) y posts sin comentarios pedidos."""
+    accounts = {a["url"]: a.get("candidate") for a in config.SOCIAL_ACCOUNTS}
+    known: dict[str, list[str]] = {}
+    pending: list[dict] = []
+    for m in session.query(Mention).filter(Mention.source_id == source.id):
+        raw = m.raw or {}
+        if raw.get("kind") != "post":
+            continue
+        account = raw.get("account")
+        post_id = (raw.get("record") or {}).get("post_id") or m.external_id.split(":")[-1]
+        known.setdefault(account, []).append(post_id)
+        num = raw.get("num_comments")
+        try:
+            num = int(str(num).replace(",", "")) if num is not None else 0
+        except ValueError:
+            num = 0
+        if m.url and num > 0 and not raw.get("comments_fetched"):
+            pending.append({"url": m.url, "platform": raw.get("platform"), "candidate": accounts.get(account),
+                            "account": account, "title": m.text[:120], "num_comments": num})
+    return known, pending
+
+
+def mark_comments_fetched(session, connector) -> None:
+    """Marca los posts cuyos comentarios ya se pidieron, para no volver a pagarlos."""
+    attempted = getattr(connector, "comments_attempted", set())
+    if not attempted:
+        return
+    for m in session.query(Mention).filter(Mention.url.in_(list(attempted))):
+        raw = m.raw or {}
+        if raw.get("kind") == "post":
+            m.raw = {**raw, "comments_fetched": True}
+    session.commit()
 
 
 def run_group(session, types: list[SourceType]) -> dict[str, int]:
@@ -68,6 +109,7 @@ def run_group(session, types: list[SourceType]) -> dict[str, int]:
             log.info("fuente %s sin credenciales; se omite", source.name)
             continue
         results[source.name] = ingest(session, source, connector)
+        mark_comments_fetched(session, connector)
     return results
 
 
@@ -114,8 +156,8 @@ def start_scheduler() -> BackgroundScheduler:
     sched.add_job(job_fast, "interval", minutes=15, id="fast", max_instances=1, coalesce=True)
     sched.add_job(job_cse, "interval", hours=8, id="cse", max_instances=1, coalesce=True)
     sched.add_job(job_youtube, "interval", hours=12, id="youtube", max_instances=1, coalesce=True)  # cuota: ~3.000 unidades/corrida
-    # Bright Data: ~800 créditos por corrida, 5.000/mes gratis → cada 5 días
-    sched.add_job(job_social, "interval", days=5, id="social", max_instances=1, coalesce=True)
+    # Bright Data: solo se pagan posts nuevos y comentarios pendientes; el contador mensual frena en el tope.
+    sched.add_job(job_social, "interval", hours=12, id="social", max_instances=1, coalesce=True)
     sched.add_job(job_score, "interval", minutes=2, id="score", max_instances=1, coalesce=True)
     sched.start()
     return sched

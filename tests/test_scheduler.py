@@ -22,3 +22,31 @@ def test_run_group_skips_sources_without_connector(db_session, monkeypatch):
     import src.scheduler as m
     monkeypatch.setattr(m, "ingest", lambda s, src, conn: 99)
     assert run_group(db_session, [SourceType.GOOGLE_CSE]) == {}
+
+
+def test_social_connector_gets_known_posts_pending_comments_and_marks_attempted(db_session, monkeypatch):
+    import datetime as dt
+    from src.models import Candidate, Mention
+    import src.scheduler as m
+    monkeypatch.setenv("BRIGHTDATA_API_TOKEN", "t")
+    monkeypatch.setattr(m.config, "SOCIAL_ACCOUNTS", [{"platform": "instagram", "url": "https://www.instagram.com/x/", "candidate": "Carlos Arias"}])
+    c = Candidate(name="Carlos Arias", aliases=[])
+    src = Source(type=SourceType.SOCIAL, name="IG")
+    db_session.add_all([c, src])
+    db_session.commit()
+    now = dt.datetime.utcnow()
+    db_session.add(Mention(candidate_id=c.id, source_id=src.id, external_id="ig:post:p1", text="Trincheras en Cali", url="https://www.instagram.com/p/T/",
+                           raw={"kind": "post", "account": "https://www.instagram.com/x/", "num_comments": "300", "record": {"post_id": "p1"}}, published_at=now, fetched_at=now))
+    db_session.add(Mention(candidate_id=c.id, source_id=src.id, external_id="ig:post:p2", text="ya con comentarios", url="https://www.instagram.com/p/D/",
+                           raw={"kind": "post", "account": "https://www.instagram.com/x/", "num_comments": "5", "comments_fetched": True, "record": {"post_id": "p2"}}, published_at=now, fetched_at=now))
+    db_session.commit()
+
+    conn = build_connector(src, db_session)
+    assert conn.known_post_ids == {"https://www.instagram.com/x/": ["p1", "p2"]}
+    assert [p["url"] for p in conn.pending_comment_posts] == ["https://www.instagram.com/p/T/"]
+    assert conn.pending_comment_posts[0]["title"] == "Trincheras en Cali" and conn.pending_comment_posts[0]["candidate"] == "Carlos Arias"
+    assert conn.credits.remaining() > 0
+
+    conn.comments_attempted = {"https://www.instagram.com/p/T/"}
+    m.mark_comments_fetched(db_session, conn)
+    assert db_session.query(Mention).filter_by(external_id="ig:post:p1").one().raw["comments_fetched"] is True

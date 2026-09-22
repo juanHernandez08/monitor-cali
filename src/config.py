@@ -86,9 +86,11 @@ SOCIAL_ACCOUNTS = [
     {"platform": "facebook", "url": "https://www.facebook.com/ClaraLuzRoldanG/", "candidate": "Clara Luz Roldán"},
     {"platform": "instagram", "url": "https://www.instagram.com/noticalioficial/", "candidate": None},
 ]
-SOCIAL_MAX_POSTS = int(os.environ.get("SOCIAL_MAX_POSTS", "5"))
-SOCIAL_MAX_COMMENTS = int(os.environ.get("SOCIAL_MAX_COMMENTS", "25"))
-SOCIAL_COMMENT_POSTS = int(os.environ.get("SOCIAL_COMMENT_POSTS", "3"))
+SOCIAL_WINDOW_DAYS = int(os.environ.get("SOCIAL_WINDOW_DAYS", "60"))     # se traen TODOS los posts de esta ventana
+SOCIAL_MAX_POSTS = int(os.environ.get("SOCIAL_MAX_POSTS", "40"))          # tope por cuenta y corrida
+SOCIAL_MAX_COMMENTS = int(os.environ.get("SOCIAL_MAX_COMMENTS", "60"))    # tope de comentarios por post
+SOCIAL_COMMENT_POSTS = int(os.environ.get("SOCIAL_COMMENT_POSTS", "10"))  # posts por corrida a los que se piden comentarios
+BRIGHTDATA_MONTHLY_CREDITS = int(os.environ.get("BRIGHTDATA_MONTHLY_CREDITS", "4500"))  # plan gratuito: 5.000
 
 # Feeds RSS directos de medios — verificados el 2026-09-19 (todos responden 200 con entradas).
 RSS_SOURCES = [
