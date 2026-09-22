@@ -206,8 +206,15 @@ def _summary_of(comments: list[dict]) -> dict:
             "negative": c.get("negative", 0), "neutral": c.get("neutral", 0)}
 
 
+def _day_bounds(day: str) -> tuple[dt.datetime, dt.datetime]:
+    """Inicio y fin (UTC, naive) de un día en hora Bogotá."""
+    start = dt.datetime.fromisoformat(day).replace(tzinfo=BOGOTA).astimezone(dt.timezone.utc).replace(tzinfo=None)
+    return start, start + dt.timedelta(days=1)
+
+
 def feed(session, candidate_id: int | None = None, source_type: str | None = None,
-         label: str | None = None, days: int = 30, limit: int = 100, offset: int = 0) -> list[dict]:
+         label: str | None = None, days: int = 30, limit: int = 100, offset: int = 0,
+         day: str | None = None) -> list[dict]:
     """Filas = publicaciones (post, video, nota); los comentarios cuelgan de su publicación.
 
     Los filtros se aplican a las menciones; una publicación aparece si ella o alguno de sus
@@ -219,6 +226,9 @@ def feed(session, candidate_id: int | None = None, source_type: str | None = Non
     q = q.filter(Mention.candidate_id == candidate_id) if candidate_id else q.filter(Candidate.kind != "city")
     if source_type:
         q = q.filter(Source.type == SourceType(source_type))
+    if day:
+        d0, d1 = _day_bounds(day)
+        q = q.filter(WHEN >= d0, WHEN < d1)
     filtered = q.order_by(WHEN.desc(), Mention.id.desc()).limit(3000).all()
 
     def passes_label(m: Mention) -> bool:
@@ -413,3 +423,29 @@ def peak_publication(session, candidate_name: str, day: str) -> dict | None:
     row.update({"kind": (parent.raw or {}).get("kind") or "news", "mentions_that_day": len(members), "day": day,
                 "thumbnail": _thumbnail(parent)})
     return row
+
+
+def timeline_details(session, days: int = 7) -> dict:
+    """Para cada candidato y día: la publicación que más menciones reunió (para el tooltip de la gráfica)."""
+    since = _since(days)
+    ms = (session.query(Mention).join(Candidate)
+          .filter(WHEN >= since, Mention.relevant.is_(True), Candidate.kind != "city").all())
+    groups: dict[tuple[str, str], dict[str, list[Mention]]] = defaultdict(lambda: defaultdict(list))
+    for m in ms:
+        groups[(m.candidate.name, _local_day(_when(m)))][_parent_key(m) or f"solo:{m.id}"].append(m)
+    out: dict[str, dict[str, dict]] = defaultdict(dict)
+    for (name, day), by_parent in groups.items():
+        total = sum(len(v) for v in by_parent.values())
+        members = max(by_parent.values(), key=len)
+        parent = next((m for m in members if (m.raw or {}).get("kind") != "comment"), None)
+        if parent is not None:
+            raw = parent.raw or {}
+            text, url, kind, plat, stype = parent.text, parent.url, raw.get("kind") or "news", raw.get("platform"), parent.source.type.value
+        else:
+            raw = members[0].raw or {}
+            text = raw.get("video_title") or raw.get("post_title") or members[0].text
+            url = f"https://www.youtube.com/watch?v={raw['video_id']}" if raw.get("video_id") else members[0].url
+            kind, plat, stype = "comments", raw.get("platform"), members[0].source.type.value
+        out[name][day] = {"text": text, "url": url, "kind": kind, "platform": plat, "source_type": stype,
+                          "count": len(members), "total": total}
+    return out

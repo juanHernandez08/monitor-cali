@@ -226,3 +226,31 @@ def test_peak_publication_returns_the_publication_driving_that_day(db_session):
     p = peak_publication(db_session, "Carlos Arias", day)
     assert p["text"] == "Trincheras en Cali" and p["mentions_that_day"] == 4 and p["url"] == "https://instagram.com/p/T/"
     assert peak_publication(db_session, "Carlos Arias", "2000-01-01") is None
+
+
+def test_timeline_details_gives_top_publication_per_candidate_day_and_feed_filters_by_day(db_session):
+    from src.queries import timeline_details, feed, _local_day
+    carlos = Candidate(name="Carlos Arias", aliases=[])
+    ana = Candidate(name="Ana Pérez", aliases=[])
+    ig = Source(type=SourceType.SOCIAL, name="IG")
+    db_session.add_all([carlos, ana, ig])
+    db_session.commit()
+    now = dt.datetime.utcnow()
+    yesterday = now - dt.timedelta(days=1)
+    rows = [
+        (carlos, "ig:post:1", "Trincheras en Cali", "https://instagram.com/p/T/", {"kind": "post"}, now),
+        (carlos, "ig:comment:1", "👏", "https://instagram.com/p/T/", {"kind": "comment", "post_title": "Trincheras en Cali"}, now),
+        (carlos, "ig:comment:2", "👏👏", "https://instagram.com/p/T/", {"kind": "comment", "post_title": "Trincheras en Cali"}, now),
+        (carlos, "ig:post:2", "otro", "https://instagram.com/p/O/", {"kind": "post"}, now),
+        (carlos, "ig:post:3", "ayer", "https://instagram.com/p/Y/", {"kind": "post"}, yesterday),
+        (ana, "ig:post:9", "post de ana", "https://instagram.com/p/A/", {"kind": "post"}, now),
+    ]
+    for cand, ext, text, url, raw, when in rows:
+        db_session.add(Mention(candidate_id=cand.id, source_id=ig.id, external_id=ext, text=text, url=url, raw=raw, published_at=when, fetched_at=when))
+    db_session.commit()
+    today, yday = _local_day(now), _local_day(yesterday)
+    d = timeline_details(db_session, days=7)
+    assert d["Carlos Arias"][today]["text"] == "Trincheras en Cali" and d["Carlos Arias"][today]["count"] == 3 and d["Carlos Arias"][today]["total"] == 4
+    assert d["Carlos Arias"][yday]["text"] == "ayer" and d["Ana Pérez"][today]["text"] == "post de ana"
+    day_rows = feed(db_session, candidate_id=carlos.id, days=7, day=today)
+    assert {r["text"] for r in day_rows} == {"Trincheras en Cali", "otro"}

@@ -76,10 +76,15 @@ def create_app(session_factory=None, start_jobs: bool = True) -> FastAPI:
     @app.get("/api/feed")
     def api_feed(candidate_id: int | None = None, source_type: str | None = None,
                  label: str | None = None, days: int = Query(30, ge=1, le=365),
-                 limit: int = Query(60, le=300), offset: int = 0):
+                 limit: int = Query(60, le=300), offset: int = 0, day: str | None = None):
         with session() as s:
             return queries.feed(s, candidate_id=candidate_id, source_type=source_type,
-                                label=label, days=days, limit=limit, offset=offset)
+                                label=label, days=days, limit=limit, offset=offset, day=day)
+
+    @app.get("/api/timeline/details")
+    def api_timeline_details(days: int = Query(7, ge=1, le=90)):
+        with session() as s:
+            return queries.timeline_details(s, days=days)
 
     @app.get("/api/alerts")
     def api_alerts(days: int = Query(30, ge=1, le=365)):

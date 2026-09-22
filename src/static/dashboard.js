@@ -129,47 +129,67 @@ async function loadSummary() {
   return rows;
 }
 
+let timelineMeta = { labels: [], details: {}, rows: [] };
 async function loadTimeline(rows) {
-  const d = await j(`/api/timeline?days=${Math.max(days(), 7)}`);
+  const span = Math.max(days(), 7);
+  const [d, details] = await Promise.all([j(`/api/timeline?days=${span}`), j(`/api/timeline/details?days=${span}`)]);
+  timelineMeta = { labels: d.labels, details, rows };
   const top = [CARLOS, ...rows.filter((r) => r.name !== CARLOS).sort((a, b) => b.mentions - a.mentions).slice(0, 4).map((r) => r.name)];
   const series = d.series.filter((s) => top.includes(s.name));
+  const pubOf = (name, i) => (details[name] || {})[d.labels[i]];
   chart("#chart-timeline", {
     type: "line",
     data: { labels: d.labels.map((l) => l.slice(5).replace("-", "/")), datasets: series.map((s, i) => ({
       label: s.name, data: s.data, borderColor: COLORS[i % COLORS.length], backgroundColor: COLORS[i % COLORS.length],
-      tension: .35, borderWidth: s.name === CARLOS ? 3.5 : 1.5, pointRadius: s.name === CARLOS ? 3 : 0, pointHoverRadius: 4 })) },
-    options: { responsive: true, maintainAspectRatio: false, interaction: { mode: "index", intersect: false },
-      plugins: { legend: { position: "bottom" } },
+      tension: .35, borderWidth: s.name === CARLOS ? 3.5 : 1.5, pointRadius: s.name === CARLOS ? 3 : 2, pointHoverRadius: 6 })) },
+    options: { responsive: true, maintainAspectRatio: false, interaction: { mode: "nearest", intersect: true },
+      onClick: (evt, els) => { if (els.length) showDay(series[els[0].datasetIndex].name, d.labels[els[0].index]); },
+      onHover: (evt, els) => { evt.native.target.style.cursor = els.length ? "pointer" : "default"; },
+      plugins: { legend: { position: "bottom" }, tooltip: { callbacks: {
+        afterBody: (items) => items.flatMap((it) => {
+          const p = pubOf(it.dataset.label, it.dataIndex);
+          if (!p) return [];
+          return [`${p.count} de ${p.total} por: "${p.text.slice(0, 80)}${p.text.length > 80 ? "…" : ""}" (${srcName(p)})`, "clic para ver todas las publicaciones del día"];
+        }) } } },
       scales: { y: { beginAtZero: true, grid: { color: "#eef1f5" }, ticks: { precision: 0 }, title: { display: true, text: "menciones por día" } }, x: { ticks: { maxTicksLimit: 10, maxRotation: 0 }, grid: { display: false } } } },
   });
-  // Pico de cada serie y la publicación que lo causó (para la lectura y el tooltip)
-  const peaks = {};
-  await Promise.all(series.map(async (s) => {
-    const i = s.data.reduce((best, v, k) => (v > s.data[best] ? k : best), 0);
-    if (!s.data[i]) return;
-    const p = await j(`/api/peak?candidate=${encodeURIComponent(s.name)}&day=${d.labels[i]}`);
-    if (p && p.text) peaks[s.name] = { index: i, count: s.data[i], pub: p };
-  }));
-  charts["#chart-timeline"].options.plugins.tooltip = { callbacks: { afterBody: (items) => {
-    const lines = [];
-    for (const it of items) {
-      const pk = peaks[it.dataset.label];
-      if (pk && pk.index === it.dataIndex) lines.push(`↳ ${pk.pub.mentions_that_day} por: "${pk.pub.text.slice(0, 70)}" (${srcName(pk.pub)})`);
-    }
-    return lines;
-  } } };
-  charts["#chart-timeline"].update();
   const cs = series.find((s) => s.name === CARLOS);
   if (cs) {
-    const pk = peaks[CARLOS];
     const peakIdx = cs.data.reduce((best, v, i) => (v > cs.data[best] ? i : best), 0);
     const peakDate = new Date(d.labels[peakIdx] + "T12:00:00").toLocaleDateString("es-CO", { day: "numeric", month: "long" });
     const active = cs.data.filter((v) => v > 0).length;
-    const cause = pk ? ` ${pk.pub.mentions_that_day} de ellas vinieron de ${pk.pub.kind === "news" ? "la nota" : pk.pub.kind === "video" ? "el video" : "la publicación"} <b>«${esc(pk.pub.text).slice(0, 90)}»</b> (${srcName(pk.pub)})${pk.pub.url ? ` — <a href="${pk.pub.url}" target="_blank" rel="noopener">ver ↗</a>` : ""}.` : "";
-    const others = series.filter((s) => s.name !== CARLOS && peaks[s.name]).map((s) => `${s.name}: ${peaks[s.name].count} el ${new Date(d.labels[peaks[s.name].index] + "T12:00:00").toLocaleDateString("es-CO", { day: "numeric", month: "short" })} por «${esc(peaks[s.name].pub.text).slice(0, 50)}»`);
+    const pk = pubOf(CARLOS, peakIdx);
+    const cause = pk ? ` ${pk.count} de ellas vinieron de ${pk.kind === "news" ? "la nota" : pk.kind === "video" ? "el video" : "la publicación"} <b>«${esc(pk.text).slice(0, 90)}»</b> (${srcName(pk)})${pk.url ? ` — <a href="${pk.url}" target="_blank" rel="noopener">ver ↗</a>` : ""}.` : "";
+    const others = series.filter((s) => s.name !== CARLOS).map((s) => {
+      const i = s.data.reduce((best, v, k) => (v > s.data[best] ? k : best), 0); const p = pubOf(s.name, i);
+      return p ? `${s.name}: ${s.data[i]} el ${new Date(d.labels[i] + "T12:00:00").toLocaleDateString("es-CO", { day: "numeric", month: "short" })} por «${esc(p.text).slice(0, 50)}»` : null;
+    }).filter(Boolean);
     $("#read-timeline").innerHTML = `<b>Carlos Arias</b> tuvo su pico el <b>${peakDate}</b> con ${cs.data[peakIdx]} menciones en un día, y apareció en ${active} de los ${d.labels.length} días mostrados.${cause}` +
-      (others.length ? `<br><span class="hint">Picos de los rivales — ${others.join(" · ")}.</span>` : "");
+      (others.length ? `<br><span class="hint">Picos de los rivales — ${others.join(" · ")}.</span>` : "") +
+      `<br><span class="hint">Pasa el mouse por cualquier punto para ver qué publicación pesó ese día; haz clic para ver todas.</span>`;
   }
+}
+
+async function showDay(name, day) {
+  const row = timelineMeta.rows.find((r) => r.name === name);
+  if (!row) return;
+  const box = $("#day-detail");
+  const nice = new Date(day + "T12:00:00").toLocaleDateString("es-CO", { weekday: "long", day: "numeric", month: "long" });
+  box.innerHTML = `<div class="panel-head"><h2>${esc(name)} · ${nice}</h2><button class="toggle" id="day-close">cerrar ✕</button></div><div class="feed"><div class="empty">Cargando…</div></div>`;
+  box.style.display = "block";
+  box.scrollIntoView({ behavior: "smooth", block: "start" });
+  $("#day-close").addEventListener("click", () => { box.style.display = "none"; });
+  const rows = await j(`/api/feed?candidate_id=${row.candidate_id}&days=${Math.max(days(), 7) + 1}&day=${day}&limit=100`);
+  box.querySelector(".feed").innerHTML = rows.map((r, i) => `<article class="item">
+    ${thumb(r)}
+    <div class="body">
+      <div class="meta"><span class="tag src">${srcName(r)} · ${KIND[r.kind] || ""}</span><span>${fmtDate(r.published_at)}</span>${r.url ? `<a href="${r.url}" target="_blank" rel="noopener">ver original ↗</a>` : ""}</div>
+      <div class="text">${esc(r.text)}</div>
+      ${r.author ? `<div class="author">${esc(r.author)}</div>` : ""}
+      ${r.comments.length ? `<div class="thread">${r.comments.slice(0, 8).map((c) => `<div class="comment"><div>${esc(c.text).slice(0, 200)}<div class="who">${esc(c.author || "")}</div></div><div>${sentTag(c)}</div></div>`).join("")}${r.comments.length > 8 ? `<div class="hint">… y ${r.comments.length - 8} comentarios más</div>` : ""}</div>` : ""}
+    </div>
+    <div class="side">${r.kind === "comments" ? `<span class="hint">solo comentarios</span>` : sentTag(r)}${r.comments_summary.total ? `<div class="counts">${r.comments_summary.total} comentarios · ${r.comments_summary.positive} ▲ ${r.comments_summary.neutral} ● ${r.comments_summary.negative} ▼</div>` : ""}</div>
+  </article>`).join("") || `<div class="empty">Sin publicaciones ese día.</div>`;
 }
 
 async function loadSources() {
