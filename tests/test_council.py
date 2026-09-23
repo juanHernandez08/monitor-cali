@@ -100,3 +100,24 @@ def test_councilors_require_local_context_and_exclude_armed_group(db_session, mo
     enrich_pending(db_session, limit=10)
     assert db_session.query(Mention).filter_by(external_id="g2").one().relevant is True
     assert db_session.query(Mention).filter_by(external_id="g3").one().relevant is False  # sin contexto local
+
+
+def test_recompute_relevance_does_not_apply_press_rules_to_social(db_session):
+    """Un comentario "👏" en el post del propio candidato no nombra a nadie, pero es relevante."""
+    from scripts.recompute_relevance import recompute
+    seed(db_session)
+    carlos = db_session.query(Candidate).filter_by(name="Carlos Arias").one()
+    ig = Source(type=SourceType.SOCIAL, name="IG")
+    db_session.add(ig)
+    db_session.commit()
+    now = dt.datetime.utcnow()
+    m = Mention(candidate_id=carlos.id, source_id=ig.id, external_id="ig:comment:1", text="👏👏",
+                raw={"kind": "comment", "account_candidate": "Carlos Arias", "post_title": "x"},
+                published_at=now, fetched_at=now, relevant=False)
+    db_session.add(m)
+    db_session.flush()
+    db_session.add(SentimentScore(mention_id=m.id, label=SentimentLabel.POSITIVE, score=0.5, topic="apoyo", model="f", category="otro"))
+    db_session.commit()
+    restored, dropped = recompute(db_session, only_council=True)
+    assert restored == 1 and dropped == 0
+    assert db_session.query(Mention).filter_by(external_id="ig:comment:1").one().relevant is True

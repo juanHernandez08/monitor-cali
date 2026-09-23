@@ -112,9 +112,10 @@ COUNCILORS = [
     {"name": "James Junior Agudelo Arevalo", "party": "Partido Liberal", "aliases": ["James Agudelo", "Junior Agudelo"]},
     {"name": "Flower Enrique Rojas Torres", "party": "Alianza Verde", "aliases": ["Flower Rojas", "Flower Enrique Rojas"]},
     {"name": "Rodrigo Salazar Sarmiento", "party": "Alianza Verde", "aliases": ["Rodrigo Salazar"]},
-    {"name": "Carlos Ariel Patiño", "party": "Alianza Verde", "aliases": ["Carlos Patiño", "Carlos Patino"],
-     # "Frente Carlos Patiño" es una disidencia armada del Cauca, no el concejal.
-     "exclusions": ["Frente Carlos Patiño", "Columna Móvil Carlos Patiño", "Frente Carlos Patino"]},
+    # Sin el alias corto "Carlos Patiño": así se llama una disidencia armada del Cauca y contamina todo.
+    {"name": "Carlos Ariel Patiño", "party": "Alianza Verde", "aliases": ["Carlos Ariel Patino", "concejal Patiño"],
+     "exclusions": ["Frente Carlos Patiño", "Frente Carlos Patino", "Columna Móvil Carlos Patiño",
+                    "estructura Carlos Patiño", "Iván Mordisco", "disidencias de las Farc"]},
     {"name": "Ana Leidy Erazo Ruiz", "party": "Pacto Histórico", "aliases": ["Ana Erazo", "Ana Leidy Erazo"]},
     {"name": "Luis Fernando Salazar", "party": "Pacto Histórico", "aliases": ["Luis Fernando Salazar Monsalve"]},
     {"name": "María del Carmen Londoño", "party": "Pacto Histórico", "aliases": ["Maria del Carmen Londoño", "Carmen Londoño"]},
