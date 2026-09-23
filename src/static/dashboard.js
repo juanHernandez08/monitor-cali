@@ -308,7 +308,7 @@ async function loadStatus() {
 
 async function loadAll() {
   const rows = await loadSummary();
-  await Promise.all([loadTimeline(rows), loadSources(), loadTopics(), loadAlerts(), loadFeed(), loadStatus(), loadCity()]);
+  await Promise.all([loadTimeline(rows), loadSources(), loadTopics(), loadAlerts(), loadFeed(), loadStatus(), loadCity(), loadAgenda()]);
 }
 
 document.querySelectorAll(".tab").forEach((b) => b.addEventListener("click", () => {
@@ -393,4 +393,65 @@ async function loadCity() {
       <div class="subs">${t.subtopics.map((s) => `<span class="tag">${esc(s.topic)} · ${s.count}</span>`).join("") || `<span class="hint">sin subtemas identificados</span>`}</div>
       ${t.samples.map((m) => `<div class="comment"><div>${esc(m.text).slice(0, 240)}<div class="who">${srcName(m)} · ${esc(m.author || "")} · ${fmtDate(m.published_at)}${m.url ? ` · <a href="${m.url}" target="_blank" rel="noopener">ver</a>` : ""}</div></div><div>${sentTag(m)}</div></div>`).join("")}
     </div>`).join("") || `<div class="empty">Sin temas en el período.</div>`;
+}
+
+/* ---------- agenda ---------- */
+function quote(m) {
+  return `<div class="quote">“${esc(m.text).slice(0, 220)}”<div class="who">${srcName(m)} · ${esc(m.author || "")} · ${fmtDate(m.published_at)}${(m.link || m.url) ? ` · <a href="${m.link || m.url}" target="_blank" rel="noopener">ver ↗</a>` : ""}</div></div>`;
+}
+
+async function loadAgenda() {
+  if (!$("#agenda-speak")) return;
+  const d = days();
+  const [a, perception] = await Promise.all([j(`/api/agenda?days=${d}`), j(`/api/perception?days=${d}`)]);
+
+  $("#agenda-speak").innerHTML = a.speak.map((t, i) => `<div class="agenda-card speak">
+      <div class="head"><h3><span class="rank">${i + 1}</span> ${t.category}</h3>
+        <div><span class="tag negative">${t.negative_pct}% molestia</span> <span class="tag">${t.count} menciones</span> ${t.carlos_mentions === 0 ? `<span class="tag">Carlos: sin presencia</span>` : `<span class="tag positive">Carlos: ${t.carlos_mentions} menciones</span>`}</div></div>
+      <div class="why">La ciudad habló ${t.count} veces de este tema y ${t.negative_pct}% de esas menciones son quejas o denuncias. ${t.carlos_mentions === 0 ? "<b>Carlos no ha aparecido en la conversación.</b>" : `Carlos ya tiene ${t.carlos_mentions} menciones aquí; hay espacio para reforzar.`}</div>
+      ${t.subtopics.length ? `<div class="subs">${t.subtopics.map((x) => `<span class="tag">${esc(x.topic)} · ${x.count}</span>`).join("")}</div>` : ""}
+      ${t.samples.slice(0, 2).map(quote).join("")}
+    </div>`).join("") || `<div class="empty">No hay temas con molestia alta sin presencia de Carlos en el período.</div>`;
+  const top = a.speak[0];
+  $("#read-agenda-speak").innerHTML = top
+    ? `La prioridad es <b>${top.category}</b>: ${top.count} menciones con ${top.negative_pct}% de molestia y ${top.carlos_mentions === 0 ? "ninguna" : top.carlos_mentions} mención${top.carlos_mentions === 1 ? "" : "es"} de Carlos. ` +
+      (a.speak[1] ? `Le siguen <b>${a.speak[1].category}</b>${a.speak[2] ? ` y <b>${a.speak[2].category}</b>` : ""}.` : "")
+    : "Sin temas prioritarios en el período seleccionado.";
+
+  $("#agenda-avoid").innerHTML = a.avoid.map((t) => `<div class="agenda-card avoid">
+      <div class="head"><h3>${t.category}</h3><div><span class="tag negative">${t.candidate_negative_pct}% de rechazo</span> <span class="tag">${t.candidate_comments} reacciones</span></div></div>
+      <div class="why">Cuando ${t.candidates.length === 1 ? "<b>" + esc(t.candidates[0]) + "</b> habló" : "<b>" + t.candidates.map(esc).join(", ") + "</b> hablaron"} de este tema, ${t.candidate_negative_pct}% de las reacciones ciudadanas fueron en contra. La ciudad lo menciona ${t.city_count} veces con ${t.city_negative_pct}% de molestia.</div>
+      ${t.subtopics.length ? `<div class="subs">${t.subtopics.map((x) => `<span class="tag">${esc(x.topic)} · ${x.count}</span>`).join("")}</div>` : ""}
+      ${t.samples.slice(0, 1).map(quote).join("")}
+    </div>`).join("") || `<div class="empty">Ningún tema muestra rechazo mayoritario hacia los candidatos que lo tocaron.</div>`;
+  $("#read-agenda-avoid").innerHTML = a.avoid.length
+    ? `<b>${a.avoid[0].category}</b> es el terreno más hostil: ${a.avoid[0].candidate_negative_pct}% de las reacciones a quienes lo tocaron fueron negativas. Entrar ahí exige ángulo propio y propuesta concreta, no opinión general.`
+    : "Ningún tema resultó hostil para los candidatos en el período.";
+
+  const withComments = perception.filter((r) => r.comments > 0);
+  chart("#chart-perception", {
+    type: "bar",
+    data: { labels: withComments.map((r) => `${r.name} (${r.comments})`), datasets: [
+      { label: "A favor", data: withComments.map((r) => r.positive_pct), backgroundColor: "#22a06b" },
+      { label: "Neutral", data: withComments.map((r) => pct(r.neutral, r.comments)), backgroundColor: "#c3cad6" },
+      { label: "En contra", data: withComments.map((r) => r.negative_pct), backgroundColor: "#d9483b" }] },
+    options: { indexAxis: "y", responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: "bottom" }, tooltip: { callbacks: { label: (c) => `${c.dataset.label}: ${c.raw}%` } },
+        datalabels: { display: (c) => c.dataset.data[c.dataIndex] >= 8, color: (c) => c.datasetIndex === 1 ? "#334155" : "#fff", font: { weight: 600, size: 12 }, formatter: (v) => v + "%" } },
+      scales: { x: { stacked: true, max: 100, ticks: { callback: (v) => v + "%" }, grid: { color: "#eef1f5" }, title: { display: true, text: "de cada 100 comentarios ciudadanos" } }, y: { stacked: true, grid: { display: false } } } },
+  });
+  const carlos = withComments.find((r) => r.name === CARLOS);
+  const worst = [...withComments].sort((a, b) => b.negative_pct - a.negative_pct)[0];
+  $("#read-perception").innerHTML = carlos
+    ? `A <b>Carlos Arias</b> la gente le responde ${carlos.positive_pct}% a favor y ${carlos.negative_pct}% en contra sobre ${carlos.comments} comentarios. ` +
+      (worst && worst.name !== CARLOS ? `El más golpeado es <b>${worst.name}</b>, con ${worst.negative_pct}% de reacciones en contra (${worst.comments} comentarios).` : "")
+    : "Aún no hay comentarios ciudadanos sobre las publicaciones de Carlos en el período.";
+
+  $("#perception-detail").innerHTML = withComments.map((r) => `<div class="pcard">
+      ${avatar(r, "sm")}
+      <div>
+        <div class="head" style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><b>${esc(r.name)}</b><span class="hint">${r.comments} comentarios · ${r.positive_pct}% a favor · ${r.negative_pct}% en contra</span></div>
+        ${r.topics.length ? `<div class="subs">${r.topics.map((t) => `<span class="tag">${esc(t.topic)} · ${t.count}</span>`).join("")}</div>` : ""}
+        ${r.samples.slice(0, 2).map(quote).join("")}
+      </div></div>`).join("") || `<div class="empty">Sin comentarios ciudadanos en el período.</div>`;
 }

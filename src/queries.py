@@ -450,3 +450,84 @@ def timeline_details(session, days: int = 7) -> dict:
         out[name][day] = {"text": text, "url": url, "kind": kind, "platform": plat, "source_type": stype,
                           "count": len(members), "total": total}
     return out
+
+
+# ---------- Agenda: de qué hablar y qué evitar ----------
+
+PROBLEM_MIN_NEGATIVE_PCT = 35   # por debajo de esto el tema no es un problema que resolver
+RISK_MIN_NEGATIVE_PCT = 55      # a quien habló del tema le respondieron mal
+RISK_MIN_COMMENTS = 4           # mínimo de reacciones ciudadanas para afirmar algo
+
+
+def _candidate_comments(session, days: int, only: str | None = None) -> list[Mention]:
+    """Comentarios y respuestas de la gente a publicaciones de candidatos (no de la ciudad)."""
+    q = (session.query(Mention).join(SentimentScore).join(Candidate)
+         .filter(WHEN >= _since(days), Mention.relevant.is_(True), Candidate.kind != "city"))
+    if only:
+        q = q.filter(Candidate.name == only)
+    return [m for m in q.all() if (m.raw or {}).get("kind") == "comment"]
+
+
+def citizen_perception(session, days: int = 30, samples_per: int = 3) -> list[dict]:
+    """Cómo reacciona la gente a las publicaciones de cada candidato (solo comentarios y respuestas)."""
+    by_cand: dict[str, list[Mention]] = defaultdict(list)
+    for m in _candidate_comments(session, days):
+        by_cand[m.candidate.name].append(m)
+    rows = []
+    for name, ms in by_cand.items():
+        labels = Counter(m.sentiment.label for m in ms)
+        pos, neg, neu = (labels.get(SentimentLabel.POSITIVE, 0), labels.get(SentimentLabel.NEGATIVE, 0),
+                         labels.get(SentimentLabel.NEUTRAL, 0))
+        topics = Counter((m.sentiment.topic or "").lower() for m in ms
+                         if m.sentiment.topic and (m.sentiment.topic or "").lower() not in META_TOPICS)
+        rows.append({
+            "name": name, "comments": len(ms), "positive": pos, "negative": neg, "neutral": neu,
+            "positive_pct": pct(pos, len(ms)), "negative_pct": pct(neg, len(ms)),
+            "topics": [{"topic": t, "count": n} for t, n in topics.most_common(5)],
+            "samples": [_mention_dict(m) for m in sorted(ms, key=lambda m: -abs(m.sentiment.score))[:samples_per]],
+        })
+    rows.sort(key=lambda r: (r["name"] != CARLOS, -r["comments"]))
+    return rows
+
+
+def agenda(session, days: int = 30) -> dict:
+    """Temas de los que conviene hablar (problema ciudadano sin respuesta) y temas de riesgo."""
+    topics = city_topics(session, days=days, samples_per=3, subtopics_per=5)
+    carlos = session.query(Candidate).filter_by(name=CARLOS).first()
+    carlos_by_cat: Counter = Counter()
+    if carlos:
+        for m in (session.query(Mention).join(SentimentScore)
+                  .filter(Mention.candidate_id == carlos.id, Mention.relevant.is_(True), WHEN >= _since(days))):
+            carlos_by_cat[m.sentiment.category or "otro"] += 1
+    # Reacción ciudadana a los candidatos, por tema: dónde le fue mal a quien habló
+    reactions: dict[str, Counter] = defaultdict(Counter)
+    by_cat_cands: dict[str, set] = defaultdict(set)
+    for m in _candidate_comments(session, days):
+        cat = m.sentiment.category or "otro"
+        reactions[cat][m.sentiment.label] += 1
+        by_cat_cands[cat].add(m.candidate.name)
+
+    volumes = sorted(t["count"] for t in topics) or [0]
+    median = volumes[len(volumes) // 2]
+    speak, avoid = [], []
+    for t in topics:
+        cat = t["category"]
+        if cat == "otro":
+            continue
+        neg_pct = pct(t["negative"], t["count"])
+        carlos_n = carlos_by_cat.get(cat, 0)
+        if neg_pct >= PROBLEM_MIN_NEGATIVE_PCT and t["count"] >= median:
+            speak.append({**t, "negative_pct": neg_pct, "carlos_mentions": carlos_n,
+                          "priority": round(t["count"] * neg_pct / 100 * (1 if carlos_n == 0 else 0.5), 1)})
+        r = reactions.get(cat)
+        if r:
+            total = sum(r.values())
+            r_neg = pct(r[SentimentLabel.NEGATIVE], total)
+            if total >= RISK_MIN_COMMENTS and r_neg >= RISK_MIN_NEGATIVE_PCT:
+                avoid.append({"category": cat, "city_count": t["count"], "city_negative_pct": neg_pct,
+                              "candidate_comments": total, "candidate_negative_pct": r_neg,
+                              "candidates": sorted(by_cat_cands[cat]), "subtopics": t["subtopics"][:3],
+                              "samples": t["samples"][:2]})
+    speak.sort(key=lambda t: -t["priority"])
+    avoid.sort(key=lambda t: -t["candidate_negative_pct"])
+    return {"speak": speak, "avoid": avoid}

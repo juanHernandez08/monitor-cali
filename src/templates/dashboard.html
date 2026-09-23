@@ -34,6 +34,7 @@
   <button class="tab active" data-tab="resumen">Resumen</button>
   <button class="tab" data-tab="analisis">Análisis en gráficas</button>
   <button class="tab" data-tab="ciudad">Ciudad: temas y percepción</button>
+  <button class="tab" data-tab="agenda">Agenda: de qué hablar</button>
 </nav>
 
 <main>
@@ -143,6 +144,32 @@
     <section class="panel big">
       <div class="panel-head"><div><h2>Detalle por tema</h2><div class="hint">Subtemas más frecuentes y comentarios ciudadanos representativos, con link al original.</div></div></div>
       <div id="city-detail" class="feed"></div>
+    </section>
+  </div>
+
+  <div id="tab-agenda" class="tabpane">
+    <div class="intro panel">
+      <h2>Qué conviene decir, y qué no</h2>
+      <p>Esta pestaña cruza tres cosas: <b>de qué se queja la ciudad</b>, <b>de qué habla Carlos</b> y <b>cómo le responde la gente a cada candidato</b>. Un tema entra en «hable de esto» cuando tiene volumen alto, molestia ciudadana y Carlos casi no ha aparecido en él. Entra en «con cuidado» cuando a los candidatos que ya hablaron del tema la gente les respondió mayoritariamente en contra. Todo con la cita textual del ciudadano y su enlace, para que pueda verificarse.</p>
+    </div>
+
+    <section class="panel big">
+      <div class="panel-head"><div><h2>Hable de esto</h2><div class="hint">Problemas de la ciudad con molestia alta donde Carlos aún no tiene presencia. Ordenados por prioridad (volumen × molestia, con menos peso si ya está hablando del tema).</div></div></div>
+      <p class="reading" id="read-agenda-speak"></p>
+      <div id="agenda-speak" class="feed"></div>
+    </section>
+
+    <section class="panel big">
+      <div class="panel-head"><div><h2>Con cuidado</h2><div class="hint">Temas donde la gente respondió mayoritariamente en contra a los candidatos que los tocaron. No significa callar: significa medir el tono y el ángulo antes de entrar.</div></div></div>
+      <p class="reading" id="read-agenda-avoid"></p>
+      <div id="agenda-avoid" class="feed"></div>
+    </section>
+
+    <section class="panel big">
+      <div class="panel-head"><div><h2>Cómo ve la gente a cada candidato</h2><div class="hint">Solo comentarios y respuestas de ciudadanos a sus publicaciones (no incluye notas de prensa). Es la reacción directa del público.</div></div></div>
+      <p class="reading" id="read-perception"></p>
+      <div class="chart-box xl"><canvas id="chart-perception"></canvas></div>
+      <div id="perception-detail" class="feed" style="margin-top:14px"></div>
     </section>
   </div>
 

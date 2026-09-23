@@ -168,3 +168,15 @@ footer { color: var(--muted); font-size: 12px; line-height: 1.7; }
 
 .day-detail { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 12px; }
 .day-detail .panel-head { margin-bottom: 8px; }
+
+/* ---------- agenda ---------- */
+.agenda-card { border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; background: #fff; border-left: 4px solid var(--line); }
+.agenda-card.speak { border-left-color: var(--brand); }
+.agenda-card.avoid { border-left-color: var(--neg); }
+.agenda-card .head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.agenda-card h3 { margin: 0; font-size: 16px; text-transform: capitalize; }
+.agenda-card .why { color: var(--muted); font-size: 13px; margin: 6px 0 8px; }
+.agenda-card .quote { background: var(--soft); border-radius: 8px; padding: 8px 10px; font-size: 13px; margin-top: 6px; }
+.agenda-card .quote .who { color: var(--muted); font-size: 12px; margin-top: 3px; }
+.rank { background: var(--brand-soft); color: var(--brand); border-radius: 8px; padding: 2px 8px; font-weight: 700; font-size: 12px; }
+.pcard { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: start; border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }

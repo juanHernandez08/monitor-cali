@@ -116,6 +116,16 @@ def create_app(session_factory=None, start_jobs: bool = True) -> FastAPI:
         with session() as s:
             return queries.city_opportunities(s, days=days)
 
+    @app.get("/api/agenda")
+    def api_agenda(days: int = Query(30, ge=1, le=90)):
+        with session() as s:
+            return queries.agenda(s, days=days)
+
+    @app.get("/api/perception")
+    def api_perception(days: int = Query(30, ge=1, le=90)):
+        with session() as s:
+            return queries.citizen_perception(s, days=days)
+
     @app.get("/api/city/kpis")
     def api_city_kpis(days: int = Query(7, ge=1, le=90)):
         with session() as s:
