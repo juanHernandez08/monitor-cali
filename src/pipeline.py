@@ -32,7 +32,10 @@ def ingest(session, source, connector: Connector, max_age_days: int = MAX_AGE_DA
     session.commit()
 
     all_active = session.query(Candidate).filter_by(active=True).all()
-    candidates = [c for c in all_active if c.kind != "city"]
+    # `terms_for: "candidates"` limita la búsqueda a los candidatos (fuentes con cuota, p. ej. YouTube);
+    # por defecto se buscan también los concejales (fuentes gratuitas como Google News).
+    scope = (source.config or {}).get("terms_for", "all")
+    candidates = [c for c in all_active if c.kind != "city" and (scope != "candidates" or c.kind == "candidate")]
     city = next((c for c in all_active if c.kind == "city"), None) if (source.config or {}).get("city") else None
     cutoff = dt.datetime.utcnow() - dt.timedelta(days=max_age_days)
     new_mentions = 0

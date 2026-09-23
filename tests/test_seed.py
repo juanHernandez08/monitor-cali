@@ -1,11 +1,11 @@
-from src.config import CANDIDATES, RSS_SOURCES
+from src.config import CANDIDATES, RSS_SOURCES, COUNCILORS
 from src.models import Candidate, Source, SourceType
 from scripts.seed_sources import seed, EXTRA_SOURCES
 
 
 def test_seed_creates_candidates_and_all_sources(db_session):
     seed(db_session)
-    assert db_session.query(Candidate).count() == len(CANDIDATES) + 1  # + Cali (ciudad)
+    assert db_session.query(Candidate).count() == len(CANDIDATES) + len(COUNCILORS) + 1  # + concejales + Cali (ciudad)
     assert db_session.query(Source).count() == len(RSS_SOURCES) + len(EXTRA_SOURCES) + 2  # + fuentes de ciudad
     assert db_session.query(Source).filter_by(type=SourceType.GOOGLE_NEWS).count() == 2  # candidatos + ciudad
 
@@ -13,7 +13,7 @@ def test_seed_creates_candidates_and_all_sources(db_session):
 def test_seed_is_idempotent(db_session):
     seed(db_session)
     seed(db_session)
-    assert db_session.query(Candidate).count() == len(CANDIDATES) + 1  # + Cali (ciudad)
+    assert db_session.query(Candidate).count() == len(CANDIDATES) + len(COUNCILORS) + 1  # + concejales + Cali (ciudad)
     assert db_session.query(Source).count() == len(RSS_SOURCES) + len(EXTRA_SOURCES) + 2  # + fuentes de ciudad
 
 

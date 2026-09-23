@@ -51,7 +51,7 @@ def summary(session, days: int = 7) -> list[dict]:
     prev_since = since - dt.timedelta(days=days)
     avatars = _avatars(session)
     rows = []
-    for c in session.query(Candidate).filter_by(active=True).filter(Candidate.kind != "city").all():
+    for c in session.query(Candidate).filter_by(active=True).filter(Candidate.kind == "candidate").all():
         q = session.query(Mention).filter(Mention.candidate_id == c.id, Mention.relevant.is_(True))
         current = q.filter(WHEN >= since).all()
         previous = q.filter(WHEN >= prev_since, WHEN < since).count()
@@ -73,9 +73,9 @@ def timeline(session, days: int = 7) -> dict:
     today = dt.datetime.utcnow()
     labels = [_local_day(today - dt.timedelta(days=i)) for i in range(days - 1, -1, -1)]
     per: dict[str, Counter] = defaultdict(Counter)
-    for m in session.query(Mention).join(Candidate).filter(WHEN >= since, Mention.relevant.is_(True), Candidate.kind != "city").all():
+    for m in session.query(Mention).join(Candidate).filter(WHEN >= since, Mention.relevant.is_(True), Candidate.kind == "candidate").all():
         per[m.candidate.name][_local_day(_when(m))] += 1
-    names = [c.name for c in session.query(Candidate).filter_by(active=True).filter(Candidate.kind != "city").all()]
+    names = [c.name for c in session.query(Candidate).filter_by(active=True).filter(Candidate.kind == "candidate").all()]
     names.sort(key=lambda n: n != CARLOS)
     return {
         "labels": labels,
@@ -101,7 +101,7 @@ def mentions(session, candidate_id: int | None = None, source_type: str | None =
              label: str | None = None, days: int = 30, limit: int = 100, offset: int = 0) -> list[dict]:
     q = (session.query(Mention).outerjoin(SentimentScore).join(Source).join(Candidate)
          .filter(WHEN >= _since(days), Mention.relevant.is_(True)))
-    q = q.filter(Mention.candidate_id == candidate_id) if candidate_id else q.filter(Candidate.kind != "city")
+    q = q.filter(Mention.candidate_id == candidate_id) if candidate_id else q.filter(Candidate.kind == "candidate")
     if source_type:
         q = q.filter(Source.type == SourceType(source_type))
     if label:
@@ -128,7 +128,7 @@ def topics(session, days: int = 7, limit: int = 10, kind: str | None = None) -> 
     rows = (
         session.query(topic, func.count(SentimentScore.id))
         .join(Mention).join(Candidate)
-        .filter(WHEN >= _since(days), SentimentScore.topic != "", Mention.relevant.is_(True), Candidate.kind != "city")
+        .filter(WHEN >= _since(days), SentimentScore.topic != "", Mention.relevant.is_(True), Candidate.kind == "candidate")
         .filter(topic.notin_(META_TOPICS))
     )
     if kind == "comments":
@@ -224,7 +224,7 @@ def feed(session, candidate_id: int | None = None, source_type: str | None = Non
     """
     q = (session.query(Mention).outerjoin(SentimentScore).join(Source).join(Candidate)
          .filter(WHEN >= _since(days), Mention.relevant.is_(True)))
-    q = q.filter(Mention.candidate_id == candidate_id) if candidate_id else q.filter(Candidate.kind != "city")
+    q = q.filter(Mention.candidate_id == candidate_id) if candidate_id else q.filter(Candidate.kind == "candidate")
     if source_type:
         q = q.filter(Source.type == SourceType(source_type))
     if day:
@@ -285,7 +285,7 @@ def feed(session, candidate_id: int | None = None, source_type: str | None = Non
 
 def sources_by_candidate(session, days: int = 30) -> dict:
     """Menciones relevantes por candidato y tipo de fuente (para la gráfica de canales)."""
-    names = [c.name for c in session.query(Candidate).filter_by(active=True).filter(Candidate.kind != "city").all()]
+    names = [c.name for c in session.query(Candidate).filter_by(active=True).filter(Candidate.kind == "candidate").all()]
     names.sort(key=lambda n: n != CARLOS)
     idx = {n: i for i, n in enumerate(names)}
     series: dict[str, list[int]] = {}
@@ -293,7 +293,7 @@ def sources_by_candidate(session, days: int = 30) -> dict:
     rows = (
         session.query(Candidate.name, Source.type, platform, func.count(Mention.id))
         .select_from(Mention).join(Candidate).join(Source)
-        .filter(WHEN >= _since(days), Mention.relevant.is_(True), Candidate.kind != "city")
+        .filter(WHEN >= _since(days), Mention.relevant.is_(True), Candidate.kind == "candidate")
         .group_by(Candidate.name, Source.type, platform).all()
     )
     for name, stype, plat, n in rows:
@@ -430,7 +430,7 @@ def timeline_details(session, days: int = 7) -> dict:
     """Para cada candidato y día: la publicación que más menciones reunió (para el tooltip de la gráfica)."""
     since = _since(days)
     ms = (session.query(Mention).join(Candidate)
-          .filter(WHEN >= since, Mention.relevant.is_(True), Candidate.kind != "city").all())
+          .filter(WHEN >= since, Mention.relevant.is_(True), Candidate.kind == "candidate").all())
     groups: dict[tuple[str, str], dict[str, list[Mention]]] = defaultdict(lambda: defaultdict(list))
     for m in ms:
         groups[(m.candidate.name, _local_day(_when(m)))][_parent_key(m) or f"solo:{m.id}"].append(m)
@@ -462,7 +462,7 @@ RISK_MIN_COMMENTS = 4           # mínimo de reacciones ciudadanas para afirmar 
 def _candidate_comments(session, days: int, only: str | None = None) -> list[Mention]:
     """Comentarios y respuestas de la gente a publicaciones de candidatos (no de la ciudad)."""
     q = (session.query(Mention).join(SentimentScore).join(Candidate)
-         .filter(WHEN >= _since(days), Mention.relevant.is_(True), Candidate.kind != "city"))
+         .filter(WHEN >= _since(days), Mention.relevant.is_(True), Candidate.kind == "candidate"))
     if only:
         q = q.filter(Candidate.name == only)
     return [m for m in q.all() if (m.raw or {}).get("kind") == "comment"]
@@ -531,3 +531,46 @@ def agenda(session, days: int = 30) -> dict:
     speak.sort(key=lambda t: -t["priority"])
     avoid.sort(key=lambda t: -t["candidate_negative_pct"])
     return {"speak": speak, "avoid": avoid}
+
+
+# ---------- Concejo de Cali ----------
+
+def council_overview(session, days: int = 30) -> dict:
+    """Concejales (incluidos los que además son candidatos): menciones y sentimiento, por persona y por partido."""
+    members = (session.query(Candidate).filter_by(active=True, council=True)
+               .order_by(Candidate.name).all())
+    since = _since(days)
+    rows = []
+    for c in members:
+        ms = [m for m in c.mentions if m.relevant and _when(m) >= since]
+        labels = Counter(m.sentiment.label for m in ms if m.sentiment)
+        comments = [m for m in ms if (m.raw or {}).get("kind") == "comment" and m.sentiment]
+        com_labels = Counter(m.sentiment.label for m in comments)
+        topics = Counter((m.sentiment.topic or "").lower() for m in ms
+                         if m.sentiment and m.sentiment.topic and (m.sentiment.topic or "").lower() not in META_TOPICS)
+        categories = Counter(m.sentiment.category for m in ms if m.sentiment and m.sentiment.category)
+        rows.append({
+            "candidate_id": c.id, "name": c.name, "party": c.party, "is_candidate": c.kind == "candidate",
+            "mentions": len(ms),
+            "positive": labels.get(SentimentLabel.POSITIVE, 0), "negative": labels.get(SentimentLabel.NEGATIVE, 0),
+            "neutral": labels.get(SentimentLabel.NEUTRAL, 0),
+            "comments": len(comments),
+            "comments_positive_pct": pct(com_labels.get(SentimentLabel.POSITIVE, 0), len(comments)),
+            "comments_negative_pct": pct(com_labels.get(SentimentLabel.NEGATIVE, 0), len(comments)),
+            "topics": [{"topic": t, "count": n} for t, n in topics.most_common(4)],
+            "categories": [{"category": t, "count": n} for t, n in categories.most_common(3)],
+            "samples": [_mention_dict(m) for m in sorted((m for m in ms if m.sentiment),
+                                                         key=lambda m: -abs(m.sentiment.score))[:2]],
+        })
+    by_party: dict[str, dict] = {}
+    for r in rows:
+        p = by_party.setdefault(r["party"] or "Sin partido",
+                                {"party": r["party"] or "Sin partido", "members": 0, "mentions": 0,
+                                 "positive": 0, "negative": 0, "neutral": 0, "names": []})
+        p["members"] += 1
+        p["names"].append(r["name"])
+        for k in ("mentions", "positive", "negative", "neutral"):
+            p[k] += r[k]
+    parties = sorted(by_party.values(), key=lambda p: (-p["mentions"], -p["members"]))
+    rows.sort(key=lambda r: (r["name"] != CARLOS, -r["mentions"]))
+    return {"members": rows, "parties": parties}

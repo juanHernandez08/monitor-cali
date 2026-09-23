@@ -36,7 +36,8 @@ class Candidate(Base):
     active = Column(Boolean, default=True, nullable=False)
     aliases = Column(JSON, default=list)
     exclusions = Column(JSON, default=list)  # frases que identifican homónimos ("Arias Orjuela")
-    kind = Column(String, default="candidate", nullable=False)  # "candidate" | "city"
+    kind = Column(String, default="candidate", nullable=False)  # "candidate" | "councilor" | "city"
+    council = Column(Boolean, default=False, nullable=False)  # pertenece al Concejo de Cali
 
     mentions = relationship("Mention", back_populates="candidate")
 

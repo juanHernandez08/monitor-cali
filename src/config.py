@@ -100,6 +100,33 @@ BRIGHTDATA_MONTHLY_CREDITS = int(os.environ.get("BRIGHTDATA_MONTHLY_CREDITS", "4
 APIFY_TOKEN = os.environ.get("APIFY_TOKEN")
 APIFY_MONTHLY_ITEMS = int(os.environ.get("APIFY_MONTHLY_ITEMS", "10000"))
 
+# Concejo de Cali 2024-2027 (fuente: concejodecali.gov.co, publicación 60414).
+# Carlos Arias y Roberto Ortiz también son concejales, pero van en CANDIDATES (son candidatos);
+# el seed los marca con council=True. Alias: variantes sin tilde y forma corta con apellido.
+COUNCILORS = [
+    {"name": "Audry María Toro Echavarría", "party": "Partido de la U", "aliases": ["Audry Toro", "Audry Maria Toro"]},
+    {"name": "Tania Fernández Sánchez", "party": "Partido de la U", "aliases": ["Tania Fernandez Sanchez", "Tania Fernández"]},
+    {"name": "Henry Peláez Cifuentes", "party": "Partido de la U", "aliases": ["Henry Pelaez", "Henry Peláez"]},
+    {"name": "Carlos Hernando Pinilla Malo", "party": "Partido Liberal", "aliases": ["Carlos Pinilla", "Carlos Hernando Pinilla"]},
+    {"name": "Fabio Alonso Arroyave Botero", "party": "Partido Liberal", "aliases": ["Fabio Arroyave", "Fabio Alonso Arroyave"]},
+    {"name": "James Junior Agudelo Arevalo", "party": "Partido Liberal", "aliases": ["James Agudelo", "Junior Agudelo"]},
+    {"name": "Flower Enrique Rojas Torres", "party": "Alianza Verde", "aliases": ["Flower Rojas", "Flower Enrique Rojas"]},
+    {"name": "Rodrigo Salazar Sarmiento", "party": "Alianza Verde", "aliases": ["Rodrigo Salazar"]},
+    {"name": "Carlos Ariel Patiño", "party": "Alianza Verde", "aliases": ["Carlos Patiño", "Carlos Patino"]},
+    {"name": "Ana Leidy Erazo Ruiz", "party": "Pacto Histórico", "aliases": ["Ana Erazo", "Ana Leidy Erazo"]},
+    {"name": "Luis Fernando Salazar", "party": "Pacto Histórico", "aliases": ["Luis Fernando Salazar Monsalve"]},
+    {"name": "María del Carmen Londoño", "party": "Pacto Histórico", "aliases": ["Maria del Carmen Londoño", "Carmen Londoño"]},
+    {"name": "Rafael Andrés Escobar González", "party": "Centro Democrático", "aliases": ["Rafael Escobar", "Rafael Andrés Escobar"]},
+    {"name": "Juan Felipe Murgueitio", "party": "Centro Democrático", "aliases": ["Felipe Murgueitio"]},
+    {"name": "Edison Lucumi Lucumi", "party": "Cambio Radical", "aliases": ["Edison Lucumi"]},
+    {"name": "Alexandra Hernández Cedeño", "party": "Cambio Radical", "aliases": ["Alexandra Hernandez Cedeño", "Alexandra Hernández"]},
+    {"name": "Marlon Andrés Cubillos Borrero", "party": "Partido Conservador", "aliases": ["Marlon Cubillos", "Marlon Andrés Cubillos"]},
+    {"name": "Daniela Plaza Saldarriaga", "party": "Colombia Renaciente", "aliases": ["Daniela Plaza"]},
+    {"name": "Edison Alberto Giraldo Hoyos", "party": "Cali nos une", "aliases": ["Edison Giraldo", "Edison Alberto Giraldo"]},
+]
+# Concejales que además son candidatos (viven en CANDIDATES; aquí solo su partido en el Concejo).
+COUNCIL_ALSO_CANDIDATES = {"Carlos Arias": "Partido de la U", "Roberto Ortiz": "Estatuto de Oposición"}
+
 # Conversación de la ciudad (pestaña Ciudad): lo que no nombra a un candidato en estas fuentes
 # se atribuye al candidato especial "Cali (ciudad)".
 CITY_SOURCES = [
