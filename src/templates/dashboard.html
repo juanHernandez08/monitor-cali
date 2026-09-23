@@ -35,6 +35,7 @@
   <button class="tab" data-tab="analisis">Análisis en gráficas</button>
   <button class="tab" data-tab="ciudad">Ciudad: temas y percepción</button>
   <button class="tab" data-tab="agenda">Agenda: de qué hablar</button>
+  <button class="tab" data-tab="concejo">Concejo de Cali</button>
 </nav>
 
 <main>
@@ -173,8 +174,30 @@
     </section>
   </div>
 
+  <div id="tab-concejo" class="tabpane">
+    <div class="intro panel">
+      <h2>Los 21 concejales de Cali (2024-2027)</h2>
+      <p>Qué se dice de cada concejal y cómo le responde la gente, agrupado también por partido. Carlos Arias y Roberto Ortiz aparecen aquí y en las vistas de candidatos, porque son ambas cosas. La cobertura de los concejales viene de prensa (Google News y medios locales); sus redes se agregan cuando se configuren sus cuentas.</p>
+    </div>
+    <section class="kpis" id="council-kpis"></section>
+    <section class="panel big">
+      <div class="panel-head"><div><h2>¿De qué concejales se habla?</h2><div class="hint">Menciones en el período. Carlos Arias en azul.</div></div></div>
+      <p class="reading" id="read-council"></p>
+      <div class="chart-box xl"><canvas id="chart-council"></canvas></div>
+    </section>
+    <section class="panel big">
+      <div class="panel-head"><div><h2>Por partido</h2><div class="hint">Suma de menciones de los concejales de cada bancada y cómo se reparte su sentimiento.</div></div></div>
+      <div class="chart-box xl"><canvas id="chart-council-parties"></canvas></div>
+    </section>
+    <section class="panel big">
+      <div class="panel-head"><div><h2>Detalle por concejal</h2><div class="hint">Temas en los que aparece y menciones más marcadas, con enlace.</div></div></div>
+      <div id="council-detail" class="feed"></div>
+    </section>
+  </div>
+
   <footer id="status"></footer>
 </main>
 <script src="/static/dashboard.js?v={{ v }}"></script>
+<script src="/static/council.js?v={{ v }}"></script>
 </body>
 </html>

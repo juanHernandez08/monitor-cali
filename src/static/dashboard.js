@@ -308,7 +308,7 @@ async function loadStatus() {
 
 async function loadAll() {
   const rows = await loadSummary();
-  await Promise.all([loadTimeline(rows), loadSources(), loadTopics(), loadAlerts(), loadFeed(), loadStatus(), loadCity(), loadAgenda()]);
+  await Promise.all([loadTimeline(rows), loadSources(), loadTopics(), loadAlerts(), loadFeed(), loadStatus(), loadCity(), loadAgenda(), (typeof loadCouncil === "function" ? loadCouncil() : null)]);
 }
 
 document.querySelectorAll(".tab").forEach((b) => b.addEventListener("click", () => {

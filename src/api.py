@@ -116,6 +116,11 @@ def create_app(session_factory=None, start_jobs: bool = True) -> FastAPI:
         with session() as s:
             return queries.city_opportunities(s, days=days)
 
+    @app.get("/api/council")
+    def api_council(days: int = Query(30, ge=1, le=90)):
+        with session() as s:
+            return queries.council_overview(s, days=days)
+
     @app.get("/api/agenda")
     def api_agenda(days: int = Query(30, ge=1, le=90)):
         with session() as s:

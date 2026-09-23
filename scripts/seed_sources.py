@@ -7,7 +7,8 @@ EXTRA_SOURCES = [
     {"type": SourceType.GOOGLE_NEWS, "name": "Google News", "config": {}},
     {"type": SourceType.REDDIT, "name": "Reddit", "config": {"via": "rss"}},
     {"type": SourceType.GOOGLE_CSE, "name": "Instagram / Facebook / X (Google)", "config": {}},
-    {"type": SourceType.YOUTUBE, "name": "YouTube", "config": {}},
+    # YouTube cuesta 100 unidades por término (cuota 10.000/día): solo candidatos.
+    {"type": SourceType.YOUTUBE, "name": "YouTube", "config": {"terms_for": "candidates"}},
     {"type": SourceType.SOCIAL, "name": "Instagram / Facebook (cuentas)", "config": {}},
 ]
 
