@@ -1,4 +1,5 @@
-from src.config import CANDIDATES, RSS_SOURCES, CITY_SOURCES, COUNCILORS, COUNCIL_ALSO_CANDIDATES
+from src.config import (CANDIDATES, RSS_SOURCES, CITY_SOURCES, COUNCILORS, COUNCIL_ALSO_CANDIDATES,
+                        COUNCIL_CONTEXT)
 from src.db import init_db, get_session
 from src.models import Candidate, Source, SourceType
 from src.pipeline import CITY_NAME
@@ -29,13 +30,16 @@ def seed(session):
         row = session.query(Candidate).filter_by(name=c["name"]).first()
         if row is None:
             session.add(Candidate(name=c["name"], party=c["party"], aliases=c.get("aliases", []),
-                                  exclusions=[], kind="councilor", council=True))
+                                  exclusions=c.get("exclusions", []), kind="councilor", council=True,
+                                  context_terms=list(COUNCIL_CONTEXT)))
         else:
             row.aliases, row.party, row.kind, row.council = c.get("aliases", []), c["party"], "councilor", True
-    for name in COUNCIL_ALSO_CANDIDATES:  # candidatos que además son concejales
+            row.exclusions, row.context_terms = c.get("exclusions", []), list(COUNCIL_CONTEXT)
+    for name, party in COUNCIL_ALSO_CANDIDATES.items():  # candidatos que además son concejales
         row = session.query(Candidate).filter_by(name=name).first()
         if row is not None:
             row.council = True
+            row.party = row.party or party
     if not session.query(Candidate).filter_by(name=CITY_NAME).first():
         session.add(Candidate(name=CITY_NAME, kind="city", aliases=[], exclusions=[]))
     for s in RSS_SOURCES:

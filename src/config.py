@@ -112,7 +112,9 @@ COUNCILORS = [
     {"name": "James Junior Agudelo Arevalo", "party": "Partido Liberal", "aliases": ["James Agudelo", "Junior Agudelo"]},
     {"name": "Flower Enrique Rojas Torres", "party": "Alianza Verde", "aliases": ["Flower Rojas", "Flower Enrique Rojas"]},
     {"name": "Rodrigo Salazar Sarmiento", "party": "Alianza Verde", "aliases": ["Rodrigo Salazar"]},
-    {"name": "Carlos Ariel Patiño", "party": "Alianza Verde", "aliases": ["Carlos Patiño", "Carlos Patino"]},
+    {"name": "Carlos Ariel Patiño", "party": "Alianza Verde", "aliases": ["Carlos Patiño", "Carlos Patino"],
+     # "Frente Carlos Patiño" es una disidencia armada del Cauca, no el concejal.
+     "exclusions": ["Frente Carlos Patiño", "Columna Móvil Carlos Patiño", "Frente Carlos Patino"]},
     {"name": "Ana Leidy Erazo Ruiz", "party": "Pacto Histórico", "aliases": ["Ana Erazo", "Ana Leidy Erazo"]},
     {"name": "Luis Fernando Salazar", "party": "Pacto Histórico", "aliases": ["Luis Fernando Salazar Monsalve"]},
     {"name": "María del Carmen Londoño", "party": "Pacto Histórico", "aliases": ["Maria del Carmen Londoño", "Carmen Londoño"]},
@@ -126,6 +128,8 @@ COUNCILORS = [
 ]
 # Concejales que además son candidatos (viven en CANDIDATES; aquí solo su partido en el Concejo).
 COUNCIL_ALSO_CANDIDATES = {"Carlos Arias": "Partido de la U", "Roberto Ortiz": "Estatuto de Oposición"}
+# Los concejales tienen nombres comunes: solo cuentan menciones con contexto local.
+COUNCIL_CONTEXT = ["Cali", "Concejo"]
 
 # Conversación de la ciudad (pestaña Ciudad): lo que no nombra a un candidato en estas fuentes
 # se atribuye al candidato especial "Cali (ciudad)".

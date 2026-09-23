@@ -41,3 +41,16 @@ def mentions_candidate(text: str, candidate: Candidate) -> bool:
     """True si el texto contiene el nombre del candidato o alguno de sus alias."""
     lowered = (text or "").lower()
     return any(term.lower() in lowered for term in all_search_terms(candidate))
+
+
+def has_required_context(text: str, candidate: Candidate) -> bool:
+    """True si el texto trae el contexto exigido por el candidato (p. ej. "Cali" o "Concejo").
+
+    Los nombres de los concejales son comunes ("Carlos Patiño" también es un frente armado del
+    Cauca); sin una palabra de contexto local la mención no es de ellos.
+    """
+    terms = candidate.context_terms or []
+    if not terms:
+        return True
+    lowered = (text or "").lower()
+    return any(t.lower() in lowered for t in terms)

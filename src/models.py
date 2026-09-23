@@ -38,6 +38,7 @@ class Candidate(Base):
     exclusions = Column(JSON, default=list)  # frases que identifican homónimos ("Arias Orjuela")
     kind = Column(String, default="candidate", nullable=False)  # "candidate" | "councilor" | "city"
     council = Column(Boolean, default=False, nullable=False)  # pertenece al Concejo de Cali
+    context_terms = Column(JSON, default=list)  # si está, el texto debe contener alguno (nombres comunes)
 
     mentions = relationship("Mention", back_populates="candidate")
 

@@ -73,3 +73,30 @@ def test_council_overview_groups_by_party(db_session):
     parties = {r["party"]: r for r in o["parties"]}
     assert parties["Pacto Histórico"]["mentions"] == 2 and parties["Pacto Histórico"]["members"] == 3
     assert parties["Partido de la U"]["members"] == 4  # Audry, Tania, Henry + Carlos Arias
+
+
+def test_councilors_require_local_context_and_exclude_armed_group(db_session, monkeypatch):
+    """Los nombres de concejales son comunes: exigen contexto local y descartan homónimos conocidos."""
+    from src.enrich import enrich_pending
+    from src.matching import has_required_context
+    seed(db_session)
+    patino = db_session.query(Candidate).filter_by(name="Carlos Ariel Patiño").one()
+    assert patino.context_terms == ["Cali", "Concejo"]
+    assert has_required_context("El concejal habló en el Concejo de Cali", patino)
+    assert not has_required_context("Combates en El Tambo, Cauca", patino)
+
+    src = db_session.query(Source).filter_by(name="Google News").one()
+    ingest(db_session, src, ListConnector([
+        RawItem(external_id="g1", text="Condenan a integrante del Frente Carlos Patiño por atentado", url="https://news.google.com/rss/articles/A"),
+        RawItem(external_id="g2", text="Carlos Ariel Patiño pidió un debate", url="https://news.google.com/rss/articles/B"),
+        RawItem(external_id="g3", text="Carlos Ariel Patiño en evento", url="https://news.google.com/rss/articles/C"),
+    ]))
+    assert db_session.query(Mention).filter_by(external_id="g1").first() is None  # exclusión: grupo armado
+
+    import src.enrich as m
+    monkeypatch.setattr(m, "resolve_url", lambda url: url.replace("news.google.com/rss/articles/", "medio.co/"))
+    monkeypatch.setattr(m, "fetch_article", lambda url: (("Carlos Ariel Patiño intervino en el Concejo de Cali.", None)
+                                                         if url.endswith("/B") else ("Carlos Ariel Patiño en un acto en Popayán, Cauca.", None)))
+    enrich_pending(db_session, limit=10)
+    assert db_session.query(Mention).filter_by(external_id="g2").one().relevant is True
+    assert db_session.query(Mention).filter_by(external_id="g3").one().relevant is False  # sin contexto local
