@@ -1,6 +1,6 @@
 # Cotización — Monitor de menciones, Alcaldía de Cali 2027
 
-**Fecha:** 2026-09-23 · **TRM usada:** $3.208,66 COP por USD ([Banco de la República](https://www.banrep.gov.co/es/glosario/tasa-cambio-trm), 23-sep-2026).
+**Fecha:** 2026-09-24 · **TRM usada:** $3.208,66 COP por USD ([Banco de la República](https://www.banrep.gov.co/es/glosario/tasa-cambio-trm), 23-sep-2026).
 Precios verificados en las páginas de cada proveedor en esa fecha. Cambian sin aviso: reconfirmar antes de contratar.
 
 ## 1. Qué hay que cambiar para no depender de un computador
@@ -16,11 +16,11 @@ deja de capturar y el enlace público muere. Dos piezas lo atan a esa máquina:
 | Base de datos | `monitor.db` en el PC (8,7 MB hoy) | mismo archivo SQLite en el disco del VPS, con respaldo diario |
 
 **El cambio de fondo es el sentimiento.** Alquilar una GPU en la nube cuesta entre USD 70 y 300
-al mes; la API de Claude hace el mismo trabajo por **USD 3–6 al mes** con mejor calidad en
-español. Medido sobre los datos reales del proyecto: 345 caracteres de mediana por mención,
-~750 tokens de entrada y 50 de salida, unas 3.000 menciones al mes.
+al mes; la API de Claude hace el mismo trabajo por **USD 5–10 al mes** con mejor calidad en
+español. Medido sobre el corpus real del proyecto (2.770 menciones, 1.673 caracteres de promedio):
+clasificarlas todas costó el equivalente a USD 4,34, es decir **USD 1,57 por cada 1.000 menciones**.
 
-La base es SQLite y pesa 8,7 MB después de 2.526 menciones. **No hace falta Postgres**: en un año
+La base es SQLite y pesa 10,9 MB después de 2.770 menciones. **No hace falta Postgres**: en un año
 rondaría los 150 MB. Menos piezas, menos costo, menos que se pueda romper.
 
 ## 2. Reemplazo de Bright Data
@@ -48,7 +48,7 @@ Calculado sobre el volumen real del proyecto (30 candidatos, concejales y cuenta
 
 | Concepto | Volumen/mes | Proveedor | USD/mes |
 |---|---|---|---|
-| Clasificación de sentimiento | ~3.000 menciones | Claude Haiku 4.5 (USD 1 / 5 por millón de tokens) | 3 |
+| Clasificación de sentimiento | 3.000–6.000 menciones | Claude Haiku 4.5 (USD 1,57 por 1.000 menciones) | 5–10 |
 | Posts y comentarios de IG/FB de rivales y concejales | ~4.000 registros | Apify | 9 |
 | X: posts y respuestas | ~3.900 tuits | Apify | 2 |
 | Servidor | — | VPS 2 vCPU / 4 GB | 6–12 |
@@ -62,7 +62,7 @@ Calculado sobre el volumen real del proyecto (30 candidatos, concejales y cuenta
 | Ítem | USD/mes |
 |---|---|
 | VPS Hetzner CAX11 (2 vCPU ARM, 4 GB) | 4 |
-| Claude Haiku 4.5 | 3 |
+| Claude Haiku 4.5 | 5 |
 | Apify plan Free (USD 5 de crédito incluido) | 0 |
 | Dominio (USD 12/año) | 1 |
 | **Total** | **~8–10** |
@@ -71,21 +71,21 @@ Cubre: prensa, YouTube, Reddit, Ciudad, Agenda, Concejo, cuentas de Carlos vía 
 Limitación: los USD 5 de Apify no alcanzan para los comentarios de todos los rivales; habría que
 priorizar 3 o 4 cuentas rivales al mes.
 
-### Escenario B — Completo, recomendado (USD 35/mes ≈ **$112.000 COP/mes**)
+### Escenario B — Completo, recomendado (USD 41/mes ≈ **$132.000 COP/mes**)
 
 | Ítem | USD/mes |
 |---|---|
 | VPS DigitalOcean 2 GB (o Hetzner CX23) | 12 |
-| Claude Haiku 4.5 | 3 |
+| Claude Haiku 4.5 | 9 |
 | Apify plan Starter (USD 19 de crédito incluido) | 19 |
 | Dominio | 1 |
-| **Total** | **~35** |
+| **Total** | **~41** |
 
 Cubre todo sin recortes: los 9 candidatos, los 21 concejales, cuentas de medios, X con respuestas
 y comentarios de todos en Instagram y Facebook. Es el escenario que responde a los cuatro
 objetivos completos.
 
-### Escenario C — Campaña intensa (USD 60–70/mes ≈ **$200.000 COP/mes**)
+### Escenario C — Campaña intensa (USD 70–80/mes ≈ **$240.000 COP/mes**)
 
 Escenario B más volumen de Apify (plan Scale) para capturar más comentarios por publicación y
 correr varias veces al día. Solo tiene sentido en los meses cercanos a la elección.
@@ -105,17 +105,22 @@ No hay costos de licencias, instalación ni hardware: el proyecto es código pro
 | Escenario | Costo mensual | Meses cubiertos con 1,5 M |
 |---|---|---|
 | A — Mínimo | $32.000 | ~46 meses |
-| **B — Completo (recomendado)** | **$112.000** | **~13 meses** |
-| C — Campaña intensa | $200.000 | ~7 meses |
+| **B — Completo (recomendado)** | **$132.000** | **~11 meses** |
+| C — Campaña intensa | $240.000 | ~6 meses |
 
-El Escenario B cubre **hasta octubre de 2027**, es decir todo el ciclo hasta las elecciones
-territoriales, pagando por adelantado y sin volver a pedir presupuesto.
+El Escenario B cubre **hasta agosto de 2027**, dos meses antes de las elecciones territoriales de
+octubre. Se cierra la brecha arrancando en Escenario A los meses tranquilos y subiendo a B cuando
+la campaña se caliente, o pidiendo una ampliación pequeña con el sistema ya demostrando valor.
 
 Nota: si el presupuesto de 1,5 M también debe cubrir el trabajo de desarrollo y migración, la
 plata destinada a infraestructura se reduce en esa proporción. Con $400.000 COP asignados a
-infraestructura, el Escenario B cubre ~3,5 meses y el A más de un año.
+infraestructura, el Escenario B cubre ~3 meses y el A más de un año.
 
 ## 7. Riesgos y supuestos
+
+- **Volumen aún no estabilizado**: el sistema lleva cuatro días de operación continua y esos días
+  incluyen la carga histórica de 60 días de cada fuente nueva. Si el volumen real se acerca a
+  10.000 menciones/mes, el Escenario B sube unos USD 6.
 
 - **Precios de terceros**: Claude, Apify, Hetzner y DigitalOcean pueden cambiar tarifas. Los
   montos de Claude y Apify son por consumo: si el volumen sube, suben; los topes que ya tiene el
