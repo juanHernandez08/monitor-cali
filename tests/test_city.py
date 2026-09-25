@@ -112,15 +112,59 @@ def test_city_topics_with_trend_perception_subtopics_and_samples(db_session):
     assert "cultura y eventos" in rows and "Carlos Arias" not in str(rows)  # solo ciudad
 
 
-def test_city_opportunities_for_carlos(db_session):
+def test_city_opportunities_carlos_strong_topics(db_session):
     from src.queries import city_opportunities
     _seed_city(db_session)
     o = city_opportunities(db_session, days=7)
-    hot = [x["category"] for x in o["hot_without_carlos"]]
-    assert "servicios públicos" in hot  # molestia alta, Carlos no habla de eso
-    assert "cultura y eventos" not in hot
     strong = [x["category"] for x in o["carlos_strong"]]
     assert strong == ["cultura y eventos"]  # 3 menciones positivas de Carlos
+
+
+def test_city_opportunities_surfaces_new_or_rising_topics_regardless_of_tone(db_session):
+    """Feedback del cliente 2026-09-26: antes "oportunidades" solo mostraba temas con molestia
+    alta (>=40% negativo). Pidió que sea cualquier novedad donde Carlos pueda hablar -- sea o no
+    negativa -- como un evento urgente/emergente (ej. la llegada de una figura nacional a Cali,
+    que es informativa/positiva, no una queja)."""
+    from src.queries import city_opportunities
+    city = Candidate(name=CITY_NAME, kind="city", aliases=[])
+    carlos = Candidate(name="Carlos Arias", aliases=[])
+    feed = Source(type=SourceType.RSS, name="Q'hubo", config={"feed_url": "x", "city": True})
+    db_session.add_all([city, carlos, feed])
+    db_session.commit()
+    now = dt.datetime.utcnow()
+    rows = [
+        # tema totalmente nuevo (sin menciones en el período anterior), tono positivo/informativo
+        (city, "a", "Llega figura nacional a Cali", "política y elecciones", "visita de figura nacional", "neutral", 0.0, 1),
+        (city, "b", "Recibimiento multitudinario", "política y elecciones", "visita de figura nacional", "positive", 0.4, 1),
+        (city, "c", "Agenda de la visita", "política y elecciones", "visita de figura nacional", "neutral", 0.1, 2),
+        # tema con crecimiento fuerte (de 1 el período pasado a 3 ahora) -- también debe aparecer
+        (city, "g", "Paro de transportadores anunciado", "movilidad y transporte", "paro transportadores", "negative", -0.4, 1),
+        (city, "h", "Paro transportadores se extiende", "movilidad y transporte", "paro transportadores", "negative", -0.5, 2),
+        (city, "i", "Paro transportadores tercer día", "movilidad y transporte", "paro transportadores", "negative", -0.6, 3),
+        (city, "j", "Semana pasada: rumor de paro", "movilidad y transporte", "paro transportadores", "neutral", 0.0, 9),
+        # tema viejo, sin crecimiento -- no debe aparecer
+        (city, "d", "Bache en la 5ta", "infraestructura y obras", "baches", "negative", -0.3, 1),
+        (city, "e", "Semana pasada: baches", "infraestructura y obras", "baches", "negative", -0.3, 8),
+        (city, "f", "Semana pasada: más baches", "infraestructura y obras", "baches", "negative", -0.3, 9),
+    ]
+    for cand, ext, text, cat, topic, label, score, ago in rows:
+        when = now - dt.timedelta(days=ago)
+        m = Mention(candidate_id=cand.id, source_id=feed.id, external_id=ext, text=text, url=f"https://x/{ext}",
+                    raw={}, author="u", published_at=when, fetched_at=when)
+        db_session.add(m)
+        db_session.flush()
+        db_session.add(SentimentScore(mention_id=m.id, label=SentimentLabel(label), score=score, topic=topic, model="f", category=cat))
+    db_session.commit()
+
+    o = city_opportunities(db_session, days=7)
+    novedades = {x["topic"]: x for x in o["novedades"]}
+    assert "visita de figura nacional" in novedades  # nueva, aunque no sea negativa
+    assert novedades["visita de figura nacional"]["is_new"] is True
+    assert novedades["visita de figura nacional"]["carlos_mentions"] == 0
+    assert "paro transportadores" in novedades  # en alza (de 1 a 3), aunque negativa
+    assert novedades["paro transportadores"]["is_new"] is False
+    assert novedades["paro transportadores"]["trend_pct"] == 200
+    assert "baches" not in novedades  # sin crecimiento, no es novedad
 
 
 def test_city_kpis(db_session):

@@ -15,7 +15,7 @@ web de 7 pestañas. Corre sin servicios de pago recurrentes salvo Apify (~USD 2-
 - Windows: `.\scripts\demo.ps1` · macOS: `bash scripts/demo.sh` → Ollama + servidor en :8000 +
   túnel público de cloudflared (la URL cambia en cada arranque).
 - Solo servidor: `python -m uvicorn src.api:app --host 0.0.0.0 --port 8000`.
-- Tests: `python -m pytest -q` (129 al escribir esto). El proyecto se construye con TDD: test
+- Tests: `python -m pytest -q` (131 al escribir esto). El proyecto se construye con TDD: test
   antes que el cambio de comportamiento.
 - `.env` (no está en git) trae `GOOGLE_API_KEY`, `APIFY_TOKEN`, `OLLAMA_MODEL`. `BRIGHTDATA_API_TOKEN`
   ya no se usa (créditos agotados 2026-09-25) pero el conector queda de respaldo si se recupera.
@@ -25,10 +25,14 @@ web de 7 pestañas. Corre sin servicios de pago recurrentes salvo Apify (~USD 2-
 
 ## Arquitectura del dashboard (reescrita 2026-09-25/26)
 
-- **Navegación**: barra lateral fija (no pestañas horizontales), 7 secciones: Resumen,
-  Candidatos, Publicaciones, Análisis en gráficas, Ciudad, Agenda, Concejo de Cali. Más una
-  vista de **Perfil** (no está en la barra; se abre al tocar cualquier tarjeta de candidato y
-  muestra todo lo recopilado de esa persona: gauge de positividad, temas, publicaciones).
+- **Navegación**: barra lateral fija (no pestañas horizontales), 6 secciones: Resumen,
+  Candidatos, Publicaciones, Análisis en gráficas, Ciudad, Agenda. **Concejo de Cali ya no es una
+  pestaña propia**: vive dentro de Candidatos como una sub-pestaña ("Candidatos" / "Concejales",
+  `.sub-nav`/`.subtab`/`.subtabpane` en `dashboard.css`/`dashboard.js`) — pedido del cliente
+  2026-09-26. Más una vista de **Perfil** (no está en la barra; se abre al tocar cualquier tarjeta
+  de candidato y muestra todo lo recopilado de esa persona: gauge de positividad, temas,
+  publicaciones). El botón "← Volver a…" de Perfil es dinámico (`lastTab` en `dashboard.js`):
+  regresa a la pestaña desde la que se abrió (Resumen o Candidatos), no siempre a Resumen.
 - **Gráficas**: ApexCharts (no Chart.js). Helpers reutilizables en `dashboard.js`: `chart()`,
   `hbar()` (barra horizontal, admite `onClick` por barra), `hbar100()` (apilada al 100%, el
   color de cada serie se pasa explícito — nunca asumir orden positivo/neutral/negativo).
@@ -41,6 +45,12 @@ web de 7 pestañas. Corre sin servicios de pago recurrentes salvo Apify (~USD 2-
   revisar si esto ya sirve.
 - Los estáticos llevan `?v=<mtime>` para evitar caché; cambios en `.py` sí requieren reiniciar el
   servidor, cambios en `.html/.css/.js` no.
+- **Filtro de Publicaciones por tema**: `#f-category` en la pestaña Publicaciones filtra por la
+  categoría fija (`sentiment.CATEGORIES`); igual que `label`/`emotion`, una publicación aparece
+  si ella o alguno de sus comentarios pasa el filtro (`queries.feed(..., category=...)`).
+- **Emociones de Ciudad con ejemplos**: la gráfica "¿Qué emoción transmite la ciudad?" tiene
+  `onClick` por barra (igual que el histograma) que muestra citas de ejemplo debajo
+  (`#city-emotion-detail`), en vez de ser solo un conteo sin forma de ver de qué se trata.
 
 ## Reglas que el cliente exigió (no relajar)
 
@@ -97,11 +107,13 @@ mayoría de los 19 concejales (hoy solo cubiertos por prensa).
   quedan filas con `emotion IS NULL` (p. ej. tras ingestar mucho de golpe), relanzar
   `scripts/backfill_emotions.py` es seguro — solo toca esas filas, no duplica trabajo.
 - Sinónimos de temas ("terremoto"/"sismo") sin unificar.
-- **Duda para Carlos Arias (no resuelta, necesita ojo local)**: 6 de las menciones de YouTube del
-  candidato "Carlos Paz" vienen de videos de salsa en vivo ("La Clave, Carlos Paz y Salsa al
-  Parque", canal ajeno a política) — podría ser un DJ/presentador de la escena de salsa de Cali
-  homónimo, no el candidato. No se excluyó por no tener certeza; si Carlos confirma que no es él,
-  agregar esa frase a `exclusions` de Carlos Paz en `config.py`.
+- **Oportunidades para Carlos Arias (Ciudad), rediseñado 2026-09-26**: ya no exige molestia/tono
+  negativo — pedido explícito del cliente ("no es necesariamente que la gente debe estar
+  molesta"). Ahora `queries.city_opportunities()` trabaja a nivel de `topic` (no de `category`) y
+  marca "novedad" cuando un tema es **nuevo** (sin menciones en el período anterior) o está **en
+  fuerte alza** (`trend_pct >= 80` por defecto), sin importar si el tono es positivo, negativo o
+  informativo — así captura eventos como la llegada de una figura nacional a Cali, no solo quejas.
+  El JSON cambió de `hot_without_carlos` a `novedades` (clave nueva, revisar si algo más la usa).
 - Alertas por correo/Telegram; radio/TV (fuera de alcance, ver `docs/cotizacion.md`).
 - Despliegue en VPS (`docs/cotizacion.md`, `docs/despliegue.md`) — sigue corriendo en el PC local.
 

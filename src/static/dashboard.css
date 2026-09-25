@@ -68,6 +68,13 @@ main { padding: 20px 28px 40px; max-width: 1360px; display: grid; gap: 16px; }
 .hero[data-candidate-id]:hover { box-shadow: 0 2px 4px rgba(20,20,15,.06), 0 14px 32px rgba(20,20,15,.09); transform: translateY(-1px); }
 .back-link { background: none; border: none; color: var(--brand); font-weight: 600; font-size: 13.5px; padding: 4px 0; cursor: pointer; }
 .back-link:hover { text-decoration: underline; }
+
+.sub-nav { display: flex; gap: 4px; background: var(--soft); border-radius: var(--radius-sm); padding: 4px; margin-bottom: 18px; width: fit-content; }
+.sub-nav .subtab { background: none; border: none; color: var(--muted); font-weight: 600; font-size: 13.5px; padding: 8px 16px; border-radius: 8px; cursor: pointer; }
+.sub-nav .subtab:hover { color: var(--ink); }
+.sub-nav .subtab.active { background: var(--panel); color: var(--brand-2); box-shadow: 0 1px 2px rgba(0,0,0,.06); }
+.subtabpane { display: none; }
+.subtabpane.active { display: block; }
 .avatar { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; background: var(--brand-soft); color: var(--brand); display: grid; place-items: center;
   font-weight: 700; font-size: 24px; border: 3px solid #fff; box-shadow: 0 0 0 2px var(--brand-soft); }
 .avatar.sm { width: 40px; height: 40px; font-size: 15px; }

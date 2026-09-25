@@ -82,6 +82,7 @@ CANDIDATES = [
             "Carlos Paz Vivo", "eldiariodecarlospaz", "El Diario de Carlos Paz",
             "Villa Carlos Paz", "Carlos Paz, Argentina", "Carlos Paz (Argentina)",
             "Córdoba, Argentina", "Luis Carlos Paz",  # futbolista del América de Cali, años 60
+            "La Clave, Carlos Paz y Salsa al Parque",  # DJ/presentador de salsa en vivo, confirmado por el cliente 2026-09-26
         ],
     },
     {

@@ -26,7 +26,6 @@
     <button class="tab" data-tab="analisis"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="20" x2="4" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="20" y1="20" x2="20" y2="14"/></svg><span>Análisis en gráficas</span></button>
     <button class="tab" data-tab="ciudad"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 9h.01M9 13h.01M15 9h.01M15 13h.01M10 21v-5h4v5"/></svg><span>Ciudad</span></button>
     <button class="tab" data-tab="agenda"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>Agenda</span></button>
-    <button class="tab" data-tab="concejo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>Concejo de Cali</span></button>
   </nav>
   <div class="side-foot">
     <div class="live-card">
@@ -67,25 +66,50 @@
   </div>
 
   <div id="tab-candidatos" class="tabpane">
-    <section class="kpis" id="cand-kpis"></section>
-    <section class="grid2">
-      <div class="panel">
-        <div class="panel-head"><h2>¿Quién habla más?</h2><span class="hint">menciones en el período</span></div>
-        <div class="chart-box tall" id="chart-cand-volume"></div>
-      </div>
-      <div class="panel">
-        <div class="panel-head"><h2>¿Cómo les está yendo?</h2><span class="hint">positivo / neutral / negativo</span></div>
-        <div class="chart-box tall" id="chart-cand-sentiment"></div>
-      </div>
-    </section>
-    <section class="panel">
-      <div class="panel-head"><h2>Qué piden o reclaman los ciudadanos</h2><span class="hint">asuntos más mencionados en los comentarios a los candidatos</span></div>
-      <div class="chart-box" id="chart-topics"></div>
-    </section>
-    <section class="panel">
-      <div class="panel-head"><div><h2>Los 9 candidatos</h2><span class="hint">toca a cualquiera para ver todo lo recopilado de esa persona: temas, publicaciones y comentarios</span></div></div>
-      <div id="cand-roster" class="roster"></div>
-    </section>
+    <nav class="sub-nav">
+      <button class="subtab active" data-subtab="lista">Candidatos</button>
+      <button class="subtab" data-subtab="concejales">Concejales</button>
+    </nav>
+
+    <div id="subtab-lista" class="subtabpane active">
+      <section class="kpis" id="cand-kpis"></section>
+      <section class="grid2">
+        <div class="panel">
+          <div class="panel-head"><h2>¿Quién habla más?</h2><span class="hint">menciones en el período</span></div>
+          <div class="chart-box tall" id="chart-cand-volume"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h2>¿Cómo les está yendo?</h2><span class="hint">positivo / neutral / negativo</span></div>
+          <div class="chart-box tall" id="chart-cand-sentiment"></div>
+        </div>
+      </section>
+      <section class="panel">
+        <div class="panel-head"><h2>Qué piden o reclaman los ciudadanos</h2><span class="hint">asuntos más mencionados en los comentarios a los candidatos</span></div>
+        <div class="chart-box" id="chart-topics"></div>
+      </section>
+      <section class="panel">
+        <div class="panel-head"><div><h2>Los 9 candidatos</h2><span class="hint">toca a cualquiera para ver todo lo recopilado de esa persona: temas, publicaciones y comentarios</span></div></div>
+        <div id="cand-roster" class="roster"></div>
+      </section>
+    </div>
+
+    <div id="subtab-concejales" class="subtabpane">
+      <p class="hint" style="margin:0 2px 14px">Qué se dice de cada concejal y cómo le responde la gente, agrupado también por partido. Carlos Arias y Roberto Ortiz aparecen aquí y en la lista de candidatos, porque son ambas cosas. La cobertura de los concejales viene de prensa; sus redes se agregan cuando se configuren sus cuentas.</p>
+      <section class="kpis" id="council-kpis"></section>
+      <section class="panel big">
+        <div class="panel-head"><div><h2>¿De qué concejales se habla?</h2><div class="hint">Menciones en el período. Carlos Arias en azul.</div></div></div>
+        <p class="reading" id="read-council"></p>
+        <div class="chart-box xl"><div id="chart-council"></div></div>
+      </section>
+      <section class="panel big">
+        <div class="panel-head"><div><h2>Por partido</h2><div class="hint">Suma de menciones de los concejales de cada bancada y cómo se reparte su sentimiento.</div></div></div>
+        <div class="chart-box xl"><div id="chart-council-parties"></div></div>
+      </section>
+      <section class="panel big">
+        <div class="panel-head"><div><h2>Detalle por concejal</h2><div class="hint">Temas en los que aparece y menciones más marcadas, con enlace.</div></div></div>
+        <div id="council-detail" class="feed"></div>
+      </section>
+    </div>
   </div>
 
   <div id="tab-perfil" class="tabpane">
@@ -135,6 +159,26 @@
             <option value="orgullo">Orgullo</option>
             <option value="sin emoción marcada">Sin emoción marcada</option>
           </select>
+          <select id="f-category">
+            <option value="">Todos los temas</option>
+            <option value="seguridad">Seguridad</option>
+            <option value="movilidad y transporte">Movilidad y transporte</option>
+            <option value="terremoto y reconstrucción">Terremoto y reconstrucción</option>
+            <option value="servicios públicos">Servicios públicos</option>
+            <option value="salud">Salud</option>
+            <option value="educación">Educación</option>
+            <option value="empleo y economía">Empleo y economía</option>
+            <option value="vivienda">Vivienda</option>
+            <option value="medio ambiente y clima">Medio ambiente y clima</option>
+            <option value="cultura y eventos">Cultura y eventos</option>
+            <option value="deporte">Deporte</option>
+            <option value="corrupción y gobierno">Corrupción y gobierno</option>
+            <option value="política y elecciones">Política y elecciones</option>
+            <option value="orden público y protestas">Orden público y protestas</option>
+            <option value="infraestructura y obras">Infraestructura y obras</option>
+            <option value="animales">Animales</option>
+            <option value="otro">Otro</option>
+          </select>
         </div>
       </div>
       <div id="feed" class="feed"></div>
@@ -142,11 +186,6 @@
   </div>
 
   <div id="tab-analisis" class="tabpane">
-    <div class="intro panel">
-      <h2>Cómo leer estas gráficas</h2>
-      <p>Cada <b>mención</b> es una nota de prensa, un post, un video o un comentario donde aparece un candidato. Un clasificador de lenguaje lee cada mención y decide si deja al candidato <span class="tag positive">bien parado</span>, <span class="tag negative">mal parado</span> o si es <span class="tag neutral">informativa</span>. Las cifras corresponden al período elegido arriba y se actualizan solas cada 15 minutos.</p>
-    </div>
-
     <h3 class="section-title">Alcance — quién habla y por dónde</h3>
 
     <section class="panel big">
@@ -210,12 +249,13 @@
     </section>
 
     <section class="panel big">
-      <div class="panel-head"><div><h2>¿Qué emoción transmite la ciudad?</h2><div class="hint">Más allá de positivo/negativo: qué siente concretamente quien escribe — miedo, ira, alegría, orgullo y demás.</div></div></div>
+      <div class="panel-head"><div><h2>¿Qué emoción transmite la ciudad?</h2><div class="hint">Más allá de positivo/negativo: qué siente concretamente quien escribe — miedo, ira, alegría, orgullo y demás. Toca una barra para ver ejemplos.</div></div></div>
       <div class="chart-box xl"><div id="chart-city-emotions"></div></div>
+      <div id="city-emotion-detail" class="feed" style="margin-top:14px"></div>
     </section>
 
     <section class="panel big">
-      <div class="panel-head"><div><h2>Oportunidades para Carlos Arias</h2><div class="hint">Cruce entre lo que preocupa a la ciudad y de lo que habla Carlos en el mismo período.</div></div></div>
+      <div class="panel-head"><div><h2>Oportunidades para Carlos Arias</h2><div class="hint">Temas nuevos o en fuerte alza en la ciudad (sea cual sea su tono) donde Carlos aún no tiene presencia, y temas donde ya suma.</div></div></div>
       <div class="grid2" id="city-opps"></div>
     </section>
 
@@ -250,27 +290,6 @@
       <p class="reading" id="read-perception"></p>
       <div class="chart-box xl"><div id="chart-perception"></div></div>
       <div id="perception-detail" class="feed" style="margin-top:14px"></div>
-    </section>
-  </div>
-
-  <div id="tab-concejo" class="tabpane">
-    <div class="intro panel">
-      <h2>Los 21 concejales de Cali (2024-2027)</h2>
-      <p>Qué se dice de cada concejal y cómo le responde la gente, agrupado también por partido. Carlos Arias y Roberto Ortiz aparecen aquí y en las vistas de candidatos, porque son ambas cosas. La cobertura de los concejales viene de prensa (Google News y medios locales); sus redes se agregan cuando se configuren sus cuentas.</p>
-    </div>
-    <section class="kpis" id="council-kpis"></section>
-    <section class="panel big">
-      <div class="panel-head"><div><h2>¿De qué concejales se habla?</h2><div class="hint">Menciones en el período. Carlos Arias en azul.</div></div></div>
-      <p class="reading" id="read-council"></p>
-      <div class="chart-box xl"><div id="chart-council"></div></div>
-    </section>
-    <section class="panel big">
-      <div class="panel-head"><div><h2>Por partido</h2><div class="hint">Suma de menciones de los concejales de cada bancada y cómo se reparte su sentimiento.</div></div></div>
-      <div class="chart-box xl"><div id="chart-council-parties"></div></div>
-    </section>
-    <section class="panel big">
-      <div class="panel-head"><div><h2>Detalle por concejal</h2><div class="hint">Temas en los que aparece y menciones más marcadas, con enlace.</div></div></div>
-      <div id="council-detail" class="feed"></div>
     </section>
   </div>
 

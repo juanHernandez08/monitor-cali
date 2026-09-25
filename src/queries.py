@@ -216,8 +216,8 @@ def _day_bounds(day: str) -> tuple[dt.datetime, dt.datetime]:
 
 
 def feed(session, candidate_id: int | None = None, source_type: str | None = None,
-         label: str | None = None, emotion: str | None = None, days: int = 30, limit: int = 100, offset: int = 0,
-         day: str | None = None) -> list[dict]:
+         label: str | None = None, emotion: str | None = None, category: str | None = None,
+         days: int = 30, limit: int = 100, offset: int = 0, day: str | None = None) -> list[dict]:
     """Filas = publicaciones (post, video, nota); los comentarios cuelgan de su publicación.
 
     Los filtros se aplican a las menciones; una publicación aparece si ella o alguno de sus
@@ -238,6 +238,8 @@ def feed(session, candidate_id: int | None = None, source_type: str | None = Non
         if label and (m.sentiment is None or m.sentiment.label.value != label):
             return False
         if emotion and (m.sentiment is None or (m.sentiment.emotion or "sin emoción marcada") != emotion):
+            return False
+        if category and (m.sentiment is None or (m.sentiment.category or "otro") != category):
             return False
         return True
 
@@ -277,7 +279,7 @@ def feed(session, candidate_id: int | None = None, source_type: str | None = Non
                 "comments": [], "comments_summary": _summary_of([]),
             }
             order.append(key)
-        shown = matching if (label or emotion) else comments
+        shown = matching if (label or emotion or category) else comments
         rows[key]["comments"] = [_mention_dict(c) for c in shown]
         rows[key]["comments_summary"] = _summary_of([_mention_dict(c) for c in comments])
         rows[key]["last_activity"] = max(rows[key]["published_at"], max(_when(c) for c in comments).isoformat())
@@ -372,32 +374,68 @@ def city_emotions(session, days: int = 7, samples_per: int = 2) -> list[dict]:
     return rows
 
 
-def city_opportunities(session, days: int = 7, min_negative_pct: int = 40, carlos_min: int = 3, carlos_pos_pct: int = 60) -> dict:
-    """Temas calientes donde Carlos no aparece, y temas donde Carlos ya tiene presencia positiva."""
-    topics = city_topics(session, days=days, samples_per=1, subtopics_per=3)
+def city_opportunities(session, days: int = 7, carlos_max: int = 2, min_count: int = 3,
+                       min_trend_pct: int = 80, limit: int = 8, carlos_min: int = 3, carlos_pos_pct: int = 60) -> dict:
+    """Novedades sobre las que Carlos podría hablar (temas nuevos o en fuerte alza, sea cual sea
+    su tono -- no solo molestia; un evento informativo o positivo, como la visita de una figura
+    nacional, es tan buena oportunidad como una queja), y temas donde Carlos ya tiene presencia
+    positiva sostenida."""
+    since = _since(days)
+    current = _city_rows(session, since)
+    previous = _city_rows(session, since - dt.timedelta(days=days), since)
+
+    def _topic_rows(rows: list[Mention]) -> dict[str, list[Mention]]:
+        by_topic: dict[str, list[Mention]] = defaultdict(list)
+        for m in rows:
+            t = (m.sentiment.topic or "").lower()
+            if t and t not in META_TOPICS:
+                by_topic[t].append(m)
+        return by_topic
+
+    current_by_topic = _topic_rows(current)
+    previous_counts = Counter({t: len(ms) for t, ms in _topic_rows(previous).items()})
+
     carlos = session.query(Candidate).filter_by(name=CARLOS).first()
+    carlos_by_topic: Counter = Counter()
     carlos_by_cat: dict[str, Counter] = defaultdict(Counter)
     if carlos:
         for m in (session.query(Mention).join(SentimentScore)
-                  .filter(Mention.candidate_id == carlos.id, Mention.relevant.is_(True), WHEN >= _since(days))):
+                  .filter(Mention.candidate_id == carlos.id, Mention.relevant.is_(True), WHEN >= since)):
             carlos_by_cat[m.sentiment.category or "otro"][m.sentiment.label] += 1
-    counts = sorted(r["count"] for r in topics) or [0]
-    median = counts[len(counts) // 2]
-    hot, strong = [], []
-    for r in topics:
-        carlos_n = sum(carlos_by_cat[r["category"]].values())
-        neg_pct = pct(r["negative"], r["count"])
-        if r["count"] >= median and neg_pct >= min_negative_pct and carlos_n <= 2 and r["category"] != "otro":
-            hot.append({**r, "negative_pct": neg_pct, "carlos_mentions": carlos_n})
+            t = (m.sentiment.topic or "").lower()
+            if t and t not in META_TOPICS:
+                carlos_by_topic[t] += 1
+
+    novedades = []
+    for topic, ms in current_by_topic.items():
+        count = len(ms)
+        prev = previous_counts.get(topic, 0)
+        trend = None if prev == 0 else round((count - prev) / prev * 100)
+        is_new = prev == 0 and count >= min_count
+        is_rising = trend is not None and trend >= min_trend_pct and count >= min_count
+        carlos_n = carlos_by_topic.get(topic, 0)
+        if (is_new or is_rising) and carlos_n <= carlos_max:
+            labels = Counter(m.sentiment.label for m in ms)
+            category = Counter(m.sentiment.category or "otro" for m in ms).most_common(1)[0][0]
+            samples = sorted(ms, key=lambda m: -abs(m.sentiment.score))[:2]
+            novedades.append({
+                "topic": topic, "category": category, "count": count, "is_new": is_new, "trend_pct": trend,
+                "positive": labels.get(SentimentLabel.POSITIVE, 0), "neutral": labels.get(SentimentLabel.NEUTRAL, 0),
+                "negative": labels.get(SentimentLabel.NEGATIVE, 0), "carlos_mentions": carlos_n,
+                "samples": [_mention_dict(m) for m in samples],
+            })
+    novedades.sort(key=lambda r: -r["count"])
+    novedades = novedades[:limit]
+
+    strong = []
     for cat, c in carlos_by_cat.items():
         n = sum(c.values())
         if n >= carlos_min and pct(c[SentimentLabel.POSITIVE], n) >= carlos_pos_pct:
-            city = next((r for r in topics if r["category"] == cat), None)
+            city_count = sum(1 for m in current if (m.sentiment.category or "otro") == cat)
             strong.append({"category": cat, "carlos_mentions": n, "carlos_positive_pct": pct(c[SentimentLabel.POSITIVE], n),
-                           "city_count": city["count"] if city else 0})
-    hot.sort(key=lambda r: (-r["negative_pct"], -r["count"]))
+                           "city_count": city_count})
     strong.sort(key=lambda r: -r["carlos_mentions"])
-    return {"hot_without_carlos": hot, "carlos_strong": strong}
+    return {"novedades": novedades, "carlos_strong": strong}
 
 
 def city_kpis(session, days: int = 7) -> dict:

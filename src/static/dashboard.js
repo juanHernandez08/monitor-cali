@@ -384,6 +384,7 @@ async function loadFeed() {
   if ($("#f-source").value) p.set("source_type", $("#f-source").value);
   if ($("#f-label").value) p.set("label", $("#f-label").value);
   if ($("#f-emotion").value) p.set("emotion", $("#f-emotion").value);
+  if ($("#f-category").value) p.set("category", $("#f-category").value);
   renderFeedList("#feed", await j(`/api/feed?${p}`), { showCandidate: true });
 }
 
@@ -436,9 +437,12 @@ function expandTopicCard(prefix, i, { scroll = false } = {}) {
 }
 
 /* ---------- perfil de candidato: se abre al tocar la tarjeta de Carlos o de un rival ---------- */
+const TAB_LABELS = { resumen: "resumen", candidatos: "candidatos" };
+let lastTab = "resumen";
 async function openProfile(candidateId, name) {
   document.querySelectorAll(".tab").forEach((x) => x.classList.remove("active"));
   document.querySelectorAll(".tabpane").forEach((p) => p.classList.toggle("active", p.id === "tab-perfil"));
+  $("#perfil-back").textContent = `← Volver a ${TAB_LABELS[lastTab] || "resumen"}`;
   window.scrollTo({ top: 0 });
   $("#perfil-hero").innerHTML = `<div class="empty">Cargando…</div>`;
   $("#perfil-topics").innerHTML = ""; $("#perfil-feed").innerHTML = "";
@@ -459,8 +463,8 @@ async function openProfile(candidateId, name) {
   renderFeedList("#perfil-feed", feed);
 }
 function closeProfile() {
-  document.querySelectorAll(".tab").forEach((x) => x.classList.toggle("active", x.dataset.tab === "resumen"));
-  document.querySelectorAll(".tabpane").forEach((p) => p.classList.toggle("active", p.id === "tab-resumen"));
+  document.querySelectorAll(".tab").forEach((x) => x.classList.toggle("active", x.dataset.tab === lastTab));
+  document.querySelectorAll(".tabpane").forEach((p) => p.classList.toggle("active", p.id === `tab-${lastTab}`));
   window.scrollTo({ top: 0 });
 }
 
@@ -513,9 +517,14 @@ async function loadAll() {
 }
 
 document.querySelectorAll(".side-nav .tab").forEach((b) => b.addEventListener("click", () => {
+  lastTab = b.dataset.tab;
   document.querySelectorAll(".tab").forEach((x) => x.classList.toggle("active", x === b));
   document.querySelectorAll(".tabpane").forEach((p) => p.classList.toggle("active", p.id === `tab-${b.dataset.tab}`));
   window.scrollTo({ top: 0 });
+}));
+document.querySelectorAll(".sub-nav .subtab").forEach((b) => b.addEventListener("click", () => {
+  document.querySelectorAll(".sub-nav .subtab").forEach((x) => x.classList.toggle("active", x === b));
+  document.querySelectorAll(".subtabpane").forEach((p) => p.classList.toggle("active", p.id === `subtab-${b.dataset.subtab}`));
 }));
 $("#perfil-back")?.addEventListener("click", closeProfile);
 document.addEventListener("click", (e) => {
@@ -523,7 +532,7 @@ document.addEventListener("click", (e) => {
   if (card) openProfile(Number(card.dataset.candidateId), card.dataset.name);
 });
 $("#days").addEventListener("change", loadAll);
-["#f-candidate", "#f-source", "#f-label", "#f-emotion"].forEach((id) => $(id).addEventListener("change", loadFeed));
+["#f-candidate", "#f-source", "#f-label", "#f-emotion", "#f-category"].forEach((id) => $(id).addEventListener("change", loadFeed));
 $("#refresh").addEventListener("click", async () => {
   const b = $("#refresh"); b.disabled = true; b.textContent = "Actualizando…";
   await fetch("/api/refresh", { method: "POST" });
@@ -562,12 +571,18 @@ async function loadCity() {
     { name: "A favor", data: scored.map((t) => pct(t.positive, t.count)) }], [CRITICAL, NEUTRAL_TONE, GOOD]);
 
   hbar("#chart-city-emotions", emotions.map((e) => cap(e.emotion)), emotions.map((e) => e.count),
-    emotions.map((e) => EMOTION_COLOR[e.emotion] || MUTED));
+    emotions.map((e) => EMOTION_COLOR[e.emotion] || MUTED),
+    { onClick: (idx) => {
+      const e = emotions[idx];
+      $("#city-emotion-detail").innerHTML = `<div class="topic-card"><div class="head"><h3>${cap(e.emotion)}</h3><div>${e.count} menciones</div></div>` +
+        (e.samples.length ? e.samples.map(quote).join("") : `<div class="empty">Sin ejemplos de muestra para esta emoción.</div>`) + `</div>`;
+      $("#city-emotion-detail").scrollIntoView({ behavior: "smooth", block: "nearest" });
+    } });
 
-  const hot = opps.hot_without_carlos, strong = opps.carlos_strong;
+  const novedades = opps.novedades, strong = opps.carlos_strong;
   $("#city-opps").innerHTML = `
-    <div class="opp hot"><h3>La ciudad está molesta y Carlos no está hablando de esto</h3>
-      ${hot.length ? `<ul>${hot.map((t) => `<li><b>${cap(t.category)}</b>: ${t.count} menciones, ${t.negative_pct}% de molestia · Carlos: ${t.carlos_mentions} menciones${t.subtopics.length ? ` · ej. ${t.subtopics.map((s) => s.topic).slice(0, 2).join(", ")}` : ""}</li>`).join("")}</ul>` : `<div class="empty">No hay temas calientes sin presencia de Carlos en el período.</div>`}</div>
+    <div class="opp hot"><h3>Novedades donde Carlos podría hablar</h3>
+      ${novedades.length ? `<ul>${novedades.map((t) => `<li><b>${cap(t.topic)}</b> <span class="hint">(${cap(t.category)})</span>: ${t.count} menciones${t.is_new ? " · tema nuevo" : ` · ${t.trend_pct}% más que el período anterior`} · ${pct(t.positive, t.count)}% a favor, ${pct(t.negative, t.count)}% molestia · Carlos: ${t.carlos_mentions === 0 ? "sin presencia" : `${t.carlos_mentions} menciones`}</li>`).join("")}</ul>` : `<div class="empty">No hay temas nuevos ni en alza sin presencia de Carlos en el período.</div>`}</div>
     <div class="opp strong"><h3>Temas donde Carlos ya suma</h3>
       ${strong.length ? `<ul>${strong.map((t) => `<li><b>${cap(t.category)}</b>: ${t.carlos_mentions} menciones de Carlos, ${t.carlos_positive_pct}% positivas · la ciudad habló ${t.city_count} veces del tema</li>`).join("")}</ul>` : `<div class="empty">Aún no hay temas con presencia positiva sostenida de Carlos en el período.</div>`}</div>`;
 
