@@ -21,6 +21,7 @@
   </div>
   <nav class="side-nav">
     <button class="tab active" data-tab="resumen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg><span>Resumen</span></button>
+    <button class="tab" data-tab="candidatos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>Candidatos</span></button>
     <button class="tab" data-tab="publicaciones"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v12H8l-4 4z"/><line x1="8" y1="9" x2="16" y2="9"/><line x1="8" y1="13" x2="13" y2="13"/></svg><span>Publicaciones</span></button>
     <button class="tab" data-tab="analisis"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="20" x2="4" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="20" y1="20" x2="20" y2="14"/></svg><span>Análisis en gráficas</span></button>
     <button class="tab" data-tab="ciudad"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 9h.01M9 13h.01M15 9h.01M15 13h.01M10 21v-5h4v5"/></svg><span>Ciudad</span></button>
@@ -59,15 +60,31 @@
     <section id="hero" class="hero"></section>
     <p class="hint" style="margin:-6px 2px 0">Toca a Carlos o a cualquier rival para ver todo lo recopilado de esa persona.</p>
     <section id="cards" class="cards"></section>
+    <section class="panel alerts">
+      <div class="panel-head"><h2>Alertas</h2><span class="hint">menciones negativas fuertes sobre Carlos Arias</span></div>
+      <ul id="alerts"></ul>
+    </section>
+  </div>
+
+  <div id="tab-candidatos" class="tabpane">
+    <section class="kpis" id="cand-kpis"></section>
     <section class="grid2">
-      <div class="panel alerts">
-        <div class="panel-head"><h2>Alertas</h2><span class="hint">menciones negativas fuertes sobre Carlos Arias</span></div>
-        <ul id="alerts"></ul>
+      <div class="panel">
+        <div class="panel-head"><h2>¿Quién habla más?</h2><span class="hint">menciones en el período</span></div>
+        <div class="chart-box tall" id="chart-cand-volume"></div>
       </div>
       <div class="panel">
-        <div class="panel-head"><h2>Qué piden o reclaman los ciudadanos</h2><span class="hint">asuntos más mencionados en los comentarios</span></div>
-        <div class="chart-box" id="chart-topics"></div>
+        <div class="panel-head"><h2>¿Cómo les está yendo?</h2><span class="hint">positivo / neutral / negativo</span></div>
+        <div class="chart-box tall" id="chart-cand-sentiment"></div>
       </div>
+    </section>
+    <section class="panel">
+      <div class="panel-head"><h2>Qué piden o reclaman los ciudadanos</h2><span class="hint">asuntos más mencionados en los comentarios a los candidatos</span></div>
+      <div class="chart-box" id="chart-topics"></div>
+    </section>
+    <section class="panel">
+      <div class="panel-head"><div><h2>Los 9 candidatos</h2><span class="hint">toca a cualquiera para ver todo lo recopilado de esa persona: temas, publicaciones y comentarios</span></div></div>
+      <div id="cand-roster" class="roster"></div>
     </section>
   </div>
 

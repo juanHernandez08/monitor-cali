@@ -5,3 +5,6 @@ __pycache__/
 .env
 monitor.db
 monitor.db.bak-*
+monitor.db-journal
+monitor.db-wal
+monitor.db-shm

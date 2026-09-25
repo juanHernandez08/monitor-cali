@@ -1,9 +1,12 @@
 import datetime as dt
+import logging
 import time
 
 import requests
 
 from src.connectors.base import RawItem
+
+log = logging.getLogger(__name__)
 
 API = "https://www.googleapis.com/youtube/v3"
 
@@ -45,9 +48,16 @@ class YouTubeConnector:
         after = (dt.datetime.utcnow() - dt.timedelta(days=self.published_after_days)).strftime("%Y-%m-%dT%H:%M:%SZ")
         for term in search_terms:
             query = f'"{term}" {self.context}'.strip()
-            data = self._get("search", part="snippet", q=query, type="video", regionCode="CO",
-                             relevanceLanguage="es", order="relevance", maxResults=self.max_videos,
-                             publishedAfter=after)
+            try:
+                data = self._get("search", part="snippet", q=query, type="video", regionCode="CO",
+                                 relevanceLanguage="es", order="relevance", maxResults=self.max_videos,
+                                 publishedAfter=after)
+            except requests.HTTPError as exc:
+                # Con 77 términos (candidatos + concejales) es fácil chocar con la cuota o el
+                # límite de ráfaga a mitad de la corrida. Antes, esto tumbaba fetch() entero y
+                # se perdían también los videos de los términos anteriores que sí funcionaron.
+                log.warning("YouTube search falló para %r: %s", term, exc)
+                continue
             for v in data.get("items", []):
                 vid = v.get("id", {}).get("videoId")
                 if not vid or f"yt:video:{vid}" in seen:

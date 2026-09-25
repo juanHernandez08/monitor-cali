@@ -99,6 +99,21 @@ main { padding: 20px 28px 40px; max-width: 1360px; display: grid; gap: 16px; }
 .card .n small { font-size: 12px; font-weight: 400; color: var(--muted); margin-left: 6px; }
 .card .bar { margin-top: 6px; }
 
+/* ---------- roster de candidatos (pestaña Candidatos): tarjetas más grandes ---------- */
+.roster { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.roster-card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; box-shadow: var(--shadow);
+  display: grid; grid-template-columns: auto 1fr; gap: 14px; align-items: center; width: 100%; font: inherit; color: inherit; text-align: left;
+  cursor: pointer; transition: box-shadow .15s, transform .15s; }
+.roster-card:hover { box-shadow: 0 2px 4px rgba(20,20,15,.06), 0 14px 32px rgba(20,20,15,.09); transform: translateY(-1px); }
+.roster-card .avatar { width: 56px; height: 56px; font-size: 19px; }
+.roster-body .name { font-weight: 700; font-size: 15px; }
+.roster-body .party { color: var(--muted); font-size: 12.5px; margin-top: 1px; }
+.roster-body .n { font-size: 24px; font-weight: 700; letter-spacing: -.02em; margin-top: 6px; }
+.roster-body .n small { font-size: 12px; font-weight: 400; color: var(--muted); margin-left: 6px; }
+.roster-body .bar { margin-top: 8px; }
+@media (max-width: 1100px) { .roster { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 560px) { .roster { grid-template-columns: 1fr; } }
+
 /* ---------- gráficas ---------- */
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; box-shadow: var(--shadow); }

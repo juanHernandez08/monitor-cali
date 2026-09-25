@@ -471,9 +471,44 @@ async function loadStatus() {
     s.sources.map((x) => `${esc(x.name)}: ${x.total}${x.error ? ` <span style="color:var(--neg)" title="${esc(x.error)}">⚠</span>` : ""}`).join(" · ");
 }
 
+/* ---------- pestaña Candidatos: roster + comparación compacta ---------- */
+function loadCandidatesTab(rows) {
+  if (!$("#cand-kpis")) return;
+  const byVol = [...rows].sort((a, b) => b.mentions - a.mentions);
+  const scored = rows.filter((r) => r.positive + r.negative + r.neutral > 0);
+  const byPos = [...scored].sort((a, b) => share(b, "positive") - share(a, "positive"));
+  const totalMentions = rows.reduce((a, r) => a + r.mentions, 0);
+  const totalPos = scored.reduce((a, r) => a + r.positive, 0);
+  const totalScored = scored.reduce((a, r) => a + r.positive + r.negative + r.neutral, 0);
+
+  $("#cand-kpis").innerHTML = `
+    <div class="kpi"><div class="label">Candidatos monitoreados</div><div class="value">${rows.length}</div><div class="foot">${totalMentions} menciones · ${periodLabel()}</div></div>
+    <div class="kpi"><div class="label">Más mencionado</div><div class="value" style="font-size:19px">${byVol[0] ? esc(byVol[0].name) : "—"}</div><div class="foot">${byVol[0] ? `${byVol[0].mentions} menciones` : ""}</div></div>
+    <div class="kpi"><div class="label">Mejor imagen</div><div class="value pos" style="font-size:19px">${byPos[0] ? esc(byPos[0].name) : "—"}</div><div class="foot">${byPos[0] ? `${share(byPos[0], "positive")}% positivas` : ""}</div></div>
+    <div class="kpi"><div class="label">Positividad promedio</div><div class="value">${totalScored ? pct(totalPos, totalScored) + "%" : "—"}</div><div class="foot">sobre ${totalScored} menciones clasificadas</div></div>`;
+
+  hbar("#chart-cand-volume", byVol.map((r) => r.name), byVol.map((r) => r.mentions), byVol.map((r) => r.name === CARLOS ? BLUE : CARLOS_GRAY),
+    { onClick: (i) => { const r = byVol[i]; openProfile(r.candidate_id, r.name); } });
+  hbar100("#chart-cand-sentiment", scored.map((r) => r.name), [
+    { name: "Positivas", data: scored.map((r) => share(r, "positive")) },
+    { name: "Neutrales", data: scored.map((r) => share(r, "neutral")) },
+    { name: "Negativas", data: scored.map((r) => share(r, "negative")) }], [GOOD, NEUTRAL_TONE, CRITICAL]);
+
+  $("#cand-roster").innerHTML = rows.map((r) => `<button class="roster-card" data-candidate-id="${r.candidate_id}" data-name="${esc(r.name)}">
+      ${avatar(r)}
+      <div class="roster-body">
+        <div class="name">${esc(r.name)}${r.name === CARLOS ? ` <span class="tag src">nuestro candidato</span>` : ""}</div>
+        <div class="party">${esc(r.party || "sin partido")}</div>
+        <div class="n">${r.mentions}<small>menciones${r.pending ? ` · ${r.pending} pend.` : ""}</small></div>
+        ${bar(r)}
+      </div>
+    </button>`).join("");
+}
+
 async function loadAll() {
   const rows = await loadSummary();
   loadQuadrant(rows);
+  loadCandidatesTab(rows);
   await Promise.all([loadTimeline(rows), loadSources(), loadTopics(), loadAlerts(), loadFeed(), loadStatus(), loadCity(), loadAgenda(), (typeof loadCouncil === "function" ? loadCouncil() : null)]);
 }
 
