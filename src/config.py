@@ -59,8 +59,12 @@ CANDIDATES = [
         "aliases": ["Clara Luz Roldan", "Clara Roldán", "Clara Roldan"],
     },
     {
+        # Vicepresidenta de Colombia hasta ago-2026: sin exigir contexto local, la mayoría de
+        # prensa que la nombra es sobre su gestión nacional, no sobre Cali. Auditoría 2026-09-26:
+        # 31% de sus menciones de prensa no mencionaban "Cali" ni "Alcaldía" en absoluto.
         "name": "Francia Márquez", "party": "Pacto Histórico",
         "aliases": ["Francia Marquez", "Francia Elena Márquez"],
+        "context_terms": ["Cali", "Alcaldía", "Alcaldia"],
     },
     {
         "name": "Carlos Paz", "party": None,  # afiliación no confirmada en prensa
@@ -71,8 +75,11 @@ CANDIDATES = [
         "aliases": [],
     },
     {
+        # Exministra de Minas y Energía: mismo problema que Francia Márquez, más marcado (43% de
+        # sus menciones de prensa sin "Cali" ni "Alcaldía" en la auditoría 2026-09-26).
         "name": "Irene Vélez", "party": "Pacto Histórico",
         "aliases": ["Irene Velez", "Irene Vélez Torres"],
+        "context_terms": ["Cali", "Alcaldía", "Alcaldia"],
     },
 ]
 

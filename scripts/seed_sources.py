@@ -20,11 +20,12 @@ def seed(session):
         if row is None:
             session.add(Candidate(
                 name=c["name"], party=c.get("party"), aliases=c.get("aliases", []),
-                exclusions=c.get("exclusions", []),
+                exclusions=c.get("exclusions", []), context_terms=c.get("context_terms", []),
             ))
-        else:  # config.py es la fuente de verdad de alias, exclusiones y partido
+        else:  # config.py es la fuente de verdad de alias, exclusiones, contexto y partido
             row.aliases = c.get("aliases", [])
             row.exclusions = c.get("exclusions", [])
+            row.context_terms = c.get("context_terms", [])
             row.party = c.get("party")
     for c in COUNCILORS:
         row = session.query(Candidate).filter_by(name=c["name"]).first()
