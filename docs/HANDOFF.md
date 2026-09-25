@@ -93,9 +93,9 @@ mayoría de los 19 concejales (hoy solo cubiertos por prensa).
 - **Planes de gobierno, problemáticas por sector, iniciativas en marcha**: pedido pendiente de
   una fase anterior. Es investigación documental (fuentes primarias reales), no solo código —
   no se ha empezado.
-- Backfill de emoción histórica: revisar si `scripts/backfill_emotions.py` ya terminó
-  (`select count(*) from sentiment_scores where emotion is null`); si el proceso murió a medio
-  camino, relanzarlo es seguro (solo toca filas con `emotion IS NULL`, no duplica trabajo).
+- Backfill de emoción histórica: **completado 2026-09-26** (2969 menciones). Si en el futuro
+  quedan filas con `emotion IS NULL` (p. ej. tras ingestar mucho de golpe), relanzar
+  `scripts/backfill_emotions.py` es seguro — solo toca esas filas, no duplica trabajo.
 - Sinónimos de temas ("terremoto"/"sismo") sin unificar.
 - **Duda para Carlos Arias (no resuelta, necesita ojo local)**: 6 de las menciones de YouTube del
   candidato "Carlos Paz" vienen de videos de salsa en vivo ("La Clave, Carlos Paz y Salsa al
