@@ -85,6 +85,28 @@ def ingest(session, source, connector: Connector, max_age_days: int = MAX_AGE_DA
     return new_mentions
 
 
+def context_text(mention) -> str:
+    """Texto que se manda al LLM, con el contexto que le falta a un comentario suelto (el video o
+    el post al que responde). Compartido por score_pending() y scripts/backfill_emotions.py --
+    mantenerlos en el mismo lugar evita que uno se corrija y el otro se quede desactualizado."""
+    raw = mention.raw or {}
+    text = f"{mention.text}\n\n{mention.body}" if mention.body else mention.text
+    if raw.get("video_title"):  # comentario de YouTube: el título del video da el contexto
+        return f"[Comentario en el video: {raw['video_title']}]\n{text}"
+    if raw.get("post_title"):  # comentario de Instagram/Facebook: el post da el contexto
+        if raw.get("account_candidate") == mention.candidate.name:
+            return (f"[Comentario en una publicación del propio candidato {mention.candidate.name}: "
+                    f"{raw['post_title']}] (aplausos, gracias o apoyo hacia {mention.candidate.name} aquí "
+                    f"son POSITIVOS; críticas o burlas hacia {mention.candidate.name} son NEGATIVAS; no es "
+                    f"tangencial; OJO: si el insulto o rechazo del comentario va hacia un tercero nombrado "
+                    f"en la publicación -no hacia {mention.candidate.name}-, eso NO es negativo para "
+                    f"{mention.candidate.name} -- evalúa si el comentario apoya o no la publicación de "
+                    f"{mention.candidate.name}, normalmente POSITIVO aunque el lenguaje contra ese tercero "
+                    f"sea agresivo)\n{text}")
+        return f"[Comentario en la publicación: {raw['post_title']}]\n{text}"
+    return text
+
+
 def score_pending(session, engine, limit: int = 20) -> int:
     """Clasifica menciones sin SentimentScore, en lotes. Devuelve cuántas clasificó."""
     pending = (
@@ -116,16 +138,7 @@ def score_pending(session, engine, limit: int = 20) -> int:
             session.commit()
             scored += 1
             continue
-        text = f"{mention.text}\n\n{mention.body}" if mention.body else mention.text
-        if raw.get("video_title"):  # comentario de YouTube: el título del video da el contexto
-            text = f"[Comentario en el video: {raw['video_title']}]\n{text}"
-        elif raw.get("post_title"):  # comentario de Instagram/Facebook: el post da el contexto
-            if raw.get("account_candidate") == mention.candidate.name:
-                text = (f"[Comentario en una publicación del propio candidato {mention.candidate.name}: "
-                        f"{raw['post_title']}] (aplausos, gracias o apoyo aquí son POSITIVOS hacia él; "
-                        f"críticas o burlas son NEGATIVAS; no es tangencial)\n{text}")
-            else:
-                text = f"[Comentario en la publicación: {raw['post_title']}]\n{text}"
+        text = context_text(mention)
         try:
             result = engine.score(text, candidate=mention.candidate.name, city=is_city)
         except Exception:

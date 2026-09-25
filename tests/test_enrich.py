@@ -119,6 +119,29 @@ def test_comment_on_candidates_own_post_gets_own_post_context_and_stays_relevant
     assert db_session.query(Mention).one().relevant is True
 
 
+def test_comment_insulting_a_third_party_on_candidates_own_post_warns_it_is_not_against_him(db_session):
+    """Bug real 2026-09-26 (reportado por el cliente): un comentario insultando a Alfredo
+    Mondragón en una publicación de Carlos Arias ("No Alfredo Mondragón, nuestro presidente...")
+    se estaba contando como mención NEGATIVA de Carlos -- disparaba una alerta falsa -- porque la
+    instrucción solo decía "críticas o burlas son NEGATIVAS" sin aclarar hacia quién. El prompt
+    debe pedir explícitamente distinguir si el insulto va hacia el candidato o hacia un tercero
+    nombrado en su propia publicación."""
+    c = Candidate(name="Carlos Arias", aliases=[])
+    ig = Source(type=SourceType.SOCIAL, name="IG")
+    db_session.add_all([c, ig])
+    db_session.commit()
+    ingest(db_session, ig, ListConnector([RawItem(
+        external_id="ig:comment:1", text="MONDRAGON TRAPO SUCIO", search_term="Carlos Arias",
+        raw={"kind": "comment", "post_title": "No Alfredo Mondragón, nuestro presidente...",
+             "account_candidate": "Carlos Arias"},
+    )]))
+    engine = FakeEngine(topic="rechazo e insultos")
+    score_pending(db_session, engine, limit=10)
+    sent = engine.calls[0]
+    assert "publicación del propio candidato Carlos Arias" in sent
+    assert "tercero" in sent.lower()  # debe aclarar que un insulto a otra persona nombrada no es contra el candidato
+
+
 def test_bare_mention_comment_is_neutral_and_irrelevant_without_calling_model(db_session):
     from src.pipeline import is_bare_mention
     assert is_bare_mention("@vallescout")

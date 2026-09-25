@@ -15,7 +15,7 @@ web de 8 pestañas. Corre sin servicios de pago recurrentes salvo Apify (~USD 2-
 - Windows: `.\scripts\demo.ps1` · macOS: `bash scripts/demo.sh` → Ollama + servidor en :8000 +
   túnel público de cloudflared (la URL cambia en cada arranque).
 - Solo servidor: `python -m uvicorn src.api:app --host 0.0.0.0 --port 8000`.
-- Tests: `python -m pytest -q` (138 al escribir esto). El proyecto se construye con TDD: test
+- Tests: `python -m pytest -q` (140 al escribir esto). El proyecto se construye con TDD: test
   antes que el cambio de comportamiento.
 - `.env` (no está en git) trae `GOOGLE_API_KEY`, `APIFY_TOKEN`, `OLLAMA_MODEL`. `BRIGHTDATA_API_TOKEN`
   ya no se usa (créditos agotados 2026-09-25) pero el conector queda de respaldo si se recupera.
@@ -63,6 +63,12 @@ web de 8 pestañas. Corre sin servicios de pago recurrentes salvo Apify (~USD 2-
 - **Emociones de Ciudad con ejemplos**: la gráfica "¿Qué emoción transmite la ciudad?" tiene
   `onClick` por barra (igual que el histograma) que muestra citas de ejemplo debajo
   (`#city-emotion-detail`), en vez de ser solo un conteo sin forma de ver de qué se trata.
+- **`pipeline.context_text(mention)`** (extraído 2026-09-26): construye el texto con contexto que
+  se manda al LLM para un comentario suelto (video/post al que responde). Antes vivía duplicado
+  dentro de `score_pending()` y de nuevo en `scripts/backfill_emotions.py` -- se corrigió el bug
+  de abajo en un solo lugar la primera vez, pero casi se queda desactualizado el otro. Cualquier
+  script nuevo que necesite ese contexto (comentarios, reclasificaciones) debe importar esta
+  función, no copiarla.
 
 ## Reglas que el cliente exigió (no relajar)
 
@@ -91,7 +97,14 @@ web de 8 pestañas. Corre sin servicios de pago recurrentes salvo Apify (~USD 2-
    de ahora en adelante trae una emoción de la rueda de Plutchik + orgullo (`sentiment.EMOTIONS`).
    Es **forward-only** como el resumen de una frase — lo histórico se rellena con
    `scripts/backfill_emotions.py` (solo toca el campo `emotion`, no re-evalúa lo demás).
-7. **Nada simulado**: si una fuente no tiene credencial, se omite.
+7. **Comentarios en publicación propia**: el sentimiento se mide hacia el candidato dueño de la
+   cuenta, no hacia cualquiera que el comentario mencione. Bug real 2026-09-26 (reportado por el
+   cliente): un insulto a un tercero nombrado en la propia publicación del candidato (p. ej.
+   "MONDRAGON TRAPO SUCIO" en un post de Carlos Arias titulado "No Alfredo Mondragón...") se
+   contaba como mención NEGATIVA de Carlos y disparaba alertas falsas. `pipeline.context_text()`
+   ahora le pide al LLM evaluar si el comentario apoya la publicación del candidato -normalmente
+   sí, aunque el lenguaje contra ese tercero sea agresivo-, no el tono del insulto en sí.
+8. **Nada simulado**: si una fuente no tiene credencial, se omite.
 
 ## Fuentes y su estado (2026-09-26)
 

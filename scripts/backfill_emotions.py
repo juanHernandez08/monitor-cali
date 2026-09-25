@@ -12,24 +12,10 @@ import logging
 
 from src.db import get_session, init_db
 from src.models import Mention, SentimentScore
+from src.pipeline import context_text
 from src.sentiment import build_sentiment_engine
 
 log = logging.getLogger(__name__)
-
-
-def _text_with_context(mention) -> str:
-    raw = mention.raw or {}
-    text = f"{mention.text}\n\n{mention.body}" if mention.body else mention.text
-    if raw.get("video_title"):
-        text = f"[Comentario en el video: {raw['video_title']}]\n{text}"
-    elif raw.get("post_title"):
-        if raw.get("account_candidate") == mention.candidate.name:
-            text = (f"[Comentario en una publicación del propio candidato {mention.candidate.name}: "
-                    f"{raw['post_title']}] (aplausos, gracias o apoyo aquí son POSITIVOS hacia él; "
-                    f"críticas o burlas son NEGATIVAS; no es tangencial)\n{text}")
-        else:
-            text = f"[Comentario en la publicación: {raw['post_title']}]\n{text}"
-    return text
 
 
 def run(session, engine, limit: int | None = None, batch: int = 1) -> int:
@@ -55,7 +41,7 @@ def run(session, engine, limit: int | None = None, batch: int = 1) -> int:
         for mention in pending:
             is_city = mention.candidate.kind == "city"
             try:
-                result = engine.score(_text_with_context(mention), candidate=mention.candidate.name, city=is_city)
+                result = engine.score(context_text(mention), candidate=mention.candidate.name, city=is_city)
             except Exception:
                 log.exception("backfill de emoción falló para mention %s", mention.id)
                 return done  # Ollama caído u otro fallo: parar aquí, reintentar más tarde
