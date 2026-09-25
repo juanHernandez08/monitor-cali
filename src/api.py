@@ -87,6 +87,17 @@ def create_app(session_factory=None, start_jobs: bool = True) -> FastAPI:
         with session() as s:
             return queries.timeline_details(s, days=days)
 
+    @app.get("/api/social/posts")
+    def api_social_posts(candidate_id: int | None = None, platform: str | None = None, sort: str = "engagement",
+                         days: int = Query(30, ge=1, le=365), limit: int = Query(200, le=500)):
+        with session() as s:
+            return queries.social_posts(s, days=days, candidate_id=candidate_id, platform=platform, sort=sort, limit=limit)
+
+    @app.get("/api/social/kpis")
+    def api_social_kpis(days: int = Query(30, ge=1, le=365)):
+        with session() as s:
+            return queries.social_kpis(s, days=days)
+
     @app.get("/api/alerts")
     def api_alerts(days: int = Query(30, ge=1, le=365)):
         with session() as s:

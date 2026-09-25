@@ -158,6 +158,12 @@ async function loadSummary() {
   const sel = $("#f-candidate"); const cur = sel.value;
   sel.innerHTML = `<option value="">Todos los candidatos</option>` + rows.map((r) => `<option value="${r.candidate_id}">${esc(r.name)}</option>`).join("");
   sel.value = cur;
+  const metaSel = $("#meta-f-candidate");
+  if (metaSel) {
+    const metaCur = metaSel.value;
+    metaSel.innerHTML = `<option value="">Todos los candidatos</option>` + rows.map((r) => `<option value="${r.candidate_id}">${esc(r.name)}</option>`).join("");
+    metaSel.value = metaCur;
+  }
 
   // ¿De quién se habla más?
   const byVol = [...rows].sort((a, b) => b.mentions - a.mentions);
@@ -388,6 +394,41 @@ async function loadFeed() {
   renderFeedList("#feed", await j(`/api/feed?${p}`), { showCandidate: true });
 }
 
+/* ---------- Meta y redes: publicaciones de Instagram/Facebook/X por alcance ---------- */
+async function loadMeta() {
+  if (!$("#meta-kpis")) return;
+  const d = days();
+  const p = new URLSearchParams({ days: d });
+  if ($("#meta-f-candidate").value) p.set("candidate_id", $("#meta-f-candidate").value);
+  if ($("#meta-f-platform").value) p.set("platform", $("#meta-f-platform").value);
+  if ($("#meta-f-sort").value) p.set("sort", $("#meta-f-sort").value);
+  const [kpis, posts] = await Promise.all([j(`/api/social/kpis?days=${d}`), j(`/api/social/posts?${p}`)]);
+  const n = (x) => (x || 0).toLocaleString("es-CO");
+
+  $("#meta-kpis").innerHTML = `
+    <div class="kpi"><div class="label">Publicaciones</div><div class="value">${kpis.total_posts}</div><div class="foot">Instagram, Facebook y X · ${periodLabel()}</div></div>
+    <div class="kpi"><div class="label">Likes</div><div class="value">${n(kpis.total_likes)}</div><div class="foot">suma de todas las publicaciones</div></div>
+    <div class="kpi"><div class="label">Comentarios</div><div class="value">${n(kpis.total_comments)}</div><div class="foot">suma de todas las publicaciones</div></div>
+    <div class="kpi"><div class="label">Publicación con más alcance</div><div class="value" style="font-size:15px;line-height:1.3">${kpis.top_post ? esc(kpis.top_post.text.slice(0, 46)) + (kpis.top_post.text.length > 46 ? "…" : "") : "—"}</div><div class="foot">${kpis.top_post ? `${esc(kpis.top_post.candidate)} · ${n(kpis.top_post.engagement)} de alcance` : "sin publicaciones en el período"}</div></div>`;
+
+  const byCand = kpis.by_candidate;
+  hbar("#chart-meta-candidate", byCand.map((c) => c.candidate), byCand.map((c) => c.count),
+    byCand.map((c) => c.candidate === CARLOS ? BLUE : CARLOS_GRAY));
+
+  $("#meta-feed").innerHTML = posts.length ? posts.map((r) => `<article class="item">
+      ${thumb(r)}
+      <div class="body">
+        <div class="meta"><span class="cand">${esc(r.candidate)}</span><span class="tag src">${SRC_LABEL[r.platform] || r.platform}</span><span>${fmtDate(r.published_at)}</span>${r.url ? `<a href="${r.url}" target="_blank" rel="noopener">ver original ↗</a>` : ""}</div>
+        <div class="text">${esc(r.text)}</div>
+        ${r.summary ? `<div class="summary">📝 ${esc(r.summary)}</div>` : ""}
+      </div>
+      <div class="side">
+        ${sentTag(r)}
+        <div class="hint" style="margin-top:6px">❤️ ${n(r.likes)} · 💬 ${n(r.comments)}${r.views ? ` · 👁 ${n(r.views)}` : ""}</div>
+      </div>
+    </article>`).join("") : `<div class="empty">Sin publicaciones con esos filtros en el período.</div>`;
+}
+
 /* ---------- tema por tema (genérico: perfil de candidato y detalle de ciudad) ---------- */
 function topicCard(t, i, prefix) {
   const subtopics = (t.subtopics || []).filter((s) => s.topic !== t.topic.toLowerCase());
@@ -513,7 +554,7 @@ async function loadAll() {
   const rows = await loadSummary();
   loadQuadrant(rows);
   loadCandidatesTab(rows);
-  await Promise.all([loadTimeline(rows), loadSources(), loadTopics(), loadAlerts(), loadFeed(), loadStatus(), loadCity(), loadAgenda(), (typeof loadCouncil === "function" ? loadCouncil() : null)]);
+  await Promise.all([loadTimeline(rows), loadSources(), loadTopics(), loadAlerts(), loadFeed(), loadMeta(), loadStatus(), loadCity(), loadHistorico(), loadAgenda(), (typeof loadCouncil === "function" ? loadCouncil() : null)]);
 }
 
 document.querySelectorAll(".side-nav .tab").forEach((b) => b.addEventListener("click", () => {
@@ -533,6 +574,7 @@ document.addEventListener("click", (e) => {
 });
 $("#days").addEventListener("change", loadAll);
 ["#f-candidate", "#f-source", "#f-label", "#f-emotion", "#f-category"].forEach((id) => $(id).addEventListener("change", loadFeed));
+["#meta-f-candidate", "#meta-f-platform", "#meta-f-sort"].forEach((id) => $(id).addEventListener("change", loadMeta));
 $("#refresh").addEventListener("click", async () => {
   const b = $("#refresh"); b.disabled = true; b.textContent = "Actualizando…";
   await fetch("/api/refresh", { method: "POST" });
@@ -589,6 +631,37 @@ async function loadCity() {
   const normalized = topics.map((t) => ({ topic: cap(t.category), count: t.count, positive: t.positive, neutral: t.neutral,
     negative: t.negative, positive_pct: pct(t.positive, t.count), sources: t.sources, samples: t.samples, subtopics: t.subtopics }));
   renderTopicCards("#city-detail", null, normalized, "city-t", 6);
+}
+
+/* ---------- Histórico: período actual vs. período anterior ---------- */
+async function loadHistorico() {
+  if (!$("#hist-kpis")) return;
+  const topics = await j(`/api/city/topics?days=${days()}`);
+  const totalNow = topics.reduce((a, t) => a + t.count, 0);
+  const totalPrev = topics.reduce((a, t) => a + t.previous, 0);
+  const totalTrend = totalPrev ? Math.round((totalNow - totalPrev) / totalPrev * 100) : null;
+  const withTrend = topics.filter((t) => t.trend_pct !== null).sort((a, b) => b.trend_pct - a.trend_pct);
+  const rising = withTrend[0];
+
+  $("#hist-kpis").innerHTML = `
+    <div class="kpi"><div class="label">Menciones ahora</div><div class="value">${totalNow}</div><div class="foot">${periodLabel()}</div></div>
+    <div class="kpi"><div class="label">Menciones período anterior</div><div class="value">${totalPrev}</div><div class="foot">misma duración, inmediatamente antes</div></div>
+    <div class="kpi"><div class="label">Variación total</div><div class="value ${totalTrend === null ? "" : totalTrend >= 0 ? "pos" : "neg"}">${totalTrend === null ? "—" : (totalTrend >= 0 ? "+" : "") + totalTrend + "%"}</div><div class="foot">vs el período anterior</div></div>
+    <div class="kpi"><div class="label">Más creció</div><div class="value" style="font-size:18px">${rising ? cap(rising.category) : "—"}</div><div class="foot">${rising ? `+${rising.trend_pct}% vs antes` : "sin comparación disponible"}</div></div>`;
+
+  hbar("#chart-hist-trend", withTrend.map((t) => cap(t.category)), withTrend.map((t) => t.trend_pct),
+    withTrend.map((t) => t.trend_pct >= 0 ? GOOD : CRITICAL), { labelFmt: (v) => (v >= 0 ? "+" : "") + v + "%" });
+
+  const sorted = [...topics].sort((a, b) => b.count - a.count);
+  $("#hist-table").innerHTML = sorted.map((t) => {
+    const badge = t.previous === 0 && t.count > 0 ? `<span class="tag positive">nuevo</span>`
+      : t.trend_pct === null ? `<span class="hint">sin datos previos</span>`
+      : `<span class="tag ${t.trend_pct >= 0 ? "positive" : "negative"}">${t.trend_pct >= 0 ? "+" : ""}${t.trend_pct}%</span>`;
+    return `<div class="pcard"><div style="width:100%">
+        <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><b>${cap(t.category)}</b>
+          <span class="hint">${t.count} ahora · ${t.previous} antes · ${badge}</span></div>
+      </div></div>`;
+  }).join("") || `<div class="empty">Sin datos suficientes en el período.</div>`;
 }
 
 /* ---------- agenda ---------- */

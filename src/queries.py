@@ -291,6 +291,68 @@ def feed(session, candidate_id: int | None = None, source_type: str | None = Non
     return result[offset:offset + limit]
 
 
+# ---------- Meta y redes: publicaciones de Instagram/Facebook/X con métricas de alcance ----------
+
+def _social_metrics(m: Mention) -> dict:
+    """Likes/comentarios/vistas desde el registro crudo del scraper -- el nombre del campo
+    cambia por plataforma (Instagram: likesCount/videoPlayCount; Facebook: likes/viewsCount)."""
+    raw = m.raw or {}
+    rec = raw.get("record") or {}
+    platform = raw.get("platform")
+    if platform == "instagram":
+        likes = rec.get("likesCount")
+        views = rec.get("videoPlayCount") or rec.get("videoViewCount")
+    elif platform == "facebook":
+        likes = rec.get("likes") or rec.get("reactionLikeCount")
+        views = rec.get("viewsCount") or rec.get("videoPostViewCount")
+    else:
+        likes = views = None
+    return {"likes": likes or 0, "comments": raw.get("num_comments") or 0, "views": views or 0}
+
+
+def social_posts(session, days: int = 30, candidate_id: int | None = None, platform: str | None = None,
+                 sort: str = "engagement", limit: int = 200) -> list[dict]:
+    """Publicaciones (no comentarios) de Instagram/Facebook/X, con alcance para ordenar por
+    desempeño real en vez de solo cronología -- lo que pidió el cliente para "el análisis de las
+    publicaciones" en la pestaña Meta y redes."""
+    q = (session.query(Mention).outerjoin(SentimentScore).join(Source).join(Candidate)
+         .filter(WHEN >= _since(days), Mention.relevant.is_(True), Source.type == SourceType.SOCIAL,
+                 Candidate.kind == "candidate"))
+    if candidate_id:
+        q = q.filter(Mention.candidate_id == candidate_id)
+    rows = [m for m in q.all() if (m.raw or {}).get("kind") == "post"]
+    if platform:
+        rows = [m for m in rows if (m.raw or {}).get("platform") == platform]
+    result = []
+    for m in rows:
+        d = _mention_dict(m)
+        d["thumbnail"] = _thumbnail(m)
+        d["platform"] = (m.raw or {}).get("platform")
+        d.update(_social_metrics(m))
+        d["engagement"] = d["likes"] + d["comments"]
+        result.append(d)
+    if sort == "engagement":
+        result.sort(key=lambda r: -r["engagement"])
+    elif sort == "views":
+        result.sort(key=lambda r: -r["views"])
+    else:
+        result.sort(key=lambda r: r["published_at"], reverse=True)
+    return result[:limit]
+
+
+def social_kpis(session, days: int = 30) -> dict:
+    posts = social_posts(session, days=days, limit=10000, sort="recent")
+    by_candidate = Counter(p["candidate"] for p in posts)
+    return {
+        "total_posts": len(posts),
+        "total_likes": sum(p["likes"] for p in posts),
+        "total_comments": sum(p["comments"] for p in posts),
+        "total_views": sum(p["views"] for p in posts),
+        "top_post": max(posts, key=lambda p: p["engagement"]) if posts else None,
+        "by_candidate": [{"candidate": k, "count": v} for k, v in by_candidate.most_common()],
+    }
+
+
 def sources_by_candidate(session, days: int = 30) -> dict:
     """Menciones relevantes por candidato y tipo de fuente (para la gráfica de canales)."""
     names = [c.name for c in session.query(Candidate).filter_by(active=True).filter(Candidate.kind == "candidate").all()]
