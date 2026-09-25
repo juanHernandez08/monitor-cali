@@ -180,6 +180,9 @@ footer { color: var(--muted); font-size: 12px; line-height: 1.7; }
 .tabpane { display: none; }
 .tabpane.active { display: grid; gap: 16px; }
 .intro p { margin: 6px 0 0; color: var(--ink); font-size: 14px; line-height: 1.6; }
+.section-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted);
+  margin: 10px 2px -2px; padding-top: 10px; border-top: 1px solid var(--line); }
+.section-title:first-of-type { border-top: none; padding-top: 0; }
 .panel.big .panel-head { align-items: flex-start; }
 .panel.big h2 { font-size: 18px; }
 .panel.big .hint { display: block; margin-top: 4px; font-size: 13px; max-width: 900px; }

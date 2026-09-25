@@ -117,6 +117,8 @@
       <p>Cada <b>mención</b> es una nota de prensa, un post, un video o un comentario donde aparece un candidato. Un clasificador de lenguaje lee cada mención y decide si deja al candidato <span class="tag positive">bien parado</span>, <span class="tag negative">mal parado</span> o si es <span class="tag neutral">informativa</span>. Las cifras corresponden al período elegido arriba y se actualizan solas cada 15 minutos.</p>
     </div>
 
+    <h3 class="section-title">Alcance — quién habla y por dónde</h3>
+
     <section class="panel big">
       <div class="panel-head"><div><h2>¿De quién se habla más?</h2><div class="hint">Número de menciones por candidato en el período. Incluye prensa, Reddit, YouTube, Instagram y Facebook.</div></div></div>
       <p class="reading" id="read-volume"></p>
@@ -124,9 +126,9 @@
     </section>
 
     <section class="panel big">
-      <div class="panel-head"><div><h2>¿Cómo se habla de cada candidato?</h2><div class="hint">De cada 100 menciones clasificadas, cuántas son positivas, neutrales o negativas. Entre paréntesis, el total de menciones clasificadas.</div></div></div>
-      <p class="reading" id="read-sentiment"></p>
-      <div class="chart-box xl"><div id="chart-sentiment"></div></div>
+      <div class="panel-head"><div><h2>¿Cuándo se habló de ellos?</h2><div class="hint">Menciones por día de Carlos Arias (línea gruesa) y de los 4 rivales con más menciones. Pasa el mouse por un punto para ver el valor; haz clic para ver la publicación que lo causó.</div></div></div>
+      <div class="chart-box xl"><div id="chart-timeline"></div></div>
+      <div id="day-detail" class="day-detail" style="display:none"></div>
     </section>
 
     <section class="panel big">
@@ -135,12 +137,21 @@
       <div class="chart-box xl"><div id="chart-sources"></div></div>
     </section>
 
+    <h3 class="section-title">Percepción — cómo les está yendo</h3>
+
     <section class="panel big">
-      <div class="panel-head"><div><h2>¿Cuándo se habló de ellos?</h2><div class="hint">Menciones por día de Carlos Arias (línea gruesa) y de los 4 rivales con más menciones. Los picos suelen coincidir con una noticia o una publicación viral.</div></div></div>
-      <p class="reading" id="read-timeline"></p>
-      <div class="chart-box xl"><div id="chart-timeline"></div></div>
-      <div id="day-detail" class="day-detail" style="display:none"></div>
+      <div class="panel-head"><div><h2>¿Cómo se habla de cada candidato?</h2><div class="hint">De cada 100 menciones clasificadas, cuántas son positivas, neutrales o negativas. Entre paréntesis, el total de menciones clasificadas.</div></div></div>
+      <p class="reading" id="read-sentiment"></p>
+      <div class="chart-box xl"><div id="chart-sentiment"></div></div>
     </section>
+
+    <section class="panel big">
+      <div class="panel-head"><div><h2>Volumen contra positividad: ¿quién habla mucho y bien?</h2><div class="hint">Cada punto es un candidato. A la derecha, quienes más se mencionan; arriba, quienes mejor imagen tienen. El cuadrante ideal es arriba a la derecha: mucho volumen y buena imagen.</div></div></div>
+      <p class="reading" id="read-quadrant"></p>
+      <div class="chart-box xl"><div id="chart-quadrant"></div></div>
+    </section>
+
+    <h3 class="section-title">Temas — de qué se habla</h3>
 
     <section class="panel big">
       <div class="panel-head"><div><h2>¿De qué hablan las noticias y publicaciones?</h2><div class="hint">Asuntos más frecuentes en las notas de prensa, posts de Instagram / Facebook y videos de YouTube del período (todos los candidatos). No incluye comentarios.</div></div></div>

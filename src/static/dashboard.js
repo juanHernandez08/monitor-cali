@@ -182,69 +182,87 @@ async function loadSummary() {
   return rows;
 }
 
-let timelineMeta = { labels: [], details: {}, rows: [] };
 async function loadTimeline(rows) {
   const span = Math.max(days(), 7);
-  const [d, details] = await Promise.all([j(`/api/timeline?days=${span}`), j(`/api/timeline/details?days=${span}`)]);
-  timelineMeta = { labels: d.labels, details, rows };
+  const d = await j(`/api/timeline?days=${span}`);
   const top = [CARLOS, ...rows.filter((r) => r.name !== CARLOS).sort((a, b) => b.mentions - a.mentions).slice(0, 4).map((r) => r.name)];
   const series = d.series.filter((s) => top.includes(s.name));
-  const pubOf = (name, i) => (details[name] || {})[d.labels[i]];
   const niceLabels = d.labels.map((l) => l.slice(5).replace("-", "/"));
+  $("#day-detail").style.display = "none";
   chart("#chart-timeline", {
     chart: { type: "line", height: "100%",
-      events: { dataPointSelection: (e, ctx, cfg) => showDay(series[cfg.seriesIndex].name, d.labels[cfg.dataPointIndex]) } },
+      events: { dataPointSelection: (e, ctx, cfg) => showPeak(series[cfg.seriesIndex].name, d.labels[cfg.dataPointIndex]) } },
     series: series.map((s) => ({ name: s.name, data: s.data })),
     xaxis: { categories: niceLabels, tickAmount: 10 },
     colors: series.map((s, i) => COLORS[i % COLORS.length]),
     stroke: { curve: "smooth", width: series.map((s) => s.name === CARLOS ? 3.5 : 1.5) },
     markers: { size: series.map((s) => s.name === CARLOS ? 4 : 3), hover: { size: 7 } },
     legend: { position: "bottom" },
-    yaxis: { labels: { formatter: (v) => Math.round(v) } },
-    tooltip: { shared: true, intersect: false, custom: ({ series: vals, dataPointIndex, w }) => {
-      const lines = w.config.series.map((s, i) => `<div style="display:flex;gap:6px;align-items:center;margin:2px 0"><i style="width:8px;height:8px;border-radius:2px;background:${w.config.colors[i]};display:inline-block"></i><b>${esc(s.name)}</b>: ${vals[i][dataPointIndex]}</div>`).join("");
-      const notes = w.config.series.map((s) => { const p = pubOf(s.name, dataPointIndex); return p ? `<div class="hint" style="margin-top:2px">${esc(s.name)}: ${p.count} de ${p.total} por «${esc(p.text).slice(0, 60)}${p.text.length > 60 ? "…" : ""}» (${srcName(p)})</div>` : ""; }).join("");
-      return `<div style="padding:8px 10px;max-width:280px"><b>${esc(d.labels[dataPointIndex])}</b>${lines}${notes}<div class="hint" style="margin-top:4px">clic en un punto para ver todas las publicaciones del día</div></div>`;
-    } },
+    yaxis: { labels: { formatter: (v) => Math.round(v) }, title: { text: "menciones ese día" } },
+    tooltip: { shared: false, intersect: true, y: { formatter: (v) => `${v} ${v === 1 ? "mención" : "menciones"} · clic para ver la publicación` } },
   });
   const cs = series.find((s) => s.name === CARLOS);
   if (cs) {
     const peakIdx = cs.data.reduce((best, v, i) => (v > cs.data[best] ? i : best), 0);
-    const peakDate = new Date(d.labels[peakIdx] + "T12:00:00").toLocaleDateString("es-CO", { day: "numeric", month: "long" });
-    const active = cs.data.filter((v) => v > 0).length;
-    const pk = pubOf(CARLOS, peakIdx);
-    const cause = pk ? ` ${pk.count} de ellas vinieron de ${pk.kind === "news" ? "la nota" : pk.kind === "video" ? "el video" : "la publicación"} <b>«${esc(pk.text).slice(0, 90)}»</b> (${srcName(pk)})${pk.url ? ` — <a href="${pk.url}" target="_blank" rel="noopener">ver ↗</a>` : ""}.` : "";
-    const others = series.filter((s) => s.name !== CARLOS).map((s) => {
-      const i = s.data.reduce((best, v, k) => (v > s.data[best] ? k : best), 0); const p = pubOf(s.name, i);
-      return p ? `${s.name}: ${s.data[i]} el ${new Date(d.labels[i] + "T12:00:00").toLocaleDateString("es-CO", { day: "numeric", month: "short" })} por «${esc(p.text).slice(0, 50)}»` : null;
-    }).filter(Boolean);
-    $("#read-timeline").innerHTML = `<b>Carlos Arias</b> tuvo su pico el <b>${peakDate}</b> con ${cs.data[peakIdx]} menciones en un día, y apareció en ${active} de los ${d.labels.length} días mostrados.${cause}` +
-      (others.length ? `<br><span class="hint">Picos de los rivales — ${others.join(" · ")}.</span>` : "") +
-      `<br><span class="hint">Pasa el mouse por cualquier punto para ver qué publicación pesó ese día; haz clic para ver todas.</span>`;
+    if (cs.data[peakIdx] > 0) showPeak(CARLOS, d.labels[peakIdx]);
   }
 }
 
-async function showDay(name, day) {
-  const row = timelineMeta.rows.find((r) => r.name === name);
-  if (!row) return;
+async function showPeak(name, day) {
   const box = $("#day-detail");
-  const nice = new Date(day + "T12:00:00").toLocaleDateString("es-CO", { weekday: "long", day: "numeric", month: "long" });
-  box.innerHTML = `<div class="panel-head"><h2>${esc(name)} · ${nice}</h2><button class="toggle" id="day-close">cerrar ✕</button></div><div class="feed"><div class="empty">Cargando…</div></div>`;
   box.style.display = "block";
-  box.scrollIntoView({ behavior: "smooth", block: "start" });
+  box.innerHTML = `<div class="empty">Cargando…</div>`;
+  const p = await j(`/api/peak?candidate=${encodeURIComponent(name)}&day=${day}`);
+  const nice = new Date(day + "T12:00:00").toLocaleDateString("es-CO", { weekday: "long", day: "numeric", month: "long" });
+  if (!p || !p.text) { box.innerHTML = `<div class="panel-head"><h2>${esc(name)} · ${nice}</h2><button class="toggle" id="day-close">cerrar ✕</button></div><div class="empty">Sin publicaciones de ${esc(name)} ese día.</div>`; }
+  else {
+    box.innerHTML = `<div class="panel-head"><h2>${esc(name)} · ${nice}</h2><span class="hint">${p.mentions_that_day} ${p.mentions_that_day === 1 ? "mención" : "menciones"} ese día, la mayoría de esta publicación</span><button class="toggle" id="day-close">cerrar ✕</button></div>
+    <article class="item">
+      ${thumb(p)}
+      <div class="body">
+        <div class="meta"><span class="tag src">${srcName(p)} · ${KIND[p.kind] || ""}</span>${p.url ? `<a href="${p.url}" target="_blank" rel="noopener">ver original ↗</a>` : ""}</div>
+        <div class="text">${esc(p.text)}</div>
+      </div>
+    </article>`;
+  }
   $("#day-close").addEventListener("click", () => { box.style.display = "none"; });
-  const rows = await j(`/api/feed?candidate_id=${row.candidate_id}&days=${Math.max(days(), 7) + 1}&day=${day}&limit=100`);
-  box.querySelector(".feed").innerHTML = rows.map((r) => `<article class="item">
-    ${thumb(r)}
-    <div class="body">
-      <div class="meta"><span class="tag src">${srcName(r)} · ${KIND[r.kind] || ""}</span><span>${fmtDate(r.published_at)}</span>${r.url ? `<a href="${r.url}" target="_blank" rel="noopener">ver original ↗</a>` : ""}</div>
-      <div class="text">${esc(r.text)}</div>
-      ${r.summary ? `<div class="summary">📝 ${esc(r.summary)}</div>` : ""}
-      ${r.author ? `<div class="author">${esc(r.author)}</div>` : ""}
-      ${r.comments.length ? `<div class="thread">${r.comments.slice(0, 8).map((c) => `<div class="comment"><div>${esc(c.text).slice(0, 200)}<div class="who">${esc(c.author || "")}</div></div><div>${sentTag(c)}</div></div>`).join("")}${r.comments.length > 8 ? `<div class="hint">… y ${r.comments.length - 8} comentarios más</div>` : ""}</div>` : ""}
-    </div>
-    <div class="side">${r.kind === "comments" ? `<span class="hint">solo comentarios</span>` : sentTag(r)}${r.comments_summary.total ? `<div class="counts">${r.comments_summary.total} comentarios · ${r.comments_summary.positive} ▲ ${r.comments_summary.neutral} ● ${r.comments_summary.negative} ▼</div>` : ""}</div>
-  </article>`).join("") || `<div class="empty">Sin publicaciones ese día.</div>`;
+}
+
+/* Volumen (menciones) contra positividad (%): 4 cuadrantes clásicos de análisis de reputación. */
+function loadQuadrant(rows) {
+  if (!$("#chart-quadrant")) return;
+  const scored = rows.filter((r) => r.positive + r.negative + r.neutral > 0);
+  if (!scored.length) { $("#read-quadrant").innerHTML = "Aún no hay menciones clasificadas en el período."; return; }
+  const sortedVol = [...scored].map((r) => r.mentions).sort((a, b) => a - b);
+  const medVol = sortedVol[Math.floor(sortedVol.length / 2)];
+  const withXY = scored.map((r) => ({ name: r.name, x: r.mentions, y: share(r, "positive") }));
+  const carlos = withXY.find((p) => p.name === CARLOS);
+  const rivals = withXY.filter((p) => p.name !== CARLOS);
+
+  chart("#chart-quadrant", {
+    chart: { type: "scatter", height: "100%", zoom: { enabled: false } },
+    series: [{ name: "Rivales", data: rivals.map((p) => [p.x, p.y]) }, ...(carlos ? [{ name: "Carlos Arias", data: [[carlos.x, carlos.y]] }] : [])],
+    colors: [CARLOS_GRAY, BLUE],
+    markers: { size: 9, strokeWidth: 2, strokeColors: "#fff" },
+    xaxis: { title: { text: "menciones en el período" }, tickAmount: 5 },
+    yaxis: { title: { text: "% de menciones positivas" }, min: 0, max: 100, labels: { formatter: (v) => Math.round(v) + "%" } },
+    legend: { show: false },
+    annotations: {
+      xaxis: [{ x: medVol, borderColor: GRID, strokeDashArray: 4, label: { text: "mediana de volumen", orientation: "horizontal", style: { color: MUTED, background: "#fff", fontSize: "10px" } } }],
+      yaxis: [{ y: 50, borderColor: GRID, strokeDashArray: 4, label: { text: "50% positividad", style: { color: MUTED, background: "#fff", fontSize: "10px" } } }],
+      points: withXY.map((p) => ({ x: p.x, y: p.y, marker: { size: 0 }, label: { text: p.name, offsetY: -14, borderWidth: 0, style: { color: INK, background: "transparent", fontSize: "11px", fontWeight: p.name === CARLOS ? 700 : 500 } } })),
+    },
+    tooltip: { custom: ({ seriesIndex, dataPointIndex, w }) => {
+      const p = seriesIndex === 0 ? rivals[dataPointIndex] : carlos;
+      return `<div style="padding:6px 10px"><b>${esc(p.name)}</b><br>${p.x} menciones · ${p.y}% positivas</div>`;
+    } },
+  });
+  const quadName = (p) => (p.x >= medVol ? (p.y >= 50 ? "mucho volumen y buena imagen" : "mucho volumen pero imagen floja") : (p.y >= 50 ? "poco volumen pero buena imagen" : "poco volumen y sin destacar"));
+  const loudBad = rivals.filter((p) => p.x >= medVol && p.y < 50).sort((a, b) => b.x - a.x)[0];
+  $("#read-quadrant").innerHTML = carlos
+    ? `<b>Carlos Arias</b> está en el cuadrante de <b>${quadName(carlos)}</b> (${carlos.x} menciones, ${carlos.y}% positivas).` +
+      (loudBad ? ` El rival con más volumen e imagen floja es <b>${esc(loudBad.name)}</b> (${loudBad.x} menciones, ${loudBad.y}% positivas) — ese es terreno para diferenciarse.` : "")
+    : "Sin datos de Carlos en el período.";
 }
 
 async function loadSources() {
@@ -425,6 +443,7 @@ async function loadStatus() {
 
 async function loadAll() {
   const rows = await loadSummary();
+  loadQuadrant(rows);
   await Promise.all([loadTimeline(rows), loadSources(), loadTopics(), loadAlerts(), loadFeed(), loadStatus(), loadCity(), loadAgenda(), (typeof loadCouncil === "function" ? loadCouncil() : null)]);
 }
 
@@ -522,7 +541,7 @@ async function loadAgenda() {
     </div>`).join("") || `<div class="empty">No hay temas con molestia alta sin presencia de Carlos en el período.</div>`;
   const top = a.speak[0];
   $("#read-agenda-speak").innerHTML = top
-    ? `La prioridad es <b>${top.category}</b>: ${top.count} menciones con ${top.negative_pct}% de molestia y ${top.carlos_mentions === 0 ? "ninguna" : top.carlos_mentions} mención${top.carlos_mentions === 1 ? "" : "es"} de Carlos. ` +
+    ? `La prioridad es <b>${top.category}</b>: ${top.count} menciones con ${top.negative_pct}% de molestia y ${top.carlos_mentions === 0 ? "ninguna mención" : `${top.carlos_mentions} ${top.carlos_mentions === 1 ? "mención" : "menciones"}`} de Carlos. ` +
       (a.speak[1] ? `Le siguen <b>${a.speak[1].category}</b>${a.speak[2] ? ` y <b>${a.speak[2].category}</b>` : ""}.` : "")
     : "Sin temas prioritarios en el período seleccionado.";
 
