@@ -14,16 +14,11 @@ async function loadCouncil() {
     <div class="kpi"><div class="label">Carlos Arias entre sus colegas</div><div class="value">${carlos ? carlos.mentions : 0}</div><div class="foot">${carlos ? `${ordinal(carlosIdx)} de ${withM.length} concejales con menciones` : "sin menciones en el período"}</div></div>
     <div class="kpi"><div class="label">Bancada más visible</div><div class="value" style="font-size:18px">${topParty ? esc(topParty.party) : "—"}</div><div class="foot">${topParty ? `${topParty.mentions} menciones · ${topParty.members} concejales` : ""}</div></div>`;
 
-  chart("#chart-council", {
-    type: "bar",
-    data: { labels: withM.map((m) => m.name), datasets: [{ data: withM.map((m) => m.mentions),
-      backgroundColor: withM.map((m) => m.name === CARLOS ? BLUE : CARLOS_GRAY), borderRadius: 5, barThickness: 16 }] },
-    options: { indexAxis: "y", responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false },
-        datalabels: { display: true, anchor: "end", align: "end", color: INK, font: { weight: 600 } },
-        tooltip: { callbacks: { afterBody: (it) => { const m = withM[it[0].dataIndex]; return [`${m.party || "sin partido"}${m.is_candidate ? " · también candidato a la Alcaldía" : ""}`]; } } } },
-      scales: { x: { beginAtZero: true, grid: { color: GRID }, ticks: { precision: 0 }, grace: "15%", title: { display: true, text: "menciones" } }, y: { grid: { display: false } } } },
-  });
+  hbar("#chart-council", withM.map((m) => m.name), withM.map((m) => m.mentions), withM.map((m) => m.name === CARLOS ? BLUE : CARLOS_GRAY));
+  charts["#chart-council"].updateOptions({ tooltip: { custom: ({ dataPointIndex }) => {
+    const m = withM[dataPointIndex];
+    return `<div style="padding:6px 10px"><b>${esc(m.name)}</b><div class="hint">${esc(m.party || "sin partido")}${m.is_candidate ? " · también candidato a la Alcaldía" : ""}</div></div>`;
+  } } }, false, false);
   $("#read-council").innerHTML = withM.length
     ? `De los ${o.members.length} concejales, ${withM.length} tuvieron menciones en ${periodLabel()}. El más mencionado es <b>${esc(withM[0].name)}</b> (${withM[0].mentions}, ${esc(withM[0].party || "sin partido")})` +
       (carlos ? `; <b>Carlos Arias</b> ocupa el ${ordinal(carlosIdx)} lugar con ${carlos.mentions}.` : "; <b>Carlos Arias</b> no registra menciones en el período.")
@@ -31,15 +26,16 @@ async function loadCouncil() {
 
   const parties = o.parties.filter((p) => p.mentions > 0);
   chart("#chart-council-parties", {
-    type: "bar",
-    data: { labels: parties.map((p) => `${p.party} (${p.members})`), datasets: [
-      { label: "Positivas", data: parties.map((p) => p.positive), backgroundColor: GOOD },
-      { label: "Neutrales", data: parties.map((p) => p.neutral), backgroundColor: NEUTRAL_TONE },
-      { label: "Negativas", data: parties.map((p) => p.negative), backgroundColor: CRITICAL }] },
-    options: { indexAxis: "y", responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { position: "bottom" },
-        datalabels: { display: (c) => c.dataset.data[c.dataIndex] >= 2, color: (c) => c.datasetIndex === 1 ? INK_SOFT : "#fff", font: { weight: 600, size: 11 } } },
-      scales: { x: { stacked: true, beginAtZero: true, grid: { color: GRID }, ticks: { precision: 0 }, title: { display: true, text: "menciones" } }, y: { stacked: true, grid: { display: false } } } },
+    chart: { type: "bar", stacked: true, height: "100%" },
+    series: [
+      { name: "Positivas", data: parties.map((p) => p.positive) },
+      { name: "Neutrales", data: parties.map((p) => p.neutral) },
+      { name: "Negativas", data: parties.map((p) => p.negative) }],
+    xaxis: { categories: parties.map((p) => `${p.party} (${p.members})`) },
+    colors: [GOOD, NEUTRAL_TONE, CRITICAL],
+    plotOptions: { bar: { horizontal: true, borderRadius: 3, barHeight: "65%" } },
+    dataLabels: { enabled: true, formatter: (v) => (v >= 2 ? v : ""), style: { colors: ["#fff"], fontWeight: 600, fontSize: "11px" } },
+    legend: { position: "bottom" },
   });
 
   $("#council-detail").innerHTML = o.members.map((m) => `<div class="pcard">

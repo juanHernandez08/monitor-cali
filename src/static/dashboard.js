@@ -16,26 +16,44 @@ const SRC_COLOR = { Prensa: BLUE, YouTube: ORANGE, Reddit: AQUA, "Redes (búsque
 const LABEL = { negative: "Negativo", positive: "Positivo", neutral: "Neutral" };
 const KIND = { post: "Post", video: "Video", comments: "Publicación", news: "Nota" };
 const charts = {};
-let feedRows = [];
+let summaryRows = [];
 
-Chart.register(ChartDataLabels);
-Chart.defaults.font.family = "Inter, system-ui, sans-serif";
-Chart.defaults.color = MUTED;
-Chart.defaults.plugins.datalabels.display = false;
-
-async function j(url) { const r = await fetch(url); return r.json(); }
-function days() { return Number($("#days").value); }
-function periodLabel() { const d = days(); return d === 1 ? "las últimas 24 horas" : `los últimos ${d} días`; }
-function ordinal(i) { return `${i + 1}.º`; }
-function esc(s) { return (s || "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
-function ago(iso) {
-  if (!iso) return "sin datos";
-  const m = Math.round((Date.now() - new Date(iso + "Z")) / 60000);
-  if (m < 1) return "hace un momento";
-  return m < 60 ? `hace ${m} min` : m < 1440 ? `hace ${Math.round(m / 60)} h` : `hace ${Math.round(m / 1440)} d`;
+/* ---------- ApexCharts: helper genérico + estilo base compartido ---------- */
+function chart(id, opts) {
+  if (charts[id]) charts[id].destroy();
+  const base = { chart: { fontFamily: "Inter, system-ui, sans-serif", foreColor: MUTED, toolbar: { show: false }, animations: { speed: 300 } },
+    grid: { borderColor: GRID, strokeDashArray: 0 }, tooltip: { theme: "light" } };
+  charts[id] = new ApexCharts($(id), deepMerge(base, opts));
+  charts[id].render();
 }
-function fmtDate(iso) { return new Date(iso + "Z").toLocaleString("es-CO", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }); }
-function chart(id, cfg) { if (charts[id]) charts[id].destroy(); charts[id] = new Chart($(id), cfg); }
+function deepMerge(a, b) {
+  const out = { ...a };
+  for (const k in b) out[k] = (a[k] && typeof a[k] === "object" && !Array.isArray(a[k]) && typeof b[k] === "object" && !Array.isArray(b[k])) ? deepMerge(a[k], b[k]) : b[k];
+  return out;
+}
+/* Barras horizontales, una sola serie (ranking o magnitud). `perBar` = array de colores o un color fijo. */
+function hbar(id, categories, data, perBar, { labelFmt } = {}) {
+  chart(id, {
+    chart: { type: "bar", height: "100%" },
+    series: [{ data }], xaxis: { categories, labels: { style: { colors: MUTED } } },
+    plotOptions: { bar: { horizontal: true, borderRadius: 4, distributed: Array.isArray(perBar), barHeight: "62%" } },
+    colors: Array.isArray(perBar) ? perBar : [perBar],
+    dataLabels: { enabled: true, formatter: labelFmt || ((v) => v), style: { colors: [INK], fontWeight: 600 }, offsetX: 6 },
+    legend: { show: false },
+  });
+}
+/* Barras horizontales apiladas al 100% (positivo/neutral/negativo, ya como % 0-100). */
+function hbar100(id, categories, series) {
+  chart(id, {
+    chart: { type: "bar", stacked: true, height: "100%" },
+    series, xaxis: { categories, max: 100, labels: { formatter: (v) => Math.round(v) + "%" } },
+    plotOptions: { bar: { horizontal: true, borderRadius: 3, barHeight: "62%" } },
+    colors: [GOOD, NEUTRAL_TONE, CRITICAL],
+    dataLabels: { enabled: true, formatter: (v) => (v >= 8 ? Math.round(v) + "%" : ""), style: { colors: ["#fff"], fontWeight: 600 } },
+    legend: { position: "bottom" }, tooltip: { y: { formatter: (v) => v + "%" } },
+  });
+}
+
 function initials(name) { return name.split(" ").filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toUpperCase(); }
 function avatar(r, cls = "") {
   return r.avatar
@@ -49,27 +67,71 @@ function bar(r) {
 }
 const share = (r, k) => pct(r[k], r.positive + r.negative + r.neutral);
 
+async function j(url) { const r = await fetch(url); return r.json(); }
+function days() { return Number($("#days").value); }
+function periodLabel() { const d = days(); return d === 1 ? "las últimas 24 horas" : `los últimos ${d} días`; }
+function ordinal(i) { return `${i + 1}.º`; }
+function esc(s) { return (s || "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+function ago(iso) {
+  if (!iso) return "sin datos";
+  const m = Math.round((Date.now() - new Date(iso + "Z")) / 60000);
+  if (m < 1) return "hace un momento";
+  return m < 60 ? `hace ${m} min` : m < 1440 ? `hace ${Math.round(m / 60)} h` : `hace ${Math.round(m / 1440)} d`;
+}
+function fmtDate(iso) { return new Date(iso + "Z").toLocaleString("es-CO", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }); }
+
 /* Medidor semicircular (0-100): verde si va bien, ámbar en zona media, rojo si va mal. */
-function renderGauge(value) {
-  if (!$("#chart-gauge")) return;
+function renderGauge(id, value) {
+  if (!$(id)) return;
   const tone = value >= 60 ? GOOD : value >= 40 ? YELLOW : CRITICAL;
-  chart("#chart-gauge", {
-    type: "doughnut",
-    data: { datasets: [{ data: [value, 100 - value], backgroundColor: [tone, "#eceae2"], borderWidth: 0 }] },
-    options: { responsive: true, maintainAspectRatio: false, cutout: "78%", circumference: 180, rotation: 270,
-      animation: { duration: 400 }, plugins: { legend: { display: false }, tooltip: { enabled: false }, datalabels: { display: false } } },
+  chart(id, {
+    chart: { type: "radialBar", height: "100%" },
+    series: [value],
+    colors: [tone],
+    plotOptions: { radialBar: { startAngle: -90, endAngle: 90, hollow: { size: "68%" }, track: { background: "#eceae2" },
+      dataLabels: { name: { show: false }, value: { offsetY: -2, fontSize: "26px", fontWeight: 700, color: INK, formatter: (v) => v + "%" } } } },
   });
 }
 
-/* ---------- KPIs + panel de Carlos + tarjetas + gráficas de candidatos ---------- */
+/* ---------- panel de un candidato (usado en el resumen para Carlos y en el perfil para cualquiera) ---------- */
+function heroHTML(r, rivals, gaugeId) {
+  const cScored = r.positive + r.negative + r.neutral;
+  const rivalsPos = rivals.reduce((a, x) => a + x.positive, 0), rivalsScored = rivals.reduce((a, x) => a + x.positive + x.negative + x.neutral, 0);
+  const cPct = pct(r.positive, cScored), rPct = pct(rivalsPos, rivalsScored);
+  const diff = cScored && rivalsScored ? cPct - rPct : null;
+  return `
+    ${avatar(r)}
+    <div>
+      <div class="name">${esc(r.name)}</div><div class="party">${esc(r.party || "")}</div>
+      <div class="stats">
+        <div class="stat"><div class="n">${r.mentions}</div><div class="l">menciones</div></div>
+        <div class="stat"><div class="n" style="color:var(--pos)">${r.positive}</div><div class="l">positivas</div></div>
+        <div class="stat"><div class="n" style="color:var(--neu)">${r.neutral}</div><div class="l">neutrales</div></div>
+        <div class="stat"><div class="n" style="color:var(--neg)">${r.negative}</div><div class="l">negativas</div></div>
+        ${r.pending ? `<div class="stat"><div class="n" style="color:var(--muted)">${r.pending}</div><div class="l">pendientes de análisis</div></div>` : ""}
+      </div>
+      <div style="margin-top:10px">${bar(r)}</div>
+      <div class="legend"><span><i style="background:var(--pos)"></i>positivo</span><span><i style="background:var(--neu)"></i>neutral</span><span><i style="background:var(--neg)"></i>negativo</span></div>
+    </div>
+    <div class="compare">
+      <div class="hint">Positividad${r.name === CARLOS ? " de Carlos" : ""}</div>
+      <div class="gauge-box" id="${gaugeId}"></div>
+      <div class="big ${diff === null ? "" : diff >= 0 ? "pos" : "neg"}" style="font-size:15px">${diff === null ? "sin comparación" : `${diff >= 0 ? "+" : ""}${diff} pts vs el resto`}</div>
+      <div class="hint">(${cScored ? cPct : "—"}% vs ${rivalsScored ? rPct : "—"}%)</div>
+    </div>`;
+}
+
+/* ---------- KPIs + panel de Carlos + tarjetas ---------- */
 async function loadSummary() {
   const rows = await j(`/api/summary?days=${days()}`);
+  summaryRows = rows;
   const alerts = await j(`/api/alerts?days=${days()}`);
   const carlos = rows.find((r) => r.name === CARLOS) || rows[0];
   const rivals = rows.filter((r) => r !== carlos);
   const total = rows.reduce((a, r) => a + r.mentions, 0);
   const cScored = carlos.positive + carlos.negative + carlos.neutral;
-  const rivalsPos = rivals.reduce((a, r) => a + r.positive, 0), rivalsScored = rivals.reduce((a, r) => a + r.positive + r.negative + r.neutral, 0);
+  const rivalsScored = rivals.reduce((a, r) => a + r.positive + r.negative + r.neutral, 0);
+  const rivalsPos = rivals.reduce((a, r) => a + r.positive, 0);
   const cPct = pct(carlos.positive, cScored), rPct = pct(rivalsPos, rivalsScored);
 
   $("#kpis").innerHTML = `
@@ -78,36 +140,17 @@ async function loadSummary() {
     <div class="kpi"><div class="label">Positividad de Carlos Arias</div><div class="value ${cPct >= 50 ? "pos" : ""}">${cScored ? cPct + "%" : "—"}</div><div class="foot">rivales: ${rivalsScored ? rPct + "%" : "—"} en promedio</div></div>
     <div class="kpi"><div class="label">Alertas activas</div><div class="value ${alerts.length ? "neg" : ""}">${alerts.length}</div><div class="foot">menciones negativas (≤ −0.5) sobre Carlos</div></div>`;
 
-  const diff = cScored && rivalsScored ? cPct - rPct : null;
-  $("#hero").innerHTML = `
-    ${avatar(carlos)}
-    <div>
-      <div class="name">${esc(carlos.name)}</div><div class="party">${esc(carlos.party || "")}</div>
-      <div class="stats">
-        <div class="stat"><div class="n">${carlos.mentions}</div><div class="l">menciones</div></div>
-        <div class="stat"><div class="n" style="color:var(--pos)">${carlos.positive}</div><div class="l">positivas</div></div>
-        <div class="stat"><div class="n" style="color:var(--neu)">${carlos.neutral}</div><div class="l">neutrales</div></div>
-        <div class="stat"><div class="n" style="color:var(--neg)">${carlos.negative}</div><div class="l">negativas</div></div>
-        ${carlos.pending ? `<div class="stat"><div class="n" style="color:var(--muted)">${carlos.pending}</div><div class="l">pendientes de análisis</div></div>` : ""}
-      </div>
-      <div style="margin-top:10px">${bar(carlos)}</div>
-      <div class="legend"><span><i style="background:var(--pos)"></i>positivo</span><span><i style="background:var(--neu)"></i>neutral</span><span><i style="background:var(--neg)"></i>negativo</span></div>
-    </div>
-    <div class="compare">
-      <div class="hint">Positividad de Carlos</div>
-      <div class="gauge-box"><canvas id="chart-gauge"></canvas><div class="gauge-value">${cScored ? cPct + "%" : "—"}</div></div>
-      <div class="big ${diff === null ? "" : diff >= 0 ? "pos" : "neg"}" style="font-size:15px">${diff === null ? "sin comparación" : `${diff >= 0 ? "+" : ""}${diff} pts vs rivales`}</div>
-      <div class="hint">(${cScored ? cPct : "—"}% vs ${rivalsScored ? rPct : "—"}%)</div>
-    </div>`;
-  renderGauge(cScored ? cPct : 0);
+  $("#hero").innerHTML = heroHTML(carlos, rivals, "chart-gauge");
+  $("#hero").dataset.candidateId = carlos.candidate_id; $("#hero").dataset.name = carlos.name;
+  renderGauge("#chart-gauge", cScored ? cPct : 0);
 
-  $("#cards").innerHTML = rivals.map((r) => `<div class="card">
+  $("#cards").innerHTML = rivals.map((r) => `<button class="card" data-candidate-id="${r.candidate_id}" data-name="${esc(r.name)}">
       ${avatar(r, "sm")}
       <div>
         <div class="name">${esc(r.name)}</div><div class="party">${esc(r.party || "")}</div>
         <div class="n">${r.mentions}<small>menciones${r.pending ? ` · ${r.pending} pend.` : ""}</small></div>
         ${bar(r)}
-      </div></div>`).join("");
+      </div></button>`).join("");
 
   const sel = $("#f-candidate"); const cur = sel.value;
   sel.innerHTML = `<option value="">Todos los candidatos</option>` + rows.map((r) => `<option value="${r.candidate_id}">${esc(r.name)}</option>`).join("");
@@ -115,13 +158,7 @@ async function loadSummary() {
 
   // ¿De quién se habla más?
   const byVol = [...rows].sort((a, b) => b.mentions - a.mentions);
-  chart("#chart-volume", {
-    type: "bar",
-    data: { labels: byVol.map((r) => r.name), datasets: [{ data: byVol.map((r) => r.mentions), backgroundColor: byVol.map((r) => r.name === CARLOS ? BLUE : CARLOS_GRAY), borderRadius: 6, barThickness: 22 }] },
-    options: { indexAxis: "y", responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false }, datalabels: { display: true, anchor: "end", align: "end", color: INK, font: { weight: 600 }, formatter: (v) => v } },
-      scales: { x: { beginAtZero: true, grid: { color: GRID }, ticks: { precision: 0 }, grace: "12%", title: { display: true, text: "menciones en el período" } }, y: { grid: { display: false } } } },
-  });
+  hbar("#chart-volume", byVol.map((r) => r.name), byVol.map((r) => r.mentions), byVol.map((r) => r.name === CARLOS ? BLUE : CARLOS_GRAY));
   const vRank = byVol.findIndex((r) => r.name === CARLOS);
   const tied = byVol.filter((r) => r.mentions === carlos.mentions && r.name !== CARLOS);
   $("#read-volume").innerHTML = `En ${periodLabel()} se registraron <b>${total} menciones</b> de los ${rows.length} candidatos. ` +
@@ -131,17 +168,10 @@ async function loadSummary() {
 
   // ¿Cómo se habla de cada candidato?
   const scored = rows.filter((r) => r.positive + r.negative + r.neutral > 0);
-  chart("#chart-sentiment", {
-    type: "bar",
-    data: { labels: scored.map((r) => `${r.name} (${r.positive + r.negative + r.neutral})`), datasets: [
-      { label: "Positivas", data: scored.map((r) => share(r, "positive")), backgroundColor: GOOD },
-      { label: "Neutrales", data: scored.map((r) => share(r, "neutral")), backgroundColor: NEUTRAL_TONE },
-      { label: "Negativas", data: scored.map((r) => share(r, "negative")), backgroundColor: CRITICAL }] },
-    options: { indexAxis: "y", responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { position: "bottom" }, tooltip: { callbacks: { label: (c) => `${c.dataset.label}: ${c.raw}%` } },
-        datalabels: { display: (c) => c.dataset.data[c.dataIndex] >= 8, color: (c) => c.datasetIndex === 1 ? INK_SOFT : "#fff", font: { weight: 600, size: 12 }, formatter: (v) => v + "%" } },
-      scales: { x: { stacked: true, max: 100, ticks: { callback: (v) => v + "%" }, grid: { color: GRID }, title: { display: true, text: "de cada 100 menciones clasificadas" } }, y: { stacked: true, grid: { display: false } } } },
-  });
+  hbar100("#chart-sentiment", scored.map((r) => `${r.name} (${r.positive + r.negative + r.neutral})`), [
+    { name: "Positivas", data: scored.map((r) => share(r, "positive")) },
+    { name: "Neutrales", data: scored.map((r) => share(r, "neutral")) },
+    { name: "Negativas", data: scored.map((r) => share(r, "negative")) }]);
   const byPos = [...scored].sort((a, b) => share(b, "positive") - share(a, "positive"));
   const byNeg = [...scored].sort((a, b) => share(b, "negative") - share(a, "negative"));
   const cRank = byPos.findIndex((r) => r.name === CARLOS);
@@ -160,21 +190,22 @@ async function loadTimeline(rows) {
   const top = [CARLOS, ...rows.filter((r) => r.name !== CARLOS).sort((a, b) => b.mentions - a.mentions).slice(0, 4).map((r) => r.name)];
   const series = d.series.filter((s) => top.includes(s.name));
   const pubOf = (name, i) => (details[name] || {})[d.labels[i]];
+  const niceLabels = d.labels.map((l) => l.slice(5).replace("-", "/"));
   chart("#chart-timeline", {
-    type: "line",
-    data: { labels: d.labels.map((l) => l.slice(5).replace("-", "/")), datasets: series.map((s, i) => ({
-      label: s.name, data: s.data, borderColor: COLORS[i % COLORS.length], backgroundColor: COLORS[i % COLORS.length],
-      tension: .35, borderWidth: s.name === CARLOS ? 3.5 : 1.5, pointRadius: s.name === CARLOS ? 3 : 2, pointHoverRadius: 6 })) },
-    options: { responsive: true, maintainAspectRatio: false, interaction: { mode: "nearest", intersect: true },
-      onClick: (evt, els) => { if (els.length) showDay(series[els[0].datasetIndex].name, d.labels[els[0].index]); },
-      onHover: (evt, els) => { evt.native.target.style.cursor = els.length ? "pointer" : "default"; },
-      plugins: { legend: { position: "bottom" }, tooltip: { callbacks: {
-        afterBody: (items) => items.flatMap((it) => {
-          const p = pubOf(it.dataset.label, it.dataIndex);
-          if (!p) return [];
-          return [`${p.count} de ${p.total} por: "${p.text.slice(0, 80)}${p.text.length > 80 ? "…" : ""}" (${srcName(p)})`, "clic para ver todas las publicaciones del día"];
-        }) } } },
-      scales: { y: { beginAtZero: true, grid: { color: GRID }, ticks: { precision: 0 }, title: { display: true, text: "menciones por día" } }, x: { ticks: { maxTicksLimit: 10, maxRotation: 0 }, grid: { display: false } } } },
+    chart: { type: "line", height: "100%",
+      events: { dataPointSelection: (e, ctx, cfg) => showDay(series[cfg.seriesIndex].name, d.labels[cfg.dataPointIndex]) } },
+    series: series.map((s) => ({ name: s.name, data: s.data })),
+    xaxis: { categories: niceLabels, tickAmount: 10 },
+    colors: series.map((s, i) => COLORS[i % COLORS.length]),
+    stroke: { curve: "smooth", width: series.map((s) => s.name === CARLOS ? 3.5 : 1.5) },
+    markers: { size: series.map((s) => s.name === CARLOS ? 4 : 3), hover: { size: 7 } },
+    legend: { position: "bottom" },
+    yaxis: { labels: { formatter: (v) => Math.round(v) } },
+    tooltip: { shared: true, intersect: false, custom: ({ series: vals, dataPointIndex, w }) => {
+      const lines = w.config.series.map((s, i) => `<div style="display:flex;gap:6px;align-items:center;margin:2px 0"><i style="width:8px;height:8px;border-radius:2px;background:${w.config.colors[i]};display:inline-block"></i><b>${esc(s.name)}</b>: ${vals[i][dataPointIndex]}</div>`).join("");
+      const notes = w.config.series.map((s) => { const p = pubOf(s.name, dataPointIndex); return p ? `<div class="hint" style="margin-top:2px">${esc(s.name)}: ${p.count} de ${p.total} por «${esc(p.text).slice(0, 60)}${p.text.length > 60 ? "…" : ""}» (${srcName(p)})</div>` : ""; }).join("");
+      return `<div style="padding:8px 10px;max-width:280px"><b>${esc(d.labels[dataPointIndex])}</b>${lines}${notes}<div class="hint" style="margin-top:4px">clic en un punto para ver todas las publicaciones del día</div></div>`;
+    } },
   });
   const cs = series.find((s) => s.name === CARLOS);
   if (cs) {
@@ -203,7 +234,7 @@ async function showDay(name, day) {
   box.scrollIntoView({ behavior: "smooth", block: "start" });
   $("#day-close").addEventListener("click", () => { box.style.display = "none"; });
   const rows = await j(`/api/feed?candidate_id=${row.candidate_id}&days=${Math.max(days(), 7) + 1}&day=${day}&limit=100`);
-  box.querySelector(".feed").innerHTML = rows.map((r, i) => `<article class="item">
+  box.querySelector(".feed").innerHTML = rows.map((r) => `<article class="item">
     ${thumb(r)}
     <div class="body">
       <div class="meta"><span class="tag src">${srcName(r)} · ${KIND[r.kind] || ""}</span><span>${fmtDate(r.published_at)}</span>${r.url ? `<a href="${r.url}" target="_blank" rel="noopener">ver original ↗</a>` : ""}</div>
@@ -225,11 +256,13 @@ async function loadSources() {
   }
   const labels = Object.keys(groups);
   chart("#chart-sources", {
-    type: "bar",
-    data: { labels: d.candidates, datasets: labels.map((l) => ({ label: l, data: groups[l], backgroundColor: SRC_COLOR[l] || MUTED, borderRadius: 3 })) },
-    options: { responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { position: "bottom" }, datalabels: { display: (c) => c.dataset.data[c.dataIndex] >= 6, color: "#fff", font: { weight: 600, size: 11 } } },
-      scales: { x: { stacked: true, grid: { display: false } }, y: { stacked: true, beginAtZero: true, grid: { color: GRID }, ticks: { precision: 0 }, title: { display: true, text: "menciones" } } } },
+    chart: { type: "bar", stacked: true, height: "100%" },
+    series: labels.map((l) => ({ name: l, data: groups[l] })),
+    xaxis: { categories: d.candidates },
+    colors: labels.map((l) => SRC_COLOR[l] || MUTED),
+    plotOptions: { bar: { borderRadius: 2, columnWidth: "55%" } },
+    dataLabels: { enabled: true, formatter: (v) => (v >= 6 ? v : ""), style: { colors: ["#fff"], fontWeight: 600, fontSize: "11px" } },
+    legend: { position: "bottom" },
   });
   const ci = d.candidates.indexOf(CARLOS);
   const totalsByChannel = labels.map((l) => [l, groups[l].reduce((a, b) => a + b, 0)]).sort((a, b) => b[1] - a[1]);
@@ -243,21 +276,14 @@ async function loadSources() {
 
 async function loadTopics() {
   const [pub, com] = await Promise.all([j(`/api/topics?days=${days()}&kind=publications`), j(`/api/topics?days=${days()}&kind=comments`)]);
-  const cfg = (t, thick, color) => ({
-    type: "bar",
-    data: { labels: t.map((x) => x.topic), datasets: [{ data: t.map((x) => x.count), backgroundColor: color, borderRadius: 4, barThickness: thick }] },
-    options: { indexAxis: "y", responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false }, datalabels: { display: true, anchor: "end", align: "end", color: INK, font: { weight: 600 } } },
-      scales: { x: { beginAtZero: true, grid: { color: GRID }, ticks: { precision: 0 }, grace: "12%", title: { display: true, text: "menciones" } }, y: { grid: { display: false } } } },
-  });
-  chart("#chart-topics", cfg(com, 14, VIOLET));
-  chart("#chart-topics-pub", cfg(pub, 20, BLUE));
-  chart("#chart-topics-com", cfg(com, 20, VIOLET));
+  if ($("#chart-topics")) hbar("#chart-topics", com.map((x) => x.topic), com.map((x) => x.count), VIOLET);
+  if ($("#chart-topics-pub")) hbar("#chart-topics-pub", pub.map((x) => x.topic), pub.map((x) => x.count), BLUE);
+  if ($("#chart-topics-com")) hbar("#chart-topics-com", com.map((x) => x.topic), com.map((x) => x.count), VIOLET);
   const reading = (t, what) => t.length
     ? `El asunto más frecuente en ${what} es <b>${esc(t[0].topic)}</b> (${t[0].count})` + (t[1] ? `, seguido de <b>${esc(t[1].topic)}</b> (${t[1].count})` : "") + (t[2] ? ` y <b>${esc(t[2].topic)}</b> (${t[2].count})` : "") + "."
     : `Sin asuntos identificados en ${what} para el período.`;
-  $("#read-topics-pub").innerHTML = reading(pub, "las noticias y publicaciones");
-  $("#read-topics-com").innerHTML = reading(com, "los comentarios de la gente");
+  if ($("#read-topics-pub")) $("#read-topics-pub").innerHTML = reading(pub, "las noticias y publicaciones");
+  if ($("#read-topics-com")) $("#read-topics-com").innerHTML = reading(com, "los comentarios de la gente");
 }
 
 async function loadAlerts() {
@@ -268,7 +294,7 @@ async function loadAlerts() {
   </li>`).join("") : `<li class="empty">Sin menciones negativas fuertes sobre Carlos Arias en el período.</li>`;
 }
 
-/* ---------- feed ---------- */
+/* ---------- feed (reutilizable: pestaña Publicaciones y vista de Perfil) ---------- */
 function srcName(m) { return m.platform ? (SRC_LABEL[m.platform] || m.platform) : (SRC[m.source_type] || esc(m.source)); }
 function sentTag(m) {
   if (!m.label) return `<span class="tag pending">pendiente</span>`;
@@ -290,16 +316,13 @@ function commentsBlock(r, idx) {
     <div class="cbar"><i class="p" style="width:${s.positive / t * 100}%"></i><i class="u" style="width:${s.neutral / t * 100}%"></i><i class="g" style="width:${s.negative / t * 100}%"></i></div>
     <div class="counts">${s.positive} positivos · ${s.neutral} neutrales · ${s.negative} negativos</div>`;
 }
-async function loadFeed() {
-  const p = new URLSearchParams({ days: days(), limit: 80 });
-  if ($("#f-candidate").value) p.set("candidate_id", $("#f-candidate").value);
-  if ($("#f-source").value) p.set("source_type", $("#f-source").value);
-  if ($("#f-label").value) p.set("label", $("#f-label").value);
-  feedRows = await j(`/api/feed?${p}`);
-  $("#feed").innerHTML = feedRows.map((r, i) => `<article class="item" data-row="${i}">
+const feedStore = {}; // selector de contenedor -> filas, para el despliegue de comentarios
+function renderFeedList(sel, rows, { showCandidate = false } = {}) {
+  feedStore[sel] = rows;
+  $(sel).innerHTML = rows.map((r, i) => `<article class="item" data-row="${i}">
     ${thumb(r)}
     <div class="body">
-      <div class="meta"><span class="cand">${esc(r.candidate)}</span><span class="tag src">${srcName(r)} · ${KIND[r.kind] || ""}</span><span>${fmtDate(r.published_at)}</span>${r.url ? `<a href="${r.url}" target="_blank" rel="noopener">ver original ↗</a>` : ""}</div>
+      <div class="meta">${showCandidate ? `<span class="cand">${esc(r.candidate)}</span>` : ""}<span class="tag src">${srcName(r)} · ${KIND[r.kind] || ""}</span><span>${fmtDate(r.published_at)}</span>${r.url ? `<a href="${r.url}" target="_blank" rel="noopener">ver original ↗</a>` : ""}</div>
       <div class="text">${esc(r.text)}</div>
       ${r.summary ? `<div class="summary">📝 ${esc(r.summary)}</div>` : ""}
       ${r.author ? `<div class="author">${esc(r.author)}</div>` : ""}
@@ -309,13 +332,13 @@ async function loadFeed() {
       ${commentsBlock(r, i)}
     </div>
   </article>`).join("") || `<div class="empty">Sin publicaciones con esos filtros.</div>`;
-  $("#feed").querySelectorAll(".toggle").forEach((b) => b.addEventListener("click", () => toggleComments(Number(b.dataset.idx), b)));
+  $(sel).querySelectorAll(".toggle[data-idx]").forEach((b) => b.addEventListener("click", () => toggleComments(sel, Number(b.dataset.idx), b)));
 }
-function toggleComments(idx, btn) {
-  const item = $(`#feed .item[data-row="${idx}"]`);
+function toggleComments(sel, idx, btn) {
+  const item = document.querySelector(`${sel} .item[data-row="${idx}"]`);
   const open = item.querySelector(".thread");
   if (open) { open.remove(); btn.textContent = btn.textContent.replace("▾", "▸"); return; }
-  const r = feedRows[idx];
+  const r = feedStore[sel][idx];
   const div = document.createElement("div"); div.className = "thread";
   div.innerHTML = r.comments.map((c) => `<div class="comment">
       <div>${esc(c.text)}<div class="who">${esc(c.author || "")} · ${fmtDate(c.published_at)}${(c.link || c.url) ? ` · <a href="${c.link || c.url}" target="_blank" rel="noopener">ver</a>` : ""}</div></div>
@@ -323,32 +346,34 @@ function toggleComments(idx, btn) {
   item.appendChild(div);
   btn.textContent = btn.textContent.replace("▸", "▾");
 }
+async function loadFeed() {
+  if (!$("#f-candidate")) return;
+  const p = new URLSearchParams({ days: days(), limit: 80 });
+  if ($("#f-candidate").value) p.set("candidate_id", $("#f-candidate").value);
+  if ($("#f-source").value) p.set("source_type", $("#f-source").value);
+  if ($("#f-label").value) p.set("label", $("#f-label").value);
+  renderFeedList("#feed", await j(`/api/feed?${p}`), { showCandidate: true });
+}
 
-let carlosTopicRows = [];
-const CARLOS_TOPICS_VISIBLE = 5;
-
-function carlosTopicCard(t, i) {
+/* ---------- tema por tema (genérico: se usa en el perfil de cualquier candidato) ---------- */
+function topicCard(t, i, prefix) {
   return `<div class="topic-card">
       <div class="head"><h3>${esc(t.topic)}</h3><div>${t.count} menciones · <span class="tag ${t.positive_pct >= 60 ? "positive" : t.positive_pct <= 30 ? "negative" : ""}">${t.positive_pct}% a favor</span></div></div>
       <div class="subs"><span class="tag positive">${t.positive} positivas</span><span class="tag">${t.neutral} neutrales</span><span class="tag negative">${t.negative} negativas</span>
         ${Object.entries(t.sources).map(([src, n]) => `<span class="tag">${esc(SRC_LABEL[src] || SRC[src] || src)} · ${n}</span>`).join("")}</div>
-      <button class="toggle" data-ct-idx="${i}">▸ ver ${t.samples.length} comentario${t.samples.length === 1 ? "" : "s"} de ejemplo</button>
+      <button class="toggle" data-topic-idx="${i}" data-topic-prefix="${prefix}">▸ ver ${t.samples.length} comentario${t.samples.length === 1 ? "" : "s"} de ejemplo</button>
     </div>`;
 }
-
-async function loadCarlosTopics() {
-  if (!$("#carlos-topics")) return;
-  const rows = await j(`/api/candidate/topics?name=${encodeURIComponent(CARLOS)}&days=${days()}`);
-  carlosTopicRows = rows;
-  const visible = rows.slice(0, CARLOS_TOPICS_VISIBLE);
-  const rest = rows.slice(CARLOS_TOPICS_VISIBLE);
-  $("#carlos-topics").innerHTML = visible.map((t, i) => carlosTopicCard(t, i)).join("")
-    + (rest.length ? `<button class="toggle" id="ct-more">▸ ver ${rest.length} tema${rest.length === 1 ? "" : "s"} más</button><div id="ct-rest" style="display:none">${rest.map((t, i) => carlosTopicCard(t, i + visible.length)).join("")}</div>` : "")
-    || `<div class="empty">Aún no hay suficientes menciones de Carlos con tema identificado en el período.</div>`;
-  $("#ct-more")?.addEventListener("click", (e) => { $("#ct-rest").style.display = "block"; e.target.remove(); });
-  $("#carlos-topics").querySelectorAll("[data-ct-idx]").forEach((btn) => btn.addEventListener("click", () => {
-    const i = Number(btn.dataset.ctIdx);
-    const t = carlosTopicRows[i];
+const topicStore = {};
+function renderTopicCards(containerSel, readSel, rows, prefix, visibleCount = 5) {
+  topicStore[prefix] = rows;
+  const visible = rows.slice(0, visibleCount), rest = rows.slice(visibleCount);
+  $(containerSel).innerHTML = visible.map((t, i) => topicCard(t, i, prefix)).join("")
+    + (rest.length ? `<button class="toggle" id="${prefix}-more">▸ ver ${rest.length} tema${rest.length === 1 ? "" : "s"} más</button><div id="${prefix}-rest" style="display:none">${rest.map((t, i) => topicCard(t, i + visible.length, prefix)).join("")}</div>` : "")
+    || `<div class="empty">Aún no hay suficientes menciones con tema identificado en el período.</div>`;
+  $(`#${prefix}-more`)?.addEventListener("click", (e) => { $(`#${prefix}-rest`).style.display = "block"; e.target.remove(); });
+  $(containerSel).querySelectorAll(`[data-topic-prefix="${prefix}"]`).forEach((btn) => btn.addEventListener("click", () => {
+    const i = Number(btn.dataset.topicIdx); const t = topicStore[prefix][i];
     if (btn.nextElementSibling?.classList.contains("thread")) { btn.nextElementSibling.remove(); btn.textContent = btn.textContent.replace("▾", "▸"); return; }
     const div = document.createElement("div"); div.className = "thread";
     div.innerHTML = t.samples.map(quote).join("");
@@ -356,10 +381,39 @@ async function loadCarlosTopics() {
     btn.textContent = btn.textContent.replace("▸", "▾");
   }));
   const top = rows[0];
-  $("#read-carlos-topics").innerHTML = top
-    ? `El tema del que más se habla sobre Carlos es <b>${esc(top.topic)}</b> (${top.count} menciones, ${top.positive_pct}% a favor).` +
+  if ($(readSel)) $(readSel).innerHTML = top
+    ? `El tema del que más se habla es <b>${esc(top.topic)}</b> (${top.count} menciones, ${top.positive_pct}% a favor).` +
       (rows[1] ? ` Le siguen <b>${esc(rows[1].topic)}</b>${rows[2] ? ` y <b>${esc(rows[2].topic)}</b>` : ""}.` : "")
     : "Sin temas identificados todavía en el período.";
+}
+
+/* ---------- perfil de candidato: se abre al tocar la tarjeta de Carlos o de un rival ---------- */
+async function openProfile(candidateId, name) {
+  document.querySelectorAll(".tab").forEach((x) => x.classList.remove("active"));
+  document.querySelectorAll(".tabpane").forEach((p) => p.classList.toggle("active", p.id === "tab-perfil"));
+  window.scrollTo({ top: 0 });
+  $("#perfil-hero").innerHTML = `<div class="empty">Cargando…</div>`;
+  $("#perfil-topics").innerHTML = ""; $("#perfil-feed").innerHTML = "";
+  $("#perfil-topics-title").textContent = `${name}, tema por tema`;
+
+  const rows = summaryRows.length ? summaryRows : await j(`/api/summary?days=${days()}`);
+  const r = rows.find((x) => x.candidate_id === candidateId) || rows.find((x) => x.name === name);
+  if (!r) { $("#perfil-hero").innerHTML = `<div class="empty">Sin datos de este candidato en el período.</div>`; return; }
+  const rivals = rows.filter((x) => x !== r);
+  $("#perfil-hero").innerHTML = heroHTML(r, rivals, "chart-gauge-perfil");
+  renderGauge("#chart-gauge-perfil", (r.positive + r.negative + r.neutral) ? pct(r.positive, r.positive + r.negative + r.neutral) : 0);
+
+  const [topics, feed] = await Promise.all([
+    j(`/api/candidate/topics?name=${encodeURIComponent(r.name)}&days=${days()}`),
+    j(`/api/feed?candidate_id=${r.candidate_id}&days=${days()}&limit=80`),
+  ]);
+  renderTopicCards("#perfil-topics", "#read-perfil-topics", topics, "perfil-t");
+  renderFeedList("#perfil-feed", feed);
+}
+function closeProfile() {
+  document.querySelectorAll(".tab").forEach((x) => x.classList.toggle("active", x.dataset.tab === "resumen"));
+  document.querySelectorAll(".tabpane").forEach((p) => p.classList.toggle("active", p.id === "tab-resumen"));
+  window.scrollTo({ top: 0 });
 }
 
 async function loadStatus() {
@@ -371,15 +425,19 @@ async function loadStatus() {
 
 async function loadAll() {
   const rows = await loadSummary();
-  await Promise.all([loadTimeline(rows), loadSources(), loadTopics(), loadAlerts(), loadFeed(), loadStatus(), loadCity(), loadAgenda(), loadCarlosTopics(), (typeof loadCouncil === "function" ? loadCouncil() : null)]);
+  await Promise.all([loadTimeline(rows), loadSources(), loadTopics(), loadAlerts(), loadFeed(), loadStatus(), loadCity(), loadAgenda(), (typeof loadCouncil === "function" ? loadCouncil() : null)]);
 }
 
-document.querySelectorAll(".tab").forEach((b) => b.addEventListener("click", () => {
+document.querySelectorAll(".side-nav .tab").forEach((b) => b.addEventListener("click", () => {
   document.querySelectorAll(".tab").forEach((x) => x.classList.toggle("active", x === b));
   document.querySelectorAll(".tabpane").forEach((p) => p.classList.toggle("active", p.id === `tab-${b.dataset.tab}`));
-  Object.values(charts).forEach((c) => c.resize());  // los canvas ocultos no tienen tamaño hasta mostrarse
   window.scrollTo({ top: 0 });
 }));
+$("#perfil-back")?.addEventListener("click", closeProfile);
+document.addEventListener("click", (e) => {
+  const card = e.target.closest("[data-candidate-id]");
+  if (card) openProfile(Number(card.dataset.candidateId), card.dataset.name);
+});
 $("#days").addEventListener("change", loadAll);
 ["#f-candidate", "#f-source", "#f-label"].forEach((id) => $(id).addEventListener("change", loadFeed));
 $("#refresh").addEventListener("click", async () => {
@@ -411,14 +469,8 @@ async function loadCity() {
     <div class="kpi"><div class="label">Tema que más crece</div><div class="value" style="font-size:20px">${cap(kpis.rising_category || "—")}</div><div class="foot">${kpis.rising_pct !== null && kpis.rising_pct !== undefined ? `▲ ${kpis.rising_pct}% vs período anterior` : "sin período anterior"}</div></div>
     <div class="kpi"><div class="label">Molestia ciudadana</div><div class="value ${kpis.negative_pct >= 40 ? "neg" : ""}">${kpis.total ? kpis.negative_pct + "%" : "—"}</div><div class="foot">menciones con queja, miedo o indignación</div></div>`;
 
-  chart("#chart-city-topics", {
-    type: "bar",
-    data: { labels: topics.map((t) => cap(t.category)), datasets: [{ data: topics.map((t) => t.count), backgroundColor: CAT_COLOR, borderRadius: 6, barThickness: 20 }] },
-    options: { indexAxis: "y", responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false }, datalabels: { display: true, anchor: "end", align: "end", color: INK, font: { weight: 600 },
-        formatter: (v, c) => { const t = topics[c.dataIndex]; const tr = t.trend_pct; return tr === null ? `${v}` : `${v}  ${tr > 5 ? "▲" : tr < -5 ? "▼" : "="} ${Math.abs(tr)}%`; } } },
-      scales: { x: { beginAtZero: true, grid: { color: GRID }, ticks: { precision: 0 }, grace: "25%", title: { display: true, text: "menciones" } }, y: { grid: { display: false } } } },
-  });
+  hbar("#chart-city-topics", topics.map((t) => cap(t.category)), topics.map((t) => t.count), CAT_COLOR,
+    { labelFmt: (v, o) => { const t = topics[o.dataPointIndex]; const tr = t.trend_pct; return tr === null || tr === undefined ? `${v}` : `${v}  ${tr > 5 ? "▲" : tr < -5 ? "▼" : "="} ${Math.abs(tr)}%`; } });
   const rising = topics.filter((t) => t.trend_pct !== null).sort((a, b) => b.trend_pct - a.trend_pct)[0];
   $("#read-city-topics").innerHTML = topics.length
     ? `En ${periodLabel()}, Cali habló sobre todo de <b>${topics[0].category}</b> (${topics[0].count} menciones)` + (topics[1] ? `, luego de <b>${topics[1].category}</b> (${topics[1].count})` : "") + (topics[2] ? ` y <b>${topics[2].category}</b> (${topics[2].count})` : "") + ". " +
@@ -426,17 +478,10 @@ async function loadCity() {
     : "Aún no hay menciones de ciudad clasificadas en el período.";
 
   const scored = topics.filter((t) => t.count > 0);
-  chart("#chart-city-perception", {
-    type: "bar",
-    data: { labels: scored.map((t) => `${cap(t.category)} (${t.count})`), datasets: [
-      { label: "Molestia", data: scored.map((t) => pct(t.negative, t.count)), backgroundColor: CRITICAL },
-      { label: "Informativa", data: scored.map((t) => pct(t.neutral, t.count)), backgroundColor: NEUTRAL_TONE },
-      { label: "A favor", data: scored.map((t) => pct(t.positive, t.count)), backgroundColor: GOOD }] },
-    options: { indexAxis: "y", responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { position: "bottom" }, tooltip: { callbacks: { label: (c) => `${c.dataset.label}: ${c.raw}%` } },
-        datalabels: { display: (c) => c.dataset.data[c.dataIndex] >= 8, color: (c) => c.datasetIndex === 1 ? INK_SOFT : "#fff", font: { weight: 600, size: 12 }, formatter: (v) => v + "%" } },
-      scales: { x: { stacked: true, max: 100, ticks: { callback: (v) => v + "%" }, grid: { color: GRID } }, y: { stacked: true, grid: { display: false } } } },
-  });
+  hbar100("#chart-city-perception", scored.map((t) => `${cap(t.category)} (${t.count})`), [
+    { name: "Molestia", data: scored.map((t) => pct(t.negative, t.count)) },
+    { name: "Informativa", data: scored.map((t) => pct(t.neutral, t.count)) },
+    { name: "A favor", data: scored.map((t) => pct(t.positive, t.count)) }]);
   const angriest = [...scored].sort((a, b) => pct(b.negative, b.count) - pct(a.negative, a.count))[0];
   const happiest = [...scored].sort((a, b) => pct(b.positive, b.count) - pct(a.positive, a.count))[0];
   $("#read-city-perception").innerHTML = scored.length
@@ -492,17 +537,10 @@ async function loadAgenda() {
     : "Ningún tema resultó hostil para los candidatos en el período.";
 
   const withComments = perception.filter((r) => r.comments > 0);
-  chart("#chart-perception", {
-    type: "bar",
-    data: { labels: withComments.map((r) => `${r.name} (${r.comments})`), datasets: [
-      { label: "A favor", data: withComments.map((r) => r.positive_pct), backgroundColor: GOOD },
-      { label: "Neutral", data: withComments.map((r) => pct(r.neutral, r.comments)), backgroundColor: NEUTRAL_TONE },
-      { label: "En contra", data: withComments.map((r) => r.negative_pct), backgroundColor: CRITICAL }] },
-    options: { indexAxis: "y", responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { position: "bottom" }, tooltip: { callbacks: { label: (c) => `${c.dataset.label}: ${c.raw}%` } },
-        datalabels: { display: (c) => c.dataset.data[c.dataIndex] >= 8, color: (c) => c.datasetIndex === 1 ? INK_SOFT : "#fff", font: { weight: 600, size: 12 }, formatter: (v) => v + "%" } },
-      scales: { x: { stacked: true, max: 100, ticks: { callback: (v) => v + "%" }, grid: { color: GRID }, title: { display: true, text: "de cada 100 comentarios ciudadanos" } }, y: { stacked: true, grid: { display: false } } } },
-  });
+  hbar100("#chart-perception", withComments.map((r) => `${r.name} (${r.comments})`), [
+    { name: "A favor", data: withComments.map((r) => r.positive_pct) },
+    { name: "Neutral", data: withComments.map((r) => pct(r.neutral, r.comments)) },
+    { name: "En contra", data: withComments.map((r) => r.negative_pct) }]);
   const carlos = withComments.find((r) => r.name === CARLOS);
   const worst = [...withComments].sort((a, b) => b.negative_pct - a.negative_pct)[0];
   $("#read-perception").innerHTML = carlos

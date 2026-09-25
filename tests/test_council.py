@@ -199,3 +199,26 @@ def test_recompute_trusts_the_stored_video_about_candidate_flag_over_recomputing
     restored, dropped = recompute(db_session, only_council=True)
     assert dropped == 0
     assert m.relevant is True
+
+
+def test_recompute_drops_press_note_the_llm_tagged_as_homonimo(db_session):
+    """Caso real 2026-09-25: una nota sobre 'Francisco Piedrahita Plata' quedó con topic
+    'homónimo' (el LLM la reconoció como de otra persona) pero recompute la dejaba relevant=True
+    porque la rama de prensa solo miraba exclusions/contexto, nunca el topic. pipeline.py sí lo
+    aplica al puntuar en vivo; recompute debe honrar la misma señal, no solo redes/YouTube."""
+    from scripts.recompute_relevance import recompute
+    seed(db_session)
+    carlos = db_session.query(Candidate).filter_by(name="Carlos Arias").one()
+    press = db_session.query(Source).filter_by(type=SourceType.GOOGLE_NEWS).first()
+    now = dt.datetime.utcnow()
+    m = Mention(candidate_id=carlos.id, source_id=press.id, external_id="g-homonimo",
+                text="Francisco Piedrahita Plata: el caleño universal", body=None,
+                url="https://x/1", published_at=now, fetched_at=now, relevant=True)
+    db_session.add(m)
+    db_session.flush()
+    db_session.add(SentimentScore(mention_id=m.id, label=SentimentLabel.NEUTRAL, score=0.0,
+                                  topic="homónimo", model="f", category="otro"))
+    db_session.commit()
+    restored, dropped = recompute(db_session, only_council=True)
+    assert dropped == 1
+    assert m.relevant is False

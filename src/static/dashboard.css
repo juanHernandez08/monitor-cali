@@ -61,9 +61,13 @@ main { padding: 20px 28px 40px; max-width: 1360px; display: grid; gap: 16px; }
 .kpi .value.pos { color: var(--pos); } .kpi .value.neg { color: var(--neg); }
 .kpi .foot { color: var(--muted); font-size: 12px; margin-top: 2px; }
 
-/* ---------- panel Carlos ---------- */
+/* ---------- panel Carlos / perfil ---------- */
 .hero { background: var(--panel); border: 1px solid var(--line); border-left: 5px solid var(--brand); border-radius: var(--radius); padding: 18px 20px;
-  box-shadow: var(--shadow); display: grid; grid-template-columns: auto 1fr auto; gap: 20px; align-items: center; }
+  box-shadow: var(--shadow); display: grid; grid-template-columns: auto 1fr auto; gap: 20px; align-items: center; transition: box-shadow .15s, transform .15s; }
+.hero[data-candidate-id] { cursor: pointer; }
+.hero[data-candidate-id]:hover { box-shadow: 0 2px 4px rgba(20,20,15,.06), 0 14px 32px rgba(20,20,15,.09); transform: translateY(-1px); }
+.back-link { background: none; border: none; color: var(--brand); font-weight: 600; font-size: 13.5px; padding: 4px 0; cursor: pointer; }
+.back-link:hover { text-decoration: underline; }
 .avatar { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; background: var(--brand-soft); color: var(--brand); display: grid; place-items: center;
   font-weight: 700; font-size: 24px; border: 3px solid #fff; box-shadow: 0 0 0 2px var(--brand-soft); }
 .avatar.sm { width: 40px; height: 40px; font-size: 15px; }
@@ -75,8 +79,7 @@ main { padding: 20px 28px 40px; max-width: 1360px; display: grid; gap: 16px; }
 .hero .compare { text-align: right; min-width: 200px; }
 .hero .compare .big { font-size: 22px; font-weight: 700; }
 .hero .compare .big.pos { color: var(--pos); } .hero .compare .big.neg { color: var(--neg); }
-.gauge-box { position: relative; width: 148px; height: 82px; margin: 6px 0 2px auto; }
-.gauge-value { position: absolute; left: 0; right: 0; bottom: 2px; text-align: center; font-size: 26px; font-weight: 700; letter-spacing: -.02em; }
+.gauge-box { width: 148px; height: 100px; margin: 0 0 2px auto; }
 @media (max-width: 860px) { .gauge-box { margin: 6px auto 2px; } }
 .bar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; background: var(--line); }
 .bar i { display: block; }
@@ -87,7 +90,9 @@ main { padding: 20px 28px 40px; max-width: 1360px; display: grid; gap: 16px; }
 /* ---------- tarjetas rivales ---------- */
 .cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
 .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; box-shadow: var(--shadow);
-  display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: center; }
+  display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: center; width: 100%; font: inherit; color: inherit; text-align: left;
+  cursor: pointer; transition: box-shadow .15s, transform .15s; }
+.card:hover { background: var(--panel); box-shadow: 0 2px 4px rgba(20,20,15,.06), 0 14px 32px rgba(20,20,15,.09); transform: translateY(-1px); }
 .card .name { font-weight: 600; }
 .card .party { color: var(--muted); font-size: 12px; min-height: 14px; }
 .card .n { font-size: 22px; font-weight: 700; letter-spacing: -.02em; margin-top: 4px; }

@@ -7,8 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/dashboard.css?v={{ v }}">
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/apexcharts@3.49.2/dist/apexcharts.min.js"></script>
 </head>
 <body>
 <div class="shell">
@@ -22,6 +21,7 @@
   </div>
   <nav class="side-nav">
     <button class="tab active" data-tab="resumen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg><span>Resumen</span></button>
+    <button class="tab" data-tab="publicaciones"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v12H8l-4 4z"/><line x1="8" y1="9" x2="16" y2="9"/><line x1="8" y1="13" x2="13" y2="13"/></svg><span>Publicaciones</span></button>
     <button class="tab" data-tab="analisis"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="20" x2="4" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="20" y1="20" x2="20" y2="14"/></svg><span>Análisis en gráficas</span></button>
     <button class="tab" data-tab="ciudad"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 9h.01M9 13h.01M15 9h.01M15 13h.01M10 21v-5h4v5"/></svg><span>Ciudad</span></button>
     <button class="tab" data-tab="agenda"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>Agenda</span></button>
@@ -57,6 +57,7 @@
   <div id="tab-resumen" class="tabpane active">
     <section class="kpis" id="kpis"></section>
     <section id="hero" class="hero"></section>
+    <p class="hint" style="margin:-6px 2px 0">Toca a Carlos o a cualquier rival para ver todo lo recopilado de esa persona.</p>
     <section id="cards" class="cards"></section>
     <section class="grid2">
       <div class="panel alerts">
@@ -65,14 +66,26 @@
       </div>
       <div class="panel">
         <div class="panel-head"><h2>Qué piden o reclaman los ciudadanos</h2><span class="hint">asuntos más mencionados en los comentarios</span></div>
-        <div class="chart-box"><canvas id="chart-topics"></canvas></div>
+        <div class="chart-box" id="chart-topics"></div>
       </div>
     </section>
+  </div>
+
+  <div id="tab-perfil" class="tabpane">
+    <button class="back-link" id="perfil-back">← Volver al resumen</button>
+    <section id="perfil-hero" class="hero"></section>
     <section class="panel">
-      <div class="panel-head"><div><h2>Carlos Arias, tema por tema</h2><span class="hint">de qué se habla sobre él y qué dice la gente en cada asunto — publicaciones, prensa y comentarios</span></div></div>
-      <p class="reading" id="read-carlos-topics"></p>
-      <div id="carlos-topics" class="feed"></div>
+      <div class="panel-head"><div><h2 id="perfil-topics-title">Tema por tema</h2><span class="hint">de qué se habla sobre esta persona y qué dice la gente en cada asunto — publicaciones, prensa y comentarios</span></div></div>
+      <p class="reading" id="read-perfil-topics"></p>
+      <div id="perfil-topics" class="feed"></div>
     </section>
+    <section class="panel feed-panel">
+      <div class="feed-head"><div><h2>Sus publicaciones y notas</h2><span class="hint">una fila por publicación; despliega sus comentarios</span></div></div>
+      <div id="perfil-feed" class="feed"></div>
+    </section>
+  </div>
+
+  <div id="tab-publicaciones" class="tabpane">
     <section class="panel feed-panel">
       <div class="feed-head">
         <div><h2>Publicaciones y notas</h2><span class="hint">una fila por publicación; despliega sus comentarios</span></div>
@@ -107,38 +120,38 @@
     <section class="panel big">
       <div class="panel-head"><div><h2>¿De quién se habla más?</h2><div class="hint">Número de menciones por candidato en el período. Incluye prensa, Reddit, YouTube, Instagram y Facebook.</div></div></div>
       <p class="reading" id="read-volume"></p>
-      <div class="chart-box xl"><canvas id="chart-volume"></canvas></div>
+      <div class="chart-box xl"><div id="chart-volume"></div></div>
     </section>
 
     <section class="panel big">
       <div class="panel-head"><div><h2>¿Cómo se habla de cada candidato?</h2><div class="hint">De cada 100 menciones clasificadas, cuántas son positivas, neutrales o negativas. Entre paréntesis, el total de menciones clasificadas.</div></div></div>
       <p class="reading" id="read-sentiment"></p>
-      <div class="chart-box xl"><canvas id="chart-sentiment"></canvas></div>
+      <div class="chart-box xl"><div id="chart-sentiment"></div></div>
     </section>
 
     <section class="panel big">
       <div class="panel-head"><div><h2>¿En qué canales aparece cada candidato?</h2><div class="hint">Dónde se generan las menciones: prensa (medios de comunicación), YouTube (videos y comentarios), Instagram / Facebook (posts y comentarios) o Reddit.</div></div></div>
       <p class="reading" id="read-sources"></p>
-      <div class="chart-box xl"><canvas id="chart-sources"></canvas></div>
+      <div class="chart-box xl"><div id="chart-sources"></div></div>
     </section>
 
     <section class="panel big">
       <div class="panel-head"><div><h2>¿Cuándo se habló de ellos?</h2><div class="hint">Menciones por día de Carlos Arias (línea gruesa) y de los 4 rivales con más menciones. Los picos suelen coincidir con una noticia o una publicación viral.</div></div></div>
       <p class="reading" id="read-timeline"></p>
-      <div class="chart-box xl"><canvas id="chart-timeline"></canvas></div>
+      <div class="chart-box xl"><div id="chart-timeline"></div></div>
       <div id="day-detail" class="day-detail" style="display:none"></div>
     </section>
 
     <section class="panel big">
       <div class="panel-head"><div><h2>¿De qué hablan las noticias y publicaciones?</h2><div class="hint">Asuntos más frecuentes en las notas de prensa, posts de Instagram / Facebook y videos de YouTube del período (todos los candidatos). No incluye comentarios.</div></div></div>
       <p class="reading" id="read-topics-pub"></p>
-      <div class="chart-box xl"><canvas id="chart-topics-pub"></canvas></div>
+      <div class="chart-box xl"><div id="chart-topics-pub"></div></div>
     </section>
 
     <section class="panel big">
       <div class="panel-head"><div><h2>¿Qué piden o reclaman los ciudadanos?</h2><div class="hint">Asuntos concretos que aparecen en los comentarios de la gente (Instagram, Facebook, YouTube). Los comentarios que solo aplauden o insultan, sin tratar un asunto, no se cuentan aquí.</div></div></div>
       <p class="reading" id="read-topics-com"></p>
-      <div class="chart-box xl"><canvas id="chart-topics-com"></canvas></div>
+      <div class="chart-box xl"><div id="chart-topics-com"></div></div>
     </section>
   </div>
 
@@ -151,12 +164,12 @@
     <section class="panel big">
       <div class="panel-head"><div><h2>¿De qué habla Cali en este período?</h2><div class="hint">Menciones por tema. La flecha compara con el período inmediatamente anterior de la misma duración.</div></div></div>
       <p class="reading" id="read-city-topics"></p>
-      <div class="chart-box xl"><canvas id="chart-city-topics"></canvas></div>
+      <div class="chart-box xl"><div id="chart-city-topics"></div></div>
     </section>
     <section class="panel big">
       <div class="panel-head"><div><h2>¿Cómo lo siente la gente?</h2><div class="hint">De cada 100 menciones del tema, cuántas expresan molestia, cuántas son informativas y cuántas están a favor.</div></div></div>
       <p class="reading" id="read-city-perception"></p>
-      <div class="chart-box xl"><canvas id="chart-city-perception"></canvas></div>
+      <div class="chart-box xl"><div id="chart-city-perception"></div></div>
     </section>
     <section class="panel big">
       <div class="panel-head"><div><h2>Oportunidades para Carlos Arias</h2><div class="hint">Cruce entre lo que preocupa a la ciudad y de lo que habla Carlos en el mismo período.</div></div></div>
@@ -189,7 +202,7 @@
     <section class="panel big">
       <div class="panel-head"><div><h2>Cómo ve la gente a cada candidato</h2><div class="hint">Solo comentarios y respuestas de ciudadanos a sus publicaciones (no incluye notas de prensa). Es la reacción directa del público.</div></div></div>
       <p class="reading" id="read-perception"></p>
-      <div class="chart-box xl"><canvas id="chart-perception"></canvas></div>
+      <div class="chart-box xl"><div id="chart-perception"></div></div>
       <div id="perception-detail" class="feed" style="margin-top:14px"></div>
     </section>
   </div>
@@ -203,11 +216,11 @@
     <section class="panel big">
       <div class="panel-head"><div><h2>¿De qué concejales se habla?</h2><div class="hint">Menciones en el período. Carlos Arias en azul.</div></div></div>
       <p class="reading" id="read-council"></p>
-      <div class="chart-box xl"><canvas id="chart-council"></canvas></div>
+      <div class="chart-box xl"><div id="chart-council"></div></div>
     </section>
     <section class="panel big">
       <div class="panel-head"><div><h2>Por partido</h2><div class="hint">Suma de menciones de los concejales de cada bancada y cómo se reparte su sentimiento.</div></div></div>
-      <div class="chart-box xl"><canvas id="chart-council-parties"></canvas></div>
+      <div class="chart-box xl"><div id="chart-council-parties"></div></div>
     </section>
     <section class="panel big">
       <div class="panel-head"><div><h2>Detalle por concejal</h2><div class="hint">Temas en los que aparece y menciones más marcadas, con enlace.</div></div></div>

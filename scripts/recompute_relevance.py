@@ -15,6 +15,12 @@ PRESS = (SourceType.GOOGLE_NEWS, SourceType.RSS)
 def is_relevant(mention, candidate) -> bool:
     raw = mention.raw or {}
     topic = (mention.sentiment.topic or "").lower() if mention.sentiment else ""
+    # El LLM puede reconocer un homónimo aunque el texto nombre literalmente al candidato (por
+    # eso "exclusions" no lo atrapó) y aunque body/contexto local estén presentes. pipeline.py
+    # aplica esta señal en vivo sin importar el tipo de fuente; recompute debe hacer lo mismo,
+    # antes de las reglas específicas de prensa o redes.
+    if "homónimo" in topic or "homonimo" in topic or topic == "etiqueta a otra cuenta":
+        return False
     if mention.source.type in PRESS:
         blob = f"{mention.text} {mention.body or ''}"
         if is_excluded(blob, candidate):
@@ -26,8 +32,6 @@ def is_relevant(mention, candidate) -> bool:
         return False
     is_comment = raw.get("kind") == "comment"
     own_post = is_comment and raw.get("account_candidate") == candidate.name
-    if "homónimo" in topic or "homonimo" in topic or topic == "etiqueta a otra cuenta":
-        return False
     if is_comment and not own_post and "tangencial" in topic:
         return False
     if mention.source.type == SourceType.YOUTUBE and is_comment:
