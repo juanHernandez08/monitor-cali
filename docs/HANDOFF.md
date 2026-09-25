@@ -15,7 +15,7 @@ web de 7 pestañas. Corre sin servicios de pago recurrentes salvo Apify (~USD 2-
 - Windows: `.\scripts\demo.ps1` · macOS: `bash scripts/demo.sh` → Ollama + servidor en :8000 +
   túnel público de cloudflared (la URL cambia en cada arranque).
 - Solo servidor: `python -m uvicorn src.api:app --host 0.0.0.0 --port 8000`.
-- Tests: `python -m pytest -q` (126 al escribir esto). El proyecto se construye con TDD: test
+- Tests: `python -m pytest -q` (129 al escribir esto). El proyecto se construye con TDD: test
   antes que el cambio de comportamiento.
 - `.env` (no está en git) trae `GOOGLE_API_KEY`, `APIFY_TOKEN`, `OLLAMA_MODEL`. `BRIGHTDATA_API_TOKEN`
   ya no se usa (créditos agotados 2026-09-25) pero el conector queda de respaldo si se recupera.
@@ -47,12 +47,19 @@ web de 7 pestañas. Corre sin servicios de pago recurrentes salvo Apify (~USD 2-
 1. **Homónimos**: `exclusions` por candidato/concejal descarta la mención al ingresar, enriquecer
    y clasificar.
 2. **Figuras nacionales**: candidatos con perfil político nacional (p. ej. Francia Márquez,
-   Vicepresidenta hasta ago-2026; Irene Vélez, exministra) necesitan `context_terms` igual que
-   los concejales, o la prensa nacional sobre su cargo se cuela como si fuera de la Alcaldía de
-   Cali. Auditoría 2026-09-26: 31% y 43% de su prensa respectivamente no mencionaba "Cali" en
-   absoluto. **Antes de agregar un candidato nuevo, evaluar si es figura pública nacional y
-   ponerle `context_terms`.**
-3. **Prensa**: debe nombrar al candidato en titular+cuerpo, o queda fuera.
+   Vicepresidenta hasta ago-2026; Irene Vélez, exministra; Alfredo Mondragón, congresista del
+   Pacto Histórico) necesitan `context_terms` igual que los concejales, o la prensa nacional
+   sobre su cargo se cuela como si fuera de la Alcaldía de Cali. Auditoría 2026-09-26: 31%, 43%
+   y 61% de su prensa respectivamente no mencionaba "Cali" ni "Alcaldía" en absoluto. **Antes de
+   agregar un candidato nuevo, evaluar si es figura pública nacional y ponerle `context_terms`.**
+   También revisar homónimos geográficos/de terceros: Carlos Paz colisionaba con medios
+   argentinos llamados igual que la ciudad turística Villa Carlos Paz ("Carlos Paz Vivo", "El
+   Diario de Carlos Paz") y con un futbolista de los años 60 — resuelto con `exclusions`.
+3. **Prensa**: debe nombrar al candidato en titular+cuerpo, o queda fuera. Esto se exige incluso
+   cuando el cuerpo no se pudo descargar (`body == ""`): antes de 2026-09-26 ese caso se saltaba
+   el chequeo por completo y la mención quedaba `relevant=True` para siempre con solo haber
+   coincidido el término de búsqueda con Google News (que hace matching temático, no literal).
+   Si el cuerpo sigue `None` (pendiente de enriquecer) sí se le da el beneficio de la duda.
 4. **YouTube**: el video hereda al candidato solo si título/descripción lo nombran; si no, sus
    comentarios solo cuentan si ellos mismos lo nombran (independiente de cómo el LLM clasificó
    el tema — ver `scripts/recompute_relevance.py`).
@@ -68,7 +75,7 @@ web de 7 pestañas. Corre sin servicios de pago recurrentes salvo Apify (~USD 2-
 
 | Fuente | Conector | Estado |
 |---|---|---|
-| Google News, feeds RSS locales, Reddit | `google_news.py`, `news_rss.py`, `reddit_rss.py` | Gratis, activos |
+| Google News, feeds RSS locales, Reddit | `google_news.py`, `news_rss.py`, `reddit_rss.py` | Gratis, activos; Google News resiliente a un término fallido igual que YouTube (fix 2026-09-26) |
 | YouTube | `youtube.py` | `GOOGLE_API_KEY`; 77 términos (candidatos+concejales) puede chocar con la cuota diaria — un término fallido ya no tumba los demás (fix 2026-09-26) |
 | Instagram / Facebook / X | `social_apify.py`, `x_apify.py` | **Apify** (`APIFY_TOKEN`), reemplazó a Bright Data (créditos agotados 2026-09-25). ~USD 0,40/corrida real medida |
 | Bright Data | `social_accounts.py` | Respaldo inactivo; se usa solo si no hay `APIFY_TOKEN` |
@@ -90,6 +97,11 @@ mayoría de los 19 concejales (hoy solo cubiertos por prensa).
   (`select count(*) from sentiment_scores where emotion is null`); si el proceso murió a medio
   camino, relanzarlo es seguro (solo toca filas con `emotion IS NULL`, no duplica trabajo).
 - Sinónimos de temas ("terremoto"/"sismo") sin unificar.
+- **Duda para Carlos Arias (no resuelta, necesita ojo local)**: 6 de las menciones de YouTube del
+  candidato "Carlos Paz" vienen de videos de salsa en vivo ("La Clave, Carlos Paz y Salsa al
+  Parque", canal ajeno a política) — podría ser un DJ/presentador de la escena de salsa de Cali
+  homónimo, no el candidato. No se excluyó por no tener certeza; si Carlos confirma que no es él,
+  agregar esa frase a `exclusions` de Carlos Paz en `config.py`.
 - Alertas por correo/Telegram; radio/TV (fuera de alcance, ver `docs/cotizacion.md`).
 - Despliegue en VPS (`docs/cotizacion.md`, `docs/despliegue.md`) — sigue corriendo en el PC local.
 
