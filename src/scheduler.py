@@ -1,8 +1,11 @@
 import datetime as dt
 import logging
 import os
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from contextlib import contextmanager
 
 from apscheduler.schedulers.background import BackgroundScheduler
+from sqlalchemy.orm import sessionmaker
 
 from src import config
 from src.connectors.google_cse import GoogleCSEConnector, QuotaTracker
@@ -174,14 +177,52 @@ def mark_comments_fetched(session, connector) -> None:
 
 
 def run_group(session, types: list[SourceType]) -> dict[str, int]:
+    """Corre cada fuente del grupo en paralelo. Antes era secuencial: con una decena de feeds de
+    RSS/Google News, "Actualizar ahora" esperaba cada respuesta de red una por una sin motivo --
+    ninguna fuente depende de otra. Cada hilo abre su propia sesión (una sesión de SQLAlchemy no
+    es segura para compartir entre hilos) contra el mismo engine que `session`; el modo WAL
+    (src/db.py) ya soporta varios escritores a la vez sin bloquearse."""
+    source_ids_names = [(s.id, s.name) for s in session.query(Source).filter(Source.type.in_(types)).all()]
+    if not source_ids_names:
+        return {}
+
+    ThreadSession = sessionmaker(bind=session.get_bind(), future=True)
+
+    @contextmanager
+    def _thread_session():
+        s = ThreadSession()
+        try:
+            yield s
+            s.commit()
+        except Exception:
+            s.rollback()
+            raise
+        finally:
+            s.close()
+
+    def _run(source_id: int) -> tuple[str, int | None]:
+        with _thread_session() as s:
+            source = s.query(Source).filter_by(id=source_id).one()
+            connector = build_connector(source, s)
+            if connector is None:
+                log.info("fuente %s sin credenciales; se omite", source.name)
+                return source.name, None
+            n = ingest(s, source, connector)
+            mark_comments_fetched(s, connector)
+            return source.name, n
+
     results: dict[str, int] = {}
-    for source in session.query(Source).filter(Source.type.in_(types)).all():
-        connector = build_connector(source, session)
-        if connector is None:
-            log.info("fuente %s sin credenciales; se omite", source.name)
-            continue
-        results[source.name] = ingest(session, source, connector)
-        mark_comments_fetched(session, connector)
+    with ThreadPoolExecutor(max_workers=min(8, len(source_ids_names))) as pool:
+        futures = {pool.submit(_run, sid): name for sid, name in source_ids_names}
+        for future in as_completed(futures):
+            name = futures[future]
+            try:
+                fetched_name, n = future.result()
+            except Exception:
+                log.exception("fuente %s falló en paralelo", name)
+                continue
+            if n is not None:
+                results[fetched_name] = n
     return results
 
 
@@ -217,10 +258,15 @@ def job_score():
 
 
 def run_everything():
-    job_fast()
-    job_cse()
-    job_youtube()
-    job_social()
+    """Los 4 grupos son independientes (cada uno abre su propia sesión) -- correrlos uno tras
+    otro solo suma tiempos de espera de red sin necesidad."""
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        futures = [pool.submit(job) for job in (job_fast, job_cse, job_youtube, job_social)]
+        for future in as_completed(futures):
+            try:
+                future.result()
+            except Exception:
+                log.exception("un grupo de run_everything falló")
 
 
 def _next_run(session, source_types: list[SourceType], interval: dt.timedelta) -> dt.datetime:

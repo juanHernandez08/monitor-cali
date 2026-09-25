@@ -577,8 +577,19 @@ $("#days").addEventListener("change", loadAll);
 ["#meta-f-candidate", "#meta-f-platform", "#meta-f-sort"].forEach((id) => $(id).addEventListener("change", loadMeta));
 $("#refresh").addEventListener("click", async () => {
   const b = $("#refresh"); b.disabled = true; b.textContent = "Actualizando…";
+  const clickedAt = Date.now();
   await fetch("/api/refresh", { method: "POST" });
-  setTimeout(async () => { await loadAll(); b.disabled = false; b.textContent = "Actualizar ahora"; }, 25000);
+  // Antes esperaba 25s fijos sin importar cuánto tardara en realidad; ahora consulta /health
+  // hasta ver una corrida terminada después del clic (las fuentes ya corren en paralelo, así
+  // que normalmente termina mucho antes). 90s es solo un salvavidas por si algo se cuelga.
+  const deadline = Date.now() + 90000;
+  while (Date.now() < deadline) {
+    await new Promise((r) => setTimeout(r, 1500));
+    const s = await j("/health");
+    if (s.last_run && new Date(s.last_run + "Z").getTime() > clickedAt) break;
+  }
+  await loadAll();
+  b.disabled = false; b.textContent = "Actualizar ahora";
 });
 loadAll();
 setInterval(loadAll, 120000);

@@ -1,5 +1,5 @@
 from src.models import Source, SourceType
-from src.scheduler import build_connector, run_group
+from src.scheduler import build_connector, run_group, run_everything
 from src.connectors.google_news import GoogleNewsConnector
 from src.connectors.reddit_rss import RedditRSSConnector
 from src.connectors.news_rss import RSSConnector
@@ -22,6 +22,47 @@ def test_run_group_skips_sources_without_connector(db_session, monkeypatch):
     import src.scheduler as m
     monkeypatch.setattr(m, "ingest", lambda s, src, conn: 99)
     assert run_group(db_session, [SourceType.GOOGLE_CSE]) == {}
+
+
+def test_run_group_runs_sources_concurrently_not_one_at_a_time(db_session, monkeypatch):
+    """Pedido del cliente 2026-09-26: "Actualizar ahora" se demoraba mucho -- cada fuente (más de
+    una decena de feeds de RSS/Google News) esperaba su propia respuesta de red una por una. Aquí
+    no importa el conector real: basta con que 3 fuentes "lentas" (cada una tarda 0.3s) terminen
+    en bloque en mucho menos que la suma secuencial (0.9s)."""
+    import time
+    for i in range(3):
+        db_session.add(Source(type=SourceType.RSS, name=f"feed{i}", config={"feed_url": f"https://x/{i}"}))
+    db_session.commit()
+    import src.scheduler as m
+
+    def slow_ingest(s, src, conn):
+        time.sleep(0.3)
+        return 1
+
+    monkeypatch.setattr(m, "ingest", slow_ingest)
+    t0 = time.time()
+    results = run_group(db_session, [SourceType.RSS])
+    elapsed = time.time() - t0
+    assert results == {"feed0": 1, "feed1": 1, "feed2": 1}
+    assert elapsed < 0.7  # en paralelo; en serie tomaría >= 0.9s
+
+
+def test_run_everything_runs_the_four_groups_concurrently(monkeypatch):
+    """Mismo pedido: run_everything() encadenaba job_fast, job_cse, job_youtube y job_social uno
+    tras otro -- son independientes (cada uno abre su propia sesión), así que también deben
+    correr en paralelo."""
+    import time
+    import src.scheduler as m
+
+    def slow_job():
+        time.sleep(0.2)
+
+    for name in ("job_fast", "job_cse", "job_youtube", "job_social"):
+        monkeypatch.setattr(m, name, slow_job)
+    t0 = time.time()
+    run_everything()
+    elapsed = time.time() - t0
+    assert elapsed < 0.5  # en paralelo; en serie tomaría >= 0.8s
 
 
 def test_social_connector_gets_known_posts_pending_comments_and_marks_attempted(db_session, monkeypatch):
