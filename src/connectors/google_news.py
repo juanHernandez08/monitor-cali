@@ -1,5 +1,6 @@
 import datetime as dt
 import html
+import logging
 import re
 import time
 from urllib.parse import quote
@@ -7,6 +8,8 @@ from urllib.parse import quote
 import feedparser
 
 from src.connectors.base import RawItem
+
+log = logging.getLogger(__name__)
 
 _TAG = re.compile(r"<[^>]+>")
 
@@ -47,9 +50,16 @@ class GoogleNewsConnector:
         seen: set[str] = set()
         for term in search_terms:
             entries = []
-            for window in self.windows:
-                entries.extend(feedparser.parse(build_query_url(term, window, self.context)).entries)
-                time.sleep(self.pause_seconds)
+            try:
+                for window in self.windows:
+                    entries.extend(feedparser.parse(build_query_url(term, window, self.context)).entries)
+                    time.sleep(self.pause_seconds)
+            except Exception:
+                # feedparser normalmente no lanza (usa bozo), pero con ~231 peticiones por
+                # corrida (77 términos x 3 ventanas) no hay que arriesgar perder los términos
+                # anteriores que sí funcionaron por un fallo de red aislado en este.
+                log.exception("Google News falló para %r", term)
+                continue
             for entry in entries:
                 ext_id = entry.get("id") or entry.get("link")
                 if not ext_id or ext_id in seen:
