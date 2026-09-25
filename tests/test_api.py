@@ -36,6 +36,7 @@ def test_json_routes(client):
     assert client.get("/api/city/kpis").json()["total"] == 0
     assert client.get("/api/agenda").json() == {"speak": [], "avoid": []}
     assert client.get("/api/perception").json() == []
+    assert client.get("/api/candidate/topics?name=Carlos Arias").json() == []
 
 
 def test_refresh_returns_202(client, monkeypatch):

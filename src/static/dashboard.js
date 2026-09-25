@@ -299,6 +299,22 @@ function toggleComments(idx, btn) {
   btn.textContent = btn.textContent.replace("▸", "▾");
 }
 
+async function loadCarlosTopics() {
+  if (!$("#carlos-topics")) return;
+  const rows = await j(`/api/candidate/topics?name=${encodeURIComponent(CARLOS)}&days=${days()}`);
+  $("#carlos-topics").innerHTML = rows.map((t) => `<div class="topic-card">
+      <div class="head"><h3>${esc(t.topic)}</h3><div>${t.count} menciones · <span class="tag ${t.positive_pct >= 60 ? "positive" : t.positive_pct <= 30 ? "negative" : ""}">${t.positive_pct}% a favor</span></div></div>
+      <div class="subs"><span class="tag positive">${t.positive} positivas</span><span class="tag">${t.neutral} neutrales</span><span class="tag negative">${t.negative} negativas</span>
+        ${Object.entries(t.sources).map(([src, n]) => `<span class="tag">${esc(SRC_LABEL[src] || SRC[src] || src)} · ${n}</span>`).join("")}</div>
+      ${t.samples.map(quote).join("")}
+    </div>`).join("") || `<div class="empty">Aún no hay suficientes menciones de Carlos con tema identificado en el período.</div>`;
+  const top = rows[0];
+  $("#read-carlos-topics").innerHTML = top
+    ? `El tema del que más se habla sobre Carlos es <b>${esc(top.topic)}</b> (${top.count} menciones, ${top.positive_pct}% a favor).` +
+      (rows[1] ? ` Le siguen <b>${esc(rows[1].topic)}</b>${rows[2] ? ` y <b>${esc(rows[2].topic)}</b>` : ""}.` : "")
+    : "Sin temas identificados todavía en el período.";
+}
+
 async function loadStatus() {
   const s = await j("/health");
   $("#last-run").textContent = `Actualizado ${ago(s.last_run)}`;
@@ -308,7 +324,7 @@ async function loadStatus() {
 
 async function loadAll() {
   const rows = await loadSummary();
-  await Promise.all([loadTimeline(rows), loadSources(), loadTopics(), loadAlerts(), loadFeed(), loadStatus(), loadCity(), loadAgenda(), (typeof loadCouncil === "function" ? loadCouncil() : null)]);
+  await Promise.all([loadTimeline(rows), loadSources(), loadTopics(), loadAlerts(), loadFeed(), loadStatus(), loadCity(), loadAgenda(), loadCarlosTopics(), (typeof loadCouncil === "function" ? loadCouncil() : null)]);
 }
 
 document.querySelectorAll(".tab").forEach((b) => b.addEventListener("click", () => {

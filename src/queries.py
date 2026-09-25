@@ -490,6 +490,41 @@ def citizen_perception(session, days: int = 30, samples_per: int = 3) -> list[di
     return rows
 
 
+def candidate_topic_map(session, candidate_name: str, days: int = 30, samples_per: int = 4) -> list[dict]:
+    """Mapa de un candidato por tema concreto: de qué se habla sobre él y qué dice la gente en cada
+    tema (positivo/negativo/neutral, con comentarios de muestra). A diferencia de `city_topics`
+    (que agrupa por categoría amplia), esto agrupa por `topic` -el asunto puntual- para un solo
+    candidato, y sirve tanto para publicaciones propias como para lo que rivales o prensa dicen de él."""
+    candidate = session.query(Candidate).filter_by(name=candidate_name).first()
+    if not candidate:
+        return []
+    since = _since(days)
+    rows = (session.query(Mention).join(SentimentScore)
+            .filter(Mention.candidate_id == candidate.id, Mention.relevant.is_(True), WHEN >= since)
+            .all())
+    by_topic: dict[str, list[Mention]] = defaultdict(list)
+    for m in rows:
+        topic = (m.sentiment.topic or "").strip().lower()
+        if not topic or topic in META_TOPICS:
+            continue
+        by_topic[topic].append(m)
+    out = []
+    for topic, ms in by_topic.items():
+        labels = Counter(m.sentiment.label for m in ms)
+        pos, neg, neu = (labels.get(SentimentLabel.POSITIVE, 0), labels.get(SentimentLabel.NEGATIVE, 0),
+                         labels.get(SentimentLabel.NEUTRAL, 0))
+        comments = [m for m in ms if (m.raw or {}).get("kind") == "comment"]
+        pool = comments or ms
+        out.append({
+            "topic": topic, "count": len(ms),
+            "positive": pos, "negative": neg, "neutral": neu, "positive_pct": pct(pos, len(ms)),
+            "sources": dict(Counter(((m.raw or {}).get("platform") or m.source.type.value) for m in ms)),
+            "samples": [_mention_dict(m) for m in sorted(pool, key=lambda m: -abs(m.sentiment.score))[:samples_per]],
+        })
+    out.sort(key=lambda r: -r["count"])
+    return out
+
+
 def agenda(session, days: int = 30) -> dict:
     """Temas de los que conviene hablar (problema ciudadano sin respuesta) y temas de riesgo."""
     topics = city_topics(session, days=days, samples_per=3, subtopics_per=5)

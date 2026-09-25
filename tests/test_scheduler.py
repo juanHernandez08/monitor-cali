@@ -83,3 +83,50 @@ def test_social_connector_routes_x_to_apify_when_token_present(db_session, monke
     bd = next(c for c in conn.connectors if isinstance(c, SocialAccountConnector))
     assert all(a["platform"] != "x" for a in bd.accounts)  # X ya no gasta créditos de Bright Data
     assert next(c for c in conn.connectors if isinstance(c, XApifyConnector)).accounts[0]["url"] == "https://x.com/x"
+
+
+def test_next_run_fires_soon_when_a_restart_would_otherwise_postpone_it(db_session):
+    """Un reinicio del servidor no debe posponer un job de intervalo largo (Bright Data, YouTube)
+    otras 12h completas si ya estaba vencido: debe salir a correr pronto (~ahora), no reiniciar
+    la cuenta regresiva desde cero."""
+    import datetime as dt
+    from src.scheduler import _next_run, SOCIAL_GROUP
+    from src.models import Run
+
+    src = Source(type=SourceType.SOCIAL, name="IG")
+    db_session.add(src)
+    db_session.commit()
+    overdue = dt.datetime.utcnow() - dt.timedelta(hours=20)  # última corrida hace 20h, intervalo es 12h
+    db_session.add(Run(source_id=src.id, started_at=overdue, finished_at=overdue))
+    db_session.commit()
+
+    due = _next_run(db_session, SOCIAL_GROUP, dt.timedelta(hours=12))
+    now = dt.datetime.now(dt.timezone.utc)
+    assert due <= now + dt.timedelta(seconds=5)  # vencido: debe salir ya, no esperar otras 12h
+
+
+def test_next_run_respects_a_recent_run(db_session):
+    import datetime as dt
+    from src.scheduler import _next_run, YT_GROUP
+    from src.models import Run
+
+    src = Source(type=SourceType.YOUTUBE, name="YT")
+    db_session.add(src)
+    db_session.commit()
+    recent = dt.datetime.utcnow() - dt.timedelta(hours=1)  # corrió hace 1h, intervalo 12h
+    db_session.add(Run(source_id=src.id, started_at=recent, finished_at=recent))
+    db_session.commit()
+
+    due = _next_run(db_session, YT_GROUP, dt.timedelta(hours=12))
+    now = dt.datetime.now(dt.timezone.utc)
+    # debe faltar todavía cerca de 11h, no "ya" ni las 12h completas desde ahora
+    assert dt.timedelta(hours=10) < (due - now) < dt.timedelta(hours=12)
+
+
+def test_next_run_with_no_history_runs_now(db_session):
+    import datetime as dt
+    from src.scheduler import _next_run, CSE_GROUP
+
+    due = _next_run(db_session, CSE_GROUP, dt.timedelta(hours=8))
+    now = dt.datetime.now(dt.timezone.utc)
+    assert due <= now + dt.timedelta(seconds=5)

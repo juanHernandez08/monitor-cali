@@ -15,9 +15,10 @@ from src.connectors.x_apify import XApifyConnector
 from src.connectors.youtube import YouTubeConnector
 from src.db import get_session
 from src.enrich import enrich_pending
-from src.models import Source, SourceType
+from src.models import Run, Source, SourceType
 from src.pipeline import ingest, score_pending
 from src.sentiment import build_sentiment_engine
+from sqlalchemy import func
 
 log = logging.getLogger(__name__)
 
@@ -212,13 +213,42 @@ def run_everything():
     job_social()
 
 
+def _next_run(session, source_types: list[SourceType], interval: dt.timedelta) -> dt.datetime:
+    """Cuándo debe salir a correr un job de intervalo largo, mirando la última corrida REAL en la
+    base de datos en vez de contar desde que arrancó este proceso.
+
+    Sin esto, cada reinicio del servidor (se cae, se actualiza código, se apaga el PC) reinicia la
+    cuenta regresiva de 8h/12h desde cero. Si los reinicios son más frecuentes que el intervalo —como
+    pasó el 2026-09-24, varios reinicios en un día tumbaron la captura de Bright Data— el job nunca
+    llega a dispararse. Si ya venció, sale ya; si no, respeta lo que falta.
+    """
+    last = (
+        session.query(func.max(Run.started_at))
+        .join(Source, Source.id == Run.source_id)
+        .filter(Source.type.in_(source_types))
+        .scalar()
+    )
+    now = dt.datetime.now(dt.timezone.utc)
+    if last is None:
+        return now
+    if last.tzinfo is None:
+        last = last.replace(tzinfo=dt.timezone.utc)
+    due = last + interval
+    return due if due > now else now
+
+
 def start_scheduler() -> BackgroundScheduler:
     sched = BackgroundScheduler(timezone="America/Bogota")
+    with get_session() as s:
+        cse_next = _next_run(s, CSE_GROUP, dt.timedelta(hours=8))
+        yt_next = _next_run(s, YT_GROUP, dt.timedelta(hours=12))
+        social_next = _next_run(s, SOCIAL_GROUP, dt.timedelta(hours=12))
     sched.add_job(job_fast, "interval", minutes=15, id="fast", max_instances=1, coalesce=True)
-    sched.add_job(job_cse, "interval", hours=8, id="cse", max_instances=1, coalesce=True)
-    sched.add_job(job_youtube, "interval", hours=12, id="youtube", max_instances=1, coalesce=True)  # cuota: ~3.000 unidades/corrida
+    sched.add_job(job_cse, "interval", hours=8, id="cse", max_instances=1, coalesce=True, next_run_time=cse_next)
+    sched.add_job(job_youtube, "interval", hours=12, id="youtube", max_instances=1, coalesce=True,  # cuota: ~3.000 unidades/corrida
+                  next_run_time=yt_next)
     # Bright Data: solo se pagan posts nuevos y comentarios pendientes; el contador mensual frena en el tope.
-    sched.add_job(job_social, "interval", hours=12, id="social", max_instances=1, coalesce=True)
+    sched.add_job(job_social, "interval", hours=12, id="social", max_instances=1, coalesce=True, next_run_time=social_next)
     sched.add_job(job_score, "interval", minutes=2, id="score", max_instances=1, coalesce=True)
     sched.start()
     return sched
