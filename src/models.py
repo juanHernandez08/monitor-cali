@@ -91,6 +91,7 @@ class SentimentScore(Base):
     score = Column(Float, nullable=False)  # -1.0 a 1.0
     topic = Column(String, nullable=True)
     category = Column(String, nullable=True)  # categoría fija (ver sentiment.CATEGORIES)
+    summary = Column(String, nullable=True)  # una frase: de qué trata, sin abrir la publicación
     model = Column(String, nullable=False)
     created_at = Column(DateTime, default=dt.datetime.utcnow, nullable=False)
 

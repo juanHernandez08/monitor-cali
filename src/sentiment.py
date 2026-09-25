@@ -25,10 +25,14 @@ Lenguaje colombiano: "berraco/berraca", "bacano", "una chimba", "la rompió" son
 
 El "topic" es el ASUNTO concreto en 2-4 palabras (p. ej. "agua en Terrón Colorado", "huecos en la calle 5"). NUNCA uses el tono como topic. Si el texto no trata ningún asunto (solo saludos, emojis o insultos genéricos), usa topic "sin tema".
 """ + _CATEGORY_LINE + """
+Además, escribe un "summary": un resumen de UNA sola frase (máx. 25 palabras) de QUÉ DICE el texto,
+en español neutro, sin opinar. Para una noticia o post: de qué trata. Para un comentario: qué dice
+la persona. Si el texto ya es muy corto (un par de palabras), repítelo tal cual como summary.
+
 Texto: {text}
 
 Responde SOLO con un JSON de la forma:
-{{"label": "positive" | "negative" | "neutral", "score": <float entre -1.0 y 1.0>, "topic": "<asunto o 'sin tema'>", "category": "<una de la lista>"}}
+{{"label": "positive" | "negative" | "neutral", "score": <float entre -1.0 y 1.0>, "topic": "<asunto o 'sin tema'>", "category": "<una de la lista>", "summary": "<resumen de una frase>"}}
 """
 
 SENTIMENT_PROMPT = """Eres un analista de comunicación política de una campaña a la Alcaldía de Cali, Colombia.
@@ -49,9 +53,13 @@ Texto: {text}
 El "topic" es el ASUNTO concreto del que trata el texto, en 2-4 palabras (p. ej. "seguridad", "agua en Terrón Colorado", "reconstrucción tras el terremoto", "empleo juvenil", "transporte público").
 NUNCA uses el tono como topic (no escribas "apoyo", "elogio", "crítica", "rechazo", "felicitación"). Si el texto es un insulto, burla, ataque personal o rechazo al candidato sin ningún asunto concreto, usa topic "rechazo e insultos". Si solo son aplausos, saludos o emojis de apoyo sin asunto, usa topic "sin tema".
 
+Además, escribe un "summary": un resumen de UNA sola frase (máx. 25 palabras) de QUÉ DICE el texto
+sobre {candidate}, en español neutro, sin opinar tú. Para una noticia o post: de qué trata en
+relación a él. Para un comentario: qué dice la persona. Si el texto ya es muy corto, repítelo tal
+cual como summary.
 """ + _CATEGORY_LINE + """
 Responde SOLO con un JSON de la forma:
-{{"label": "positive" | "negative" | "neutral", "score": <float entre -1.0 y 1.0>, "topic": "<asunto en 2-4 palabras, 'rechazo e insultos' o 'sin tema'>", "category": "<una de la lista>"}}
+{{"label": "positive" | "negative" | "neutral", "score": <float entre -1.0 y 1.0>, "topic": "<asunto en 2-4 palabras, 'rechazo e insultos' o 'sin tema'>", "category": "<una de la lista>", "summary": "<resumen de una frase>"}}
 """
 _JSON_FENCE = re.compile(r"^```(?:json)?\s*|\s*```$", re.MULTILINE)
 
@@ -63,6 +71,7 @@ class SentimentResult:
     topic: str
     model: str
     category: str = "otro"
+    summary: str = ""
 
 
 def _parse_payload(text: str, model: str) -> SentimentResult:
@@ -75,7 +84,8 @@ def _parse_payload(text: str, model: str) -> SentimentResult:
     if category not in CATEGORIES:
         category = "otro"
     return SentimentResult(label=SentimentLabel(label), score=score,
-                           topic=str(payload.get("topic", ""))[:80], model=model, category=category)
+                           topic=str(payload.get("topic", ""))[:80], model=model, category=category,
+                           summary=str(payload.get("summary", "")).strip()[:220])
 
 
 def _prompt(text: str, candidate: str | None, city: bool = False) -> str:

@@ -185,6 +185,7 @@ async function showDay(name, day) {
     <div class="body">
       <div class="meta"><span class="tag src">${srcName(r)} · ${KIND[r.kind] || ""}</span><span>${fmtDate(r.published_at)}</span>${r.url ? `<a href="${r.url}" target="_blank" rel="noopener">ver original ↗</a>` : ""}</div>
       <div class="text">${esc(r.text)}</div>
+      ${r.summary ? `<div class="summary">📝 ${esc(r.summary)}</div>` : ""}
       ${r.author ? `<div class="author">${esc(r.author)}</div>` : ""}
       ${r.comments.length ? `<div class="thread">${r.comments.slice(0, 8).map((c) => `<div class="comment"><div>${esc(c.text).slice(0, 200)}<div class="who">${esc(c.author || "")}</div></div><div>${sentTag(c)}</div></div>`).join("")}${r.comments.length > 8 ? `<div class="hint">… y ${r.comments.length - 8} comentarios más</div>` : ""}</div>` : ""}
     </div>
@@ -277,6 +278,7 @@ async function loadFeed() {
     <div class="body">
       <div class="meta"><span class="cand">${esc(r.candidate)}</span><span class="tag src">${srcName(r)} · ${KIND[r.kind] || ""}</span><span>${fmtDate(r.published_at)}</span>${r.url ? `<a href="${r.url}" target="_blank" rel="noopener">ver original ↗</a>` : ""}</div>
       <div class="text">${esc(r.text)}</div>
+      ${r.summary ? `<div class="summary">📝 ${esc(r.summary)}</div>` : ""}
       ${r.author ? `<div class="author">${esc(r.author)}</div>` : ""}
     </div>
     <div class="side">
@@ -299,15 +301,37 @@ function toggleComments(idx, btn) {
   btn.textContent = btn.textContent.replace("▸", "▾");
 }
 
-async function loadCarlosTopics() {
-  if (!$("#carlos-topics")) return;
-  const rows = await j(`/api/candidate/topics?name=${encodeURIComponent(CARLOS)}&days=${days()}`);
-  $("#carlos-topics").innerHTML = rows.map((t) => `<div class="topic-card">
+let carlosTopicRows = [];
+const CARLOS_TOPICS_VISIBLE = 5;
+
+function carlosTopicCard(t, i) {
+  return `<div class="topic-card">
       <div class="head"><h3>${esc(t.topic)}</h3><div>${t.count} menciones · <span class="tag ${t.positive_pct >= 60 ? "positive" : t.positive_pct <= 30 ? "negative" : ""}">${t.positive_pct}% a favor</span></div></div>
       <div class="subs"><span class="tag positive">${t.positive} positivas</span><span class="tag">${t.neutral} neutrales</span><span class="tag negative">${t.negative} negativas</span>
         ${Object.entries(t.sources).map(([src, n]) => `<span class="tag">${esc(SRC_LABEL[src] || SRC[src] || src)} · ${n}</span>`).join("")}</div>
-      ${t.samples.map(quote).join("")}
-    </div>`).join("") || `<div class="empty">Aún no hay suficientes menciones de Carlos con tema identificado en el período.</div>`;
+      <button class="toggle" data-ct-idx="${i}">▸ ver ${t.samples.length} comentario${t.samples.length === 1 ? "" : "s"} de ejemplo</button>
+    </div>`;
+}
+
+async function loadCarlosTopics() {
+  if (!$("#carlos-topics")) return;
+  const rows = await j(`/api/candidate/topics?name=${encodeURIComponent(CARLOS)}&days=${days()}`);
+  carlosTopicRows = rows;
+  const visible = rows.slice(0, CARLOS_TOPICS_VISIBLE);
+  const rest = rows.slice(CARLOS_TOPICS_VISIBLE);
+  $("#carlos-topics").innerHTML = visible.map((t, i) => carlosTopicCard(t, i)).join("")
+    + (rest.length ? `<button class="toggle" id="ct-more">▸ ver ${rest.length} tema${rest.length === 1 ? "" : "s"} más</button><div id="ct-rest" style="display:none">${rest.map((t, i) => carlosTopicCard(t, i + visible.length)).join("")}</div>` : "")
+    || `<div class="empty">Aún no hay suficientes menciones de Carlos con tema identificado en el período.</div>`;
+  $("#ct-more")?.addEventListener("click", (e) => { $("#ct-rest").style.display = "block"; e.target.remove(); });
+  $("#carlos-topics").querySelectorAll("[data-ct-idx]").forEach((btn) => btn.addEventListener("click", () => {
+    const i = Number(btn.dataset.ctIdx);
+    const t = carlosTopicRows[i];
+    if (btn.nextElementSibling?.classList.contains("thread")) { btn.nextElementSibling.remove(); btn.textContent = btn.textContent.replace("▾", "▸"); return; }
+    const div = document.createElement("div"); div.className = "thread";
+    div.innerHTML = t.samples.map(quote).join("");
+    btn.after(div);
+    btn.textContent = btn.textContent.replace("▸", "▾");
+  }));
   const top = rows[0];
   $("#read-carlos-topics").innerHTML = top
     ? `El tema del que más se habla sobre Carlos es <b>${esc(top.topic)}</b> (${top.count} menciones, ${top.positive_pct}% a favor).` +

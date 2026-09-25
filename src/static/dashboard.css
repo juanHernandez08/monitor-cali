@@ -102,6 +102,7 @@ main { padding: 18px 24px 40px; max-width: 1360px; margin: 0 auto; display: grid
 .item .meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; color: var(--muted); font-size: 12px; margin-bottom: 4px; }
 .item .meta .cand { color: var(--ink); font-weight: 600; }
 .item .text { font-size: 14px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
+.item .summary { font-size: 13px; color: var(--ink); background: #f4f6fa; border-radius: 8px; padding: 6px 10px; margin-top: 6px; }
 .item .author { color: var(--muted); font-size: 12px; margin-top: 4px; }
 .item .side { display: grid; gap: 8px; align-content: start; justify-items: end; min-width: 150px; }
 .cbar { display: flex; height: 6px; border-radius: 3px; overflow: hidden; background: var(--line); width: 150px; }

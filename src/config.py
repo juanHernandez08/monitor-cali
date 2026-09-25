@@ -150,4 +150,10 @@ RSS_SOURCES = [
     {"name": "Caliescribe", "url": "https://caliescribe.com/feed/", "city": True},
     {"name": "90 Minutos", "url": "https://90minutos.co/feed/", "city": True},
     {"name": "Semana", "url": "https://www.semana.com/arc/outboundfeeds/rss/?outputType=xml", "city": False},
+    # Añadidas 2026-09-25 a pedido del cliente; feed verificado con curl (RSS 2.0 real, no una página de error).
+    {"name": "Diario Occidente", "url": "https://occidente.co/feed/", "city": True},
+    {"name": "Tu Barco", "url": "https://tubarco.news/feed/", "city": True},
+    {"name": "Radio Reloj Cali", "url": "https://radiorelojcali.com/feed/", "city": True},
+    {"name": "El Valluno Medios", "url": "https://elvalluno.com/feed/", "city": True},
+    {"name": "La FM", "url": "https://www.lafm.com.co/rss/actualidad.xml", "city": False},  # nacional, no local de Cali
 ]

@@ -94,6 +94,7 @@ def _mention_dict(m: Mention) -> dict:
         "published_at": _when(m).isoformat(),
         "label": s.label.value if s else None, "score": s.score if s else None,
         "topic": s.topic if s else None, "model": s.model if s else None,
+        "summary": (s.summary if s else None) or None,
     }
 
 
@@ -266,7 +267,7 @@ def feed(session, candidate_id: int | None = None, source_type: str | None = Non
                 "candidate_id": first.candidate_id, "source": first.source.name,
                 "source_type": first.source.type.value, "text": title, "url": url, "author": None,
                 "published_at": max(_when(c) for c in comments).isoformat(),
-                "label": None, "score": None, "topic": None, "model": None,
+                "label": None, "score": None, "topic": None, "model": None, "summary": None,
                 "thumbnail": _thumbnail(first),
                 "comments": [], "comments_summary": _summary_of([]),
             }
