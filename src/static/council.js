@@ -21,7 +21,9 @@ async function loadCouncil() {
   } } }, false, false);
   $("#read-council").innerHTML = withM.length
     ? `De los ${o.members.length} concejales, ${withM.length} tuvieron menciones en ${periodLabel()}. El más mencionado es <b>${esc(withM[0].name)}</b> (${withM[0].mentions}, ${esc(withM[0].party || "sin partido")})` +
-      (carlos ? `; <b>Carlos Arias</b> ocupa el ${ordinal(carlosIdx)} lugar con ${carlos.mentions}.` : "; <b>Carlos Arias</b> no registra menciones en el período.")
+      (!carlos ? `; <b>Carlos Arias</b> no registra menciones en el período.`
+        : carlosIdx === 0 ? `.` // ya se dijo arriba que Carlos es el más mencionado; repetirlo suena redundante
+        : `; <b>Carlos Arias</b> ocupa el ${ordinal(carlosIdx)} lugar con ${carlos.mentions}.`)
     : "Ningún concejal registra menciones en el período.";
 
   const parties = o.parties.filter((p) => p.mentions > 0);
