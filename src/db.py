@@ -1,14 +1,31 @@
 import os
 from contextlib import contextmanager
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 
 from src.models import Base
 
 DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///monitor.db")
 
-engine = create_engine(DATABASE_URL, echo=False, future=True)
+# El servidor web (scheduler + peticiones) y scripts como backfill_emotions.py escriben a la
+# misma monitor.db desde procesos distintos. Con el modo por defecto de SQLite, un escritor
+# choca con "database is locked" casi de inmediato (pasó en vivo: tumbó el arranque del
+# servidor). WAL permite lectores y un escritor a la vez sin bloquearse entre sí, y el
+# busy_timeout hace que un choque de dos escritores espere en vez de fallar al instante.
+engine = create_engine(DATABASE_URL, echo=False, future=True, connect_args={"timeout": 30})
+
+
+@event.listens_for(engine, "connect")
+def _sqlite_pragmas(dbapi_connection, connection_record):
+    if not DATABASE_URL.startswith("sqlite"):
+        return
+    cursor = dbapi_connection.cursor()
+    cursor.execute("PRAGMA journal_mode=WAL")
+    cursor.execute("PRAGMA busy_timeout=30000")
+    cursor.close()
+
+
 SessionLocal = sessionmaker(bind=engine, expire_on_commit=False, future=True)
 
 

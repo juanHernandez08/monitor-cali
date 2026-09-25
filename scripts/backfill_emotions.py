@@ -32,8 +32,14 @@ def _text_with_context(mention) -> str:
     return text
 
 
-def run(session, engine, limit: int | None = None, batch: int = 25) -> int:
-    """Clasifica la emoción de menciones ya puntuadas que aún no la tienen. Devuelve cuántas."""
+def run(session, engine, limit: int | None = None, batch: int = 1) -> int:
+    """Clasifica la emoción de menciones ya puntuadas que aún no la tienen. Devuelve cuántas.
+
+    batch=1: confirma cada mención por separado. El servidor web escribe a la misma base de
+    datos cada pocos minutos; con WAL (ver src/db.py) ya no debería chocar, pero mantener la
+    transacción abierta el menor tiempo posible mientras Ollama piensa (varios segundos) es
+    una segunda capa de seguridad barata.
+    """
     done = 0
     while limit is None or done < limit:
         take = batch if limit is None else min(batch, limit - done)
