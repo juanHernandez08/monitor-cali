@@ -30,6 +30,16 @@ def is_relevant(mention, candidate) -> bool:
         return False
     if is_comment and not own_post and "tangencial" in topic:
         return False
+    if mention.source.type == SourceType.YOUTUBE and is_comment:
+        # El video hereda al candidato solo si el título/descripción lo nombran; si no, el
+        # comentario solo cuenta si él mismo lo nombra. No depende de si el LLM etiquetó el tema
+        # como "tangencial" arriba: un comentario puede ser un insulto o un dato ("magnitud 7.4")
+        # sin que el LLM lo marque tangencial, aunque hable de un video que no es sobre el candidato.
+        video_named = raw.get("video_about_candidate")
+        if video_named is None:  # dato de antes de guardar esta marca: recalcular contra el título
+            video_named = mentions_candidate(raw.get("video_title") or "", candidate)
+        if not video_named and not mentions_candidate(mention.text, candidate):
+            return False
     return True
 
 

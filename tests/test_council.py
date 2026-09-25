@@ -121,3 +121,81 @@ def test_recompute_relevance_does_not_apply_press_rules_to_social(db_session):
     restored, dropped = recompute(db_session, only_council=True)
     assert restored == 1 and dropped == 0
     assert db_session.query(Mention).filter_by(external_id="ig:comment:1").one().relevant is True
+
+
+def _yt_comment(db_session, candidate, source, ext, text, video_title, topic, label="negative",
+                video_about_candidate=None, relevant=True):
+    now = dt.datetime.utcnow()
+    raw = {"kind": "comment", "video_id": "v1", "video_title": video_title}
+    if video_about_candidate is not None:
+        raw["video_about_candidate"] = video_about_candidate
+    m = Mention(candidate_id=candidate.id, source_id=source.id, external_id=ext, text=text,
+                raw=raw, published_at=now, fetched_at=now, relevant=relevant)
+    db_session.add(m)
+    db_session.flush()
+    db_session.add(SentimentScore(mention_id=m.id, label=SentimentLabel(label), score=-0.5, topic=topic,
+                                  model="f", category="otro"))
+    db_session.commit()
+    return m
+
+
+def test_recompute_drops_youtube_comment_on_unrelated_video_regardless_of_llm_topic(db_session):
+    """Caso real 2026-09-25: video de un temblor que no nombra a Carlos; el comentario tampoco lo
+    nombra, pero el LLM lo etiquetó "rechazo e insultos" (no "tangencial"), así que el filtro por
+    tema no lo agarraba. La regla nueva no depende de cómo lo haya clasificado el modelo."""
+    from scripts.recompute_relevance import recompute
+    seed(db_session)
+    carlos = db_session.query(Candidate).filter_by(name="Carlos Arias").one()
+    yt = Source(type=SourceType.YOUTUBE, name="YT")
+    db_session.add(yt)
+    db_session.commit()
+    m = _yt_comment(db_session, carlos, yt, "yt:comment:1",
+                    "Yo soy de Colombia sé cada uno de los temblores y la magnitud fue de 7.4, mentirosa",
+                    "Temblor de 4.4 sacude a Cali: evacúan edificios del centro", topic="rechazo e insultos")
+    restored, dropped = recompute(db_session, only_council=True)
+    assert dropped == 1 and restored == 0
+    assert m.relevant is False
+
+
+def test_recompute_keeps_youtube_comment_when_video_names_the_candidate(db_session):
+    from scripts.recompute_relevance import recompute
+    seed(db_session)
+    carlos = db_session.query(Candidate).filter_by(name="Carlos Arias").one()
+    yt = Source(type=SourceType.YOUTUBE, name="YT")
+    db_session.add(yt)
+    db_session.commit()
+    m = _yt_comment(db_session, carlos, yt, "yt:comment:2", "Ese señor no ha hecho nada",
+                    "Carlos Arias, concejal de Cali, habla de la reconstrucción", topic="rechazo e insultos")
+    restored, dropped = recompute(db_session, only_council=True)
+    assert dropped == 0
+    assert m.relevant is True
+
+
+def test_recompute_keeps_youtube_comment_that_names_the_candidate_even_if_video_does_not(db_session):
+    from scripts.recompute_relevance import recompute
+    seed(db_session)
+    carlos = db_session.query(Candidate).filter_by(name="Carlos Arias").one()
+    yt = Source(type=SourceType.YOUTUBE, name="YT")
+    db_session.add(yt)
+    db_session.commit()
+    m = _yt_comment(db_session, carlos, yt, "yt:comment:3", "Carlos Arias debería resolver esto ya",
+                    "Temblor de 4.4 sacude a Cali", topic="reconstrucción")
+    restored, dropped = recompute(db_session, only_council=True)
+    assert dropped == 0
+    assert m.relevant is True
+
+
+def test_recompute_trusts_the_stored_video_about_candidate_flag_over_recomputing_it(db_session):
+    """Si el conector ya guardó la marca (dato reciente), se usa esa en vez de re-evaluar el
+    título contra los alias — evita falsos positivos si el título cambió de forma en el tiempo."""
+    from scripts.recompute_relevance import recompute
+    seed(db_session)
+    carlos = db_session.query(Candidate).filter_by(name="Carlos Arias").one()
+    yt = Source(type=SourceType.YOUTUBE, name="YT")
+    db_session.add(yt)
+    db_session.commit()
+    m = _yt_comment(db_session, carlos, yt, "yt:comment:4", "que bueno", "Temblor en Cali",
+                    topic="apoyo", label="positive", video_about_candidate=True)
+    restored, dropped = recompute(db_session, only_council=True)
+    assert dropped == 0
+    assert m.relevant is True
