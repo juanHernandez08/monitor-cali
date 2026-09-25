@@ -1,9 +1,18 @@
 const $ = (s) => document.querySelector(s);
 const CARLOS = "Carlos Arias";
-const COLORS = ["#1f4fa3", "#d9483b", "#22a06b", "#e0a020", "#8b5cf6", "#0ea5a4", "#f97316", "#64748b", "#be185d"];
+
+/* Paleta validada (skill de dataviz): orden categórico fijo, seguro para daltonismo en pares
+   adyacentes (node scripts/validate_palette.js). Nunca reasignar por candidato/canal al filtrar. */
+const BLUE = "#2a78d6", ORANGE = "#eb6834", AQUA = "#1baf7a", YELLOW = "#eda100",
+      MAGENTA = "#e87ba4", GREEN = "#008300", VIOLET = "#4a3aa7", RED = "#e34948";
+const GOOD = "#0ca30c", CRITICAL = "#d03b3b", NEUTRAL_TONE = "#b7b6ad";
+const INK = "#14140f", INK_SOFT = "#52514e", MUTED = "#84837c", GRID = "#e7e6e0";
+const CARLOS_GRAY = "#c7cbd6"; // candidatos que no son Carlos, en las gráficas que solo lo resaltan a él
+
+const COLORS = [BLUE, RED, AQUA, YELLOW, MAGENTA, VIOLET, ORANGE, GREEN, MUTED]; // hasta 9 candidatos
 const SRC = { google_news: "Prensa", rss: "Prensa", reddit: "Reddit", youtube: "YouTube", social: "Instagram / Facebook", google_cse: "Redes", serp: "Redes" };
 const SRC_LABEL = { google_news: "Prensa", rss: "Prensa", reddit: "Reddit", youtube: "YouTube", social: "Instagram / Facebook", instagram: "Instagram", facebook: "Facebook", x: "X", google_cse: "Redes (búsqueda)", serp: "Redes (búsqueda)" };
-const SRC_COLOR = { Prensa: "#1f4fa3", YouTube: "#d9483b", Instagram: "#8b5cf6", Facebook: "#2563eb", X: "#111827", Reddit: "#f97316", "Redes (búsqueda)": "#0ea5a4" };
+const SRC_COLOR = { Prensa: BLUE, YouTube: ORANGE, Reddit: AQUA, "Redes (búsqueda)": YELLOW, Instagram: MAGENTA, Facebook: GREEN, X: VIOLET };
 const LABEL = { negative: "Negativo", positive: "Positivo", neutral: "Neutral" };
 const KIND = { post: "Post", video: "Video", comments: "Publicación", news: "Nota" };
 const charts = {};
@@ -11,7 +20,7 @@ let feedRows = [];
 
 Chart.register(ChartDataLabels);
 Chart.defaults.font.family = "Inter, system-ui, sans-serif";
-Chart.defaults.color = "#66718a";
+Chart.defaults.color = MUTED;
 Chart.defaults.plugins.datalabels.display = false;
 
 async function j(url) { const r = await fetch(url); return r.json(); }
@@ -94,10 +103,10 @@ async function loadSummary() {
   const byVol = [...rows].sort((a, b) => b.mentions - a.mentions);
   chart("#chart-volume", {
     type: "bar",
-    data: { labels: byVol.map((r) => r.name), datasets: [{ data: byVol.map((r) => r.mentions), backgroundColor: byVol.map((r) => r.name === CARLOS ? "#1f4fa3" : "#b8c4d9"), borderRadius: 6, barThickness: 22 }] },
+    data: { labels: byVol.map((r) => r.name), datasets: [{ data: byVol.map((r) => r.mentions), backgroundColor: byVol.map((r) => r.name === CARLOS ? BLUE : CARLOS_GRAY), borderRadius: 6, barThickness: 22 }] },
     options: { indexAxis: "y", responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false }, datalabels: { display: true, anchor: "end", align: "end", color: "#172033", font: { weight: 600 }, formatter: (v) => v } },
-      scales: { x: { beginAtZero: true, grid: { color: "#eef1f5" }, ticks: { precision: 0 }, grace: "12%", title: { display: true, text: "menciones en el período" } }, y: { grid: { display: false } } } },
+      plugins: { legend: { display: false }, datalabels: { display: true, anchor: "end", align: "end", color: INK, font: { weight: 600 }, formatter: (v) => v } },
+      scales: { x: { beginAtZero: true, grid: { color: GRID }, ticks: { precision: 0 }, grace: "12%", title: { display: true, text: "menciones en el período" } }, y: { grid: { display: false } } } },
   });
   const vRank = byVol.findIndex((r) => r.name === CARLOS);
   const tied = byVol.filter((r) => r.mentions === carlos.mentions && r.name !== CARLOS);
@@ -111,13 +120,13 @@ async function loadSummary() {
   chart("#chart-sentiment", {
     type: "bar",
     data: { labels: scored.map((r) => `${r.name} (${r.positive + r.negative + r.neutral})`), datasets: [
-      { label: "Positivas", data: scored.map((r) => share(r, "positive")), backgroundColor: "#22a06b" },
-      { label: "Neutrales", data: scored.map((r) => share(r, "neutral")), backgroundColor: "#c3cad6" },
-      { label: "Negativas", data: scored.map((r) => share(r, "negative")), backgroundColor: "#d9483b" }] },
+      { label: "Positivas", data: scored.map((r) => share(r, "positive")), backgroundColor: GOOD },
+      { label: "Neutrales", data: scored.map((r) => share(r, "neutral")), backgroundColor: NEUTRAL_TONE },
+      { label: "Negativas", data: scored.map((r) => share(r, "negative")), backgroundColor: CRITICAL }] },
     options: { indexAxis: "y", responsive: true, maintainAspectRatio: false,
       plugins: { legend: { position: "bottom" }, tooltip: { callbacks: { label: (c) => `${c.dataset.label}: ${c.raw}%` } },
-        datalabels: { display: (c) => c.dataset.data[c.dataIndex] >= 8, color: (c) => c.datasetIndex === 1 ? "#334155" : "#fff", font: { weight: 600, size: 12 }, formatter: (v) => v + "%" } },
-      scales: { x: { stacked: true, max: 100, ticks: { callback: (v) => v + "%" }, grid: { color: "#eef1f5" }, title: { display: true, text: "de cada 100 menciones clasificadas" } }, y: { stacked: true, grid: { display: false } } } },
+        datalabels: { display: (c) => c.dataset.data[c.dataIndex] >= 8, color: (c) => c.datasetIndex === 1 ? INK_SOFT : "#fff", font: { weight: 600, size: 12 }, formatter: (v) => v + "%" } },
+      scales: { x: { stacked: true, max: 100, ticks: { callback: (v) => v + "%" }, grid: { color: GRID }, title: { display: true, text: "de cada 100 menciones clasificadas" } }, y: { stacked: true, grid: { display: false } } } },
   });
   const byPos = [...scored].sort((a, b) => share(b, "positive") - share(a, "positive"));
   const byNeg = [...scored].sort((a, b) => share(b, "negative") - share(a, "negative"));
@@ -151,7 +160,7 @@ async function loadTimeline(rows) {
           if (!p) return [];
           return [`${p.count} de ${p.total} por: "${p.text.slice(0, 80)}${p.text.length > 80 ? "…" : ""}" (${srcName(p)})`, "clic para ver todas las publicaciones del día"];
         }) } } },
-      scales: { y: { beginAtZero: true, grid: { color: "#eef1f5" }, ticks: { precision: 0 }, title: { display: true, text: "menciones por día" } }, x: { ticks: { maxTicksLimit: 10, maxRotation: 0 }, grid: { display: false } } } },
+      scales: { y: { beginAtZero: true, grid: { color: GRID }, ticks: { precision: 0 }, title: { display: true, text: "menciones por día" } }, x: { ticks: { maxTicksLimit: 10, maxRotation: 0 }, grid: { display: false } } } },
   });
   const cs = series.find((s) => s.name === CARLOS);
   if (cs) {
@@ -203,10 +212,10 @@ async function loadSources() {
   const labels = Object.keys(groups);
   chart("#chart-sources", {
     type: "bar",
-    data: { labels: d.candidates, datasets: labels.map((l) => ({ label: l, data: groups[l], backgroundColor: SRC_COLOR[l] || "#64748b", borderRadius: 3 })) },
+    data: { labels: d.candidates, datasets: labels.map((l) => ({ label: l, data: groups[l], backgroundColor: SRC_COLOR[l] || MUTED, borderRadius: 3 })) },
     options: { responsive: true, maintainAspectRatio: false,
       plugins: { legend: { position: "bottom" }, datalabels: { display: (c) => c.dataset.data[c.dataIndex] >= 6, color: "#fff", font: { weight: 600, size: 11 } } },
-      scales: { x: { stacked: true, grid: { display: false } }, y: { stacked: true, beginAtZero: true, grid: { color: "#eef1f5" }, ticks: { precision: 0 }, title: { display: true, text: "menciones" } } } },
+      scales: { x: { stacked: true, grid: { display: false } }, y: { stacked: true, beginAtZero: true, grid: { color: GRID }, ticks: { precision: 0 }, title: { display: true, text: "menciones" } } } },
   });
   const ci = d.candidates.indexOf(CARLOS);
   const totalsByChannel = labels.map((l) => [l, groups[l].reduce((a, b) => a + b, 0)]).sort((a, b) => b[1] - a[1]);
@@ -224,12 +233,12 @@ async function loadTopics() {
     type: "bar",
     data: { labels: t.map((x) => x.topic), datasets: [{ data: t.map((x) => x.count), backgroundColor: color, borderRadius: 4, barThickness: thick }] },
     options: { indexAxis: "y", responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false }, datalabels: { display: true, anchor: "end", align: "end", color: "#172033", font: { weight: 600 } } },
-      scales: { x: { beginAtZero: true, grid: { color: "#eef1f5" }, ticks: { precision: 0 }, grace: "12%", title: { display: true, text: "menciones" } }, y: { grid: { display: false } } } },
+      plugins: { legend: { display: false }, datalabels: { display: true, anchor: "end", align: "end", color: INK, font: { weight: 600 } } },
+      scales: { x: { beginAtZero: true, grid: { color: GRID }, ticks: { precision: 0 }, grace: "12%", title: { display: true, text: "menciones" } }, y: { grid: { display: false } } } },
   });
-  chart("#chart-topics", cfg(com, 14, "#8b5cf6"));
-  chart("#chart-topics-pub", cfg(pub, 20, "#1f4fa3"));
-  chart("#chart-topics-com", cfg(com, 20, "#8b5cf6"));
+  chart("#chart-topics", cfg(com, 14, VIOLET));
+  chart("#chart-topics-pub", cfg(pub, 20, BLUE));
+  chart("#chart-topics-com", cfg(com, 20, VIOLET));
   const reading = (t, what) => t.length
     ? `El asunto más frecuente en ${what} es <b>${esc(t[0].topic)}</b> (${t[0].count})` + (t[1] ? `, seguido de <b>${esc(t[1].topic)}</b> (${t[1].count})` : "") + (t[2] ? ` y <b>${esc(t[2].topic)}</b> (${t[2].count})` : "") + "."
     : `Sin asuntos identificados en ${what} para el período.`;
@@ -368,7 +377,7 @@ loadAll();
 setInterval(loadAll, 120000);
 
 /* ---------- ciudad ---------- */
-const CAT_COLOR = "#1f4fa3";
+const CAT_COLOR = BLUE;
 function trendTag(t) {
   if (t === null || t === undefined) return `<span class="trend flat">nuevo</span>`;
   if (t > 5) return `<span class="trend up">▲ ${t}%</span>`;
@@ -392,9 +401,9 @@ async function loadCity() {
     type: "bar",
     data: { labels: topics.map((t) => cap(t.category)), datasets: [{ data: topics.map((t) => t.count), backgroundColor: CAT_COLOR, borderRadius: 6, barThickness: 20 }] },
     options: { indexAxis: "y", responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false }, datalabels: { display: true, anchor: "end", align: "end", color: "#172033", font: { weight: 600 },
+      plugins: { legend: { display: false }, datalabels: { display: true, anchor: "end", align: "end", color: INK, font: { weight: 600 },
         formatter: (v, c) => { const t = topics[c.dataIndex]; const tr = t.trend_pct; return tr === null ? `${v}` : `${v}  ${tr > 5 ? "▲" : tr < -5 ? "▼" : "="} ${Math.abs(tr)}%`; } } },
-      scales: { x: { beginAtZero: true, grid: { color: "#eef1f5" }, ticks: { precision: 0 }, grace: "25%", title: { display: true, text: "menciones" } }, y: { grid: { display: false } } } },
+      scales: { x: { beginAtZero: true, grid: { color: GRID }, ticks: { precision: 0 }, grace: "25%", title: { display: true, text: "menciones" } }, y: { grid: { display: false } } } },
   });
   const rising = topics.filter((t) => t.trend_pct !== null).sort((a, b) => b.trend_pct - a.trend_pct)[0];
   $("#read-city-topics").innerHTML = topics.length
@@ -406,13 +415,13 @@ async function loadCity() {
   chart("#chart-city-perception", {
     type: "bar",
     data: { labels: scored.map((t) => `${cap(t.category)} (${t.count})`), datasets: [
-      { label: "Molestia", data: scored.map((t) => pct(t.negative, t.count)), backgroundColor: "#d9483b" },
-      { label: "Informativa", data: scored.map((t) => pct(t.neutral, t.count)), backgroundColor: "#c3cad6" },
-      { label: "A favor", data: scored.map((t) => pct(t.positive, t.count)), backgroundColor: "#22a06b" }] },
+      { label: "Molestia", data: scored.map((t) => pct(t.negative, t.count)), backgroundColor: CRITICAL },
+      { label: "Informativa", data: scored.map((t) => pct(t.neutral, t.count)), backgroundColor: NEUTRAL_TONE },
+      { label: "A favor", data: scored.map((t) => pct(t.positive, t.count)), backgroundColor: GOOD }] },
     options: { indexAxis: "y", responsive: true, maintainAspectRatio: false,
       plugins: { legend: { position: "bottom" }, tooltip: { callbacks: { label: (c) => `${c.dataset.label}: ${c.raw}%` } },
-        datalabels: { display: (c) => c.dataset.data[c.dataIndex] >= 8, color: (c) => c.datasetIndex === 1 ? "#334155" : "#fff", font: { weight: 600, size: 12 }, formatter: (v) => v + "%" } },
-      scales: { x: { stacked: true, max: 100, ticks: { callback: (v) => v + "%" }, grid: { color: "#eef1f5" } }, y: { stacked: true, grid: { display: false } } } },
+        datalabels: { display: (c) => c.dataset.data[c.dataIndex] >= 8, color: (c) => c.datasetIndex === 1 ? INK_SOFT : "#fff", font: { weight: 600, size: 12 }, formatter: (v) => v + "%" } },
+      scales: { x: { stacked: true, max: 100, ticks: { callback: (v) => v + "%" }, grid: { color: GRID } }, y: { stacked: true, grid: { display: false } } } },
   });
   const angriest = [...scored].sort((a, b) => pct(b.negative, b.count) - pct(a.negative, a.count))[0];
   const happiest = [...scored].sort((a, b) => pct(b.positive, b.count) - pct(a.positive, a.count))[0];
@@ -472,13 +481,13 @@ async function loadAgenda() {
   chart("#chart-perception", {
     type: "bar",
     data: { labels: withComments.map((r) => `${r.name} (${r.comments})`), datasets: [
-      { label: "A favor", data: withComments.map((r) => r.positive_pct), backgroundColor: "#22a06b" },
-      { label: "Neutral", data: withComments.map((r) => pct(r.neutral, r.comments)), backgroundColor: "#c3cad6" },
-      { label: "En contra", data: withComments.map((r) => r.negative_pct), backgroundColor: "#d9483b" }] },
+      { label: "A favor", data: withComments.map((r) => r.positive_pct), backgroundColor: GOOD },
+      { label: "Neutral", data: withComments.map((r) => pct(r.neutral, r.comments)), backgroundColor: NEUTRAL_TONE },
+      { label: "En contra", data: withComments.map((r) => r.negative_pct), backgroundColor: CRITICAL }] },
     options: { indexAxis: "y", responsive: true, maintainAspectRatio: false,
       plugins: { legend: { position: "bottom" }, tooltip: { callbacks: { label: (c) => `${c.dataset.label}: ${c.raw}%` } },
-        datalabels: { display: (c) => c.dataset.data[c.dataIndex] >= 8, color: (c) => c.datasetIndex === 1 ? "#334155" : "#fff", font: { weight: 600, size: 12 }, formatter: (v) => v + "%" } },
-      scales: { x: { stacked: true, max: 100, ticks: { callback: (v) => v + "%" }, grid: { color: "#eef1f5" }, title: { display: true, text: "de cada 100 comentarios ciudadanos" } }, y: { stacked: true, grid: { display: false } } } },
+        datalabels: { display: (c) => c.dataset.data[c.dataIndex] >= 8, color: (c) => c.datasetIndex === 1 ? INK_SOFT : "#fff", font: { weight: 600, size: 12 }, formatter: (v) => v + "%" } },
+      scales: { x: { stacked: true, max: 100, ticks: { callback: (v) => v + "%" }, grid: { color: GRID }, title: { display: true, text: "de cada 100 comentarios ciudadanos" } }, y: { stacked: true, grid: { display: false } } } },
   });
   const carlos = withComments.find((r) => r.name === CARLOS);
   const worst = [...withComments].sort((a, b) => b.negative_pct - a.negative_pct)[0];

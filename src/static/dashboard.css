@@ -1,8 +1,10 @@
 :root {
-  --bg: #f3f5f8; --panel: #ffffff; --ink: #172033; --muted: #66718a; --line: #e4e8ef; --soft: #f7f9fc;
-  --pos: #22a06b; --neg: #d9483b; --neu: #98a2b3;
-  --brand: #1f4fa3; --brand-2: #163b7a; --brand-soft: #e8eefb;
-  --radius: 14px; --shadow: 0 1px 2px rgba(23, 32, 51, .05), 0 6px 20px rgba(23, 32, 51, .05);
+  /* Paleta validada con el validador de accesibilidad (dataviz skill): estado (positivo/negativo),
+     marca y tinta alineados con las gráficas — ver las mismas constantes en dashboard.js. */
+  --bg: #f4f4f2; --panel: #ffffff; --ink: #14140f; --muted: #6e6d66; --line: #e7e6e0; --soft: #f7f7f4;
+  --pos: #0ca30c; --neg: #d03b3b; --neu: #b7b6ad;
+  --brand: #2a78d6; --brand-2: #184f95; --brand-soft: #e7f0fc;
+  --radius: 16px; --shadow: 0 1px 2px rgba(20, 20, 15, .04), 0 8px 24px rgba(20, 20, 15, .06);
 }
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }

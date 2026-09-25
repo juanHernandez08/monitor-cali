@@ -17,12 +17,12 @@ async function loadCouncil() {
   chart("#chart-council", {
     type: "bar",
     data: { labels: withM.map((m) => m.name), datasets: [{ data: withM.map((m) => m.mentions),
-      backgroundColor: withM.map((m) => m.name === CARLOS ? "#1f4fa3" : "#b8c4d9"), borderRadius: 5, barThickness: 16 }] },
+      backgroundColor: withM.map((m) => m.name === CARLOS ? BLUE : CARLOS_GRAY), borderRadius: 5, barThickness: 16 }] },
     options: { indexAxis: "y", responsive: true, maintainAspectRatio: false,
       plugins: { legend: { display: false },
-        datalabels: { display: true, anchor: "end", align: "end", color: "#172033", font: { weight: 600 } },
+        datalabels: { display: true, anchor: "end", align: "end", color: INK, font: { weight: 600 } },
         tooltip: { callbacks: { afterBody: (it) => { const m = withM[it[0].dataIndex]; return [`${m.party || "sin partido"}${m.is_candidate ? " · también candidato a la Alcaldía" : ""}`]; } } } },
-      scales: { x: { beginAtZero: true, grid: { color: "#eef1f5" }, ticks: { precision: 0 }, grace: "15%", title: { display: true, text: "menciones" } }, y: { grid: { display: false } } } },
+      scales: { x: { beginAtZero: true, grid: { color: GRID }, ticks: { precision: 0 }, grace: "15%", title: { display: true, text: "menciones" } }, y: { grid: { display: false } } } },
   });
   $("#read-council").innerHTML = withM.length
     ? `De los ${o.members.length} concejales, ${withM.length} tuvieron menciones en ${periodLabel()}. El más mencionado es <b>${esc(withM[0].name)}</b> (${withM[0].mentions}, ${esc(withM[0].party || "sin partido")})` +
@@ -33,13 +33,13 @@ async function loadCouncil() {
   chart("#chart-council-parties", {
     type: "bar",
     data: { labels: parties.map((p) => `${p.party} (${p.members})`), datasets: [
-      { label: "Positivas", data: parties.map((p) => p.positive), backgroundColor: "#22a06b" },
-      { label: "Neutrales", data: parties.map((p) => p.neutral), backgroundColor: "#c3cad6" },
-      { label: "Negativas", data: parties.map((p) => p.negative), backgroundColor: "#d9483b" }] },
+      { label: "Positivas", data: parties.map((p) => p.positive), backgroundColor: GOOD },
+      { label: "Neutrales", data: parties.map((p) => p.neutral), backgroundColor: NEUTRAL_TONE },
+      { label: "Negativas", data: parties.map((p) => p.negative), backgroundColor: CRITICAL }] },
     options: { indexAxis: "y", responsive: true, maintainAspectRatio: false,
       plugins: { legend: { position: "bottom" },
-        datalabels: { display: (c) => c.dataset.data[c.dataIndex] >= 2, color: (c) => c.datasetIndex === 1 ? "#334155" : "#fff", font: { weight: 600, size: 11 } } },
-      scales: { x: { stacked: true, beginAtZero: true, grid: { color: "#eef1f5" }, ticks: { precision: 0 }, title: { display: true, text: "menciones" } }, y: { stacked: true, grid: { display: false } } } },
+        datalabels: { display: (c) => c.dataset.data[c.dataIndex] >= 2, color: (c) => c.datasetIndex === 1 ? INK_SOFT : "#fff", font: { weight: 600, size: 11 } } },
+      scales: { x: { stacked: true, beginAtZero: true, grid: { color: GRID }, ticks: { precision: 0 }, title: { display: true, text: "menciones" } }, y: { stacked: true, grid: { display: false } } } },
   });
 
   $("#council-detail").innerHTML = o.members.map((m) => `<div class="pcard">
