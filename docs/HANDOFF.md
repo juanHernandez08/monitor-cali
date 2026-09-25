@@ -15,7 +15,7 @@ web de 8 pestañas. Corre sin servicios de pago recurrentes salvo Apify (~USD 2-
 - Windows: `.\scripts\demo.ps1` · macOS: `bash scripts/demo.sh` → Ollama + servidor en :8000 +
   túnel público de cloudflared (la URL cambia en cada arranque).
 - Solo servidor: `python -m uvicorn src.api:app --host 0.0.0.0 --port 8000`.
-- Tests: `python -m pytest -q` (144 al escribir esto). El proyecto se construye con TDD: test
+- Tests: `python -m pytest -q` (151 al escribir esto). El proyecto se construye con TDD: test
   antes que el cambio de comportamiento.
 - `.env` (no está en git) trae `GOOGLE_API_KEY`, `APIFY_TOKEN`, `OLLAMA_MODEL`. `BRIGHTDATA_API_TOKEN`
   ya no se usa (créditos agotados 2026-09-25) pero el conector queda de respaldo si se recupera.
@@ -159,9 +159,18 @@ mayoría de los 19 concejales (hoy solo cubiertos por prensa).
      tercero. `scripts/fix_own_post_attribution.py` reparó las 3 publicaciones ya afectadas
      (Carlos Arias, Roberto Ortiz x2) usando `config.SOCIAL_ACCOUNTS` como fuente de verdad; seguro
      de re-correr, no duplica ni toca lo ya correcto.
-- **Planes de gobierno, problemáticas por sector, iniciativas en marcha**: pedido pendiente de
-  una fase anterior. Es investigación documental (fuentes primarias reales), no solo código —
-  no se ha empezado.
+- **Planes de gobierno, problemáticas por sector, iniciativas en marcha**: **primera versión
+  hecha 2026-09-26** — ver `src/institutional_history.py` y la sección "Las últimas 4 alcaldías
+  de Cali" al final de la pestaña Histórico. Es investigación documental real (prensa, fuentes
+  oficiales, un estudio académico), cada afirmación con su fuente citada. Cobertura actual:
+  hechos y cifras más documentados por administración (deuda pública, proyectos insignia,
+  métricas con fuente) — **no es exhaustivo proyecto por proyecto todavía**; es una base sólida
+  ampliable con más horas de investigación. Varias fuentes son editoriales de opinión de
+  Caliescribe (marcadas explícitamente como tal en la UI y en los datos) — son señalamientos de
+  ese medio, no hallazgos verificados de forma independiente; si se consigue una cifra oficial
+  de Contraloría/Concejo, reemplazar esa fuente por la oficial. Antes de agregar más
+  administraciones o proyectos, seguir el mismo patrón: cada entrada en `ADMINISTRATIONS`
+  necesita `source: {name, url}` — `tests/test_institutional_history.py` lo exige.
 - Backfill de emoción histórica: **completado 2026-09-26** (2969 menciones). Si en el futuro
   quedan filas con `emotion IS NULL` (p. ej. tras ingestar mucho de golpe), relanzar
   `scripts/backfill_emotions.py` es seguro — solo toca esas filas, no duplica trabajo.

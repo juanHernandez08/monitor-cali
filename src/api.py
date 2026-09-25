@@ -158,6 +158,14 @@ def create_app(session_factory=None, start_jobs: bool = True) -> FastAPI:
         with session() as s:
             return queries.city_kpis(s, days=days)
 
+    @app.get("/api/institutional-history")
+    def api_institutional_history():
+        from src.institutional_history import ADMINISTRATIONS, debt_timeline, status_counts
+        return {
+            "administrations": [{**a, "status_counts": status_counts(a)} for a in ADMINISTRATIONS],
+            "debt_timeline": debt_timeline(),
+        }
+
     @app.get("/health")
     def health():
         with session() as s:

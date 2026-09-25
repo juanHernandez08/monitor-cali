@@ -554,7 +554,7 @@ async function loadAll() {
   const rows = await loadSummary();
   loadQuadrant(rows);
   loadCandidatesTab(rows);
-  await Promise.all([loadTimeline(rows), loadSources(), loadTopics(), loadAlerts(), loadFeed(), loadMeta(), loadStatus(), loadCity(), loadHistorico(), loadAgenda(), (typeof loadCouncil === "function" ? loadCouncil() : null)]);
+  await Promise.all([loadTimeline(rows), loadSources(), loadTopics(), loadAlerts(), loadFeed(), loadMeta(), loadStatus(), loadCity(), loadHistorico(), loadInstitutionalHistory(), loadAgenda(), (typeof loadCouncil === "function" ? loadCouncil() : null)]);
 }
 
 document.querySelectorAll(".side-nav .tab").forEach((b) => b.addEventListener("click", () => {
@@ -673,6 +673,50 @@ async function loadHistorico() {
           <span class="hint">${t.count} ahora · ${t.previous} antes · ${badge}</span></div>
       </div></div>`;
   }).join("") || `<div class="empty">Sin datos suficientes en el período.</div>`;
+}
+
+/* ---------- histórico institucional: proyectos y deuda por alcaldía ---------- */
+const STATUS_TAG = { "completado": "positive", "en curso": "pending", "incompleto": "negative" };
+let institutionalHistoryLoaded = false;
+async function loadInstitutionalHistory() {
+  if (!$("#hist-admins") || institutionalHistoryLoaded) return;
+  institutionalHistoryLoaded = true;
+  const data = await j("/api/institutional-history");
+  const { administrations, debt_timeline } = data;
+
+  hbar("#chart-hist-debt", debt_timeline.map((d) => `${d.mayor} (${d.period})`), debt_timeline.map((d) => d.value_billones_cop),
+    RED, { labelFmt: (v) => `$${v} billones` });
+
+  $("#hist-admins").innerHTML = administrations.map((a) => {
+    const counts = a.status_counts;
+    const debtLine = a.debt && a.debt.value_billones_cop != null
+      ? `<div class="subs"><span class="tag negative">Deuda: ~$${a.debt.value_billones_cop} billones</span></div>
+         <p class="hint" style="margin:4px 0 0">${esc(a.debt.note)} — <a href="${a.debt.source.url}" target="_blank" rel="noopener">fuente: ${esc(a.debt.source.name)}</a></p>`
+      : a.debt ? `<p class="hint" style="margin:6px 0 0">${esc(a.debt.note)} — <a href="${a.debt.source.url}" target="_blank" rel="noopener">fuente: ${esc(a.debt.source.name)}</a></p>` : "";
+    const metrics = (a.metrics || []).map((m) => `<div class="pcard" style="margin-top:8px"><div>
+        <b>${esc(m.label)}</b>${m.change_pct != null ? ` <span class="tag ${m.change_pct <= 0 ? "positive" : "negative"}">${m.change_pct > 0 ? "+" : ""}${m.change_pct}%</span>` : ""}
+        <div class="hint">${esc(m.note)}</div>
+        <div class="hint">Fuente: <a href="${m.source.url}" target="_blank" rel="noopener">${esc(m.source.name)}</a></div>
+      </div></div>`).join("");
+    const projects = a.projects.map((p) => `<div class="pcard" style="margin-top:8px"><div>
+        <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><b>${esc(p.name)}</b><span class="tag ${STATUS_TAG[p.status]}">${esc(p.status)}</span></div>
+        <div class="hint">${esc(p.category)}</div>
+        <p style="margin:6px 0">${esc(p.description)}</p>
+        <div class="hint">Fuente: <a href="${p.source.url}" target="_blank" rel="noopener">${esc(p.source.name)}</a></div>
+      </div></div>`).join("");
+    return `<div class="panel">
+      <div class="panel-head"><div><h2>${esc(a.mayor)}</h2><span class="hint">${esc(a.period)} · ${esc(a.party)} · <span class="tag ${a.status === "en curso" ? "pending" : "neutral"}">${esc(a.status)}</span></span></div></div>
+      <p>${esc(a.summary)}</p>
+      <div class="subs">
+        <span class="tag positive">${counts.completado} completados</span>
+        <span class="tag pending">${counts["en curso"]} en curso</span>
+        <span class="tag negative">${counts.incompleto} incompletos</span>
+      </div>
+      ${debtLine}
+      ${metrics}
+      ${projects}
+    </div>`;
+  }).join("");
 }
 
 /* ---------- agenda ---------- */

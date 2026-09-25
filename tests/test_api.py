@@ -40,6 +40,9 @@ def test_json_routes(client):
     assert client.get("/api/candidate/topics?name=Carlos Arias").json() == []
     assert client.get("/api/social/posts").json() == []
     assert client.get("/api/social/kpis").json()["total_posts"] == 0
+    hist = client.get("/api/institutional-history").json()
+    assert len(hist["administrations"]) == 4
+    assert len(hist["debt_timeline"]) == 2
 
 
 def test_refresh_returns_202(client, monkeypatch):
