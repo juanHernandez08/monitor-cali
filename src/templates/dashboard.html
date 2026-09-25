@@ -11,13 +11,36 @@
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
 </head>
 <body>
-<header class="top">
-  <div class="brand">
+<div class="shell">
+<aside class="sidebar">
+  <div class="side-brand">
     <div class="logo">M</div>
     <div>
-      <h1>Monitor de menciones</h1>
-      <div class="sub">Alcaldía de Cali 2027 · prensa, Reddit, YouTube, Instagram, Facebook y X</div>
+      <div class="side-title">Monitor Cali</div>
+      <div class="side-sub">Alcaldía 2027</div>
     </div>
+  </div>
+  <nav class="side-nav">
+    <button class="tab active" data-tab="resumen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg><span>Resumen</span></button>
+    <button class="tab" data-tab="analisis"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="20" x2="4" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="20" y1="20" x2="20" y2="14"/></svg><span>Análisis en gráficas</span></button>
+    <button class="tab" data-tab="ciudad"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 9h.01M9 13h.01M15 9h.01M15 13h.01M10 21v-5h4v5"/></svg><span>Ciudad</span></button>
+    <button class="tab" data-tab="agenda"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>Agenda</span></button>
+    <button class="tab" data-tab="concejo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>Concejo de Cali</span></button>
+  </nav>
+  <div class="side-foot">
+    <div class="live-card">
+      <div class="live-dot"></div>
+      <b>Captura en vivo</b>
+      <p>Prensa, YouTube, Instagram, Facebook y X · se actualiza sola cada 15 min</p>
+    </div>
+  </div>
+</aside>
+
+<div class="main-col">
+<header class="top">
+  <div class="brand">
+    <h1>Monitor de menciones</h1>
+    <div class="sub">Alcaldía de Cali 2027 · prensa, Reddit, YouTube, Instagram, Facebook y X</div>
   </div>
   <div class="controls">
     <span id="last-run" class="lastrun">—</span>
@@ -29,14 +52,6 @@
     <button id="refresh">Actualizar ahora</button>
   </div>
 </header>
-
-<nav class="tabs">
-  <button class="tab active" data-tab="resumen">Resumen</button>
-  <button class="tab" data-tab="analisis">Análisis en gráficas</button>
-  <button class="tab" data-tab="ciudad">Ciudad: temas y percepción</button>
-  <button class="tab" data-tab="agenda">Agenda: de qué hablar</button>
-  <button class="tab" data-tab="concejo">Concejo de Cali</button>
-</nav>
 
 <main>
   <div id="tab-resumen" class="tabpane active">
@@ -202,6 +217,8 @@
 
   <footer id="status"></footer>
 </main>
+</div>
+</div>
 <script src="/static/dashboard.js?v={{ v }}"></script>
 <script src="/static/council.js?v={{ v }}"></script>
 </body>

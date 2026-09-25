@@ -49,6 +49,18 @@ function bar(r) {
 }
 const share = (r, k) => pct(r[k], r.positive + r.negative + r.neutral);
 
+/* Medidor semicircular (0-100): verde si va bien, ámbar en zona media, rojo si va mal. */
+function renderGauge(value) {
+  if (!$("#chart-gauge")) return;
+  const tone = value >= 60 ? GOOD : value >= 40 ? YELLOW : CRITICAL;
+  chart("#chart-gauge", {
+    type: "doughnut",
+    data: { datasets: [{ data: [value, 100 - value], backgroundColor: [tone, "#eceae2"], borderWidth: 0 }] },
+    options: { responsive: true, maintainAspectRatio: false, cutout: "78%", circumference: 180, rotation: 270,
+      animation: { duration: 400 }, plugins: { legend: { display: false }, tooltip: { enabled: false }, datalabels: { display: false } } },
+  });
+}
+
 /* ---------- KPIs + panel de Carlos + tarjetas + gráficas de candidatos ---------- */
 async function loadSummary() {
   const rows = await j(`/api/summary?days=${days()}`);
@@ -82,10 +94,12 @@ async function loadSummary() {
       <div class="legend"><span><i style="background:var(--pos)"></i>positivo</span><span><i style="background:var(--neu)"></i>neutral</span><span><i style="background:var(--neg)"></i>negativo</span></div>
     </div>
     <div class="compare">
-      <div class="hint">frente al promedio de rivales</div>
-      <div class="big ${diff === null ? "" : diff >= 0 ? "pos" : "neg"}">${diff === null ? "—" : `${diff >= 0 ? "+" : ""}${diff} pts`}</div>
-      <div class="hint">de positividad (${cScored ? cPct : "—"}% vs ${rivalsScored ? rPct : "—"}%)</div>
+      <div class="hint">Positividad de Carlos</div>
+      <div class="gauge-box"><canvas id="chart-gauge"></canvas><div class="gauge-value">${cScored ? cPct + "%" : "—"}</div></div>
+      <div class="big ${diff === null ? "" : diff >= 0 ? "pos" : "neg"}" style="font-size:15px">${diff === null ? "sin comparación" : `${diff >= 0 ? "+" : ""}${diff} pts vs rivales`}</div>
+      <div class="hint">(${cScored ? cPct : "—"}% vs ${rivalsScored ? rPct : "—"}%)</div>
     </div>`;
+  renderGauge(cScored ? cPct : 0);
 
   $("#cards").innerHTML = rivals.map((r) => `<div class="card">
       ${avatar(r, "sm")}
