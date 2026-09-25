@@ -146,9 +146,12 @@ class OllamaSentimentEngine:
         self.timeout = timeout
 
     def score(self, text: str, candidate: str | None = None, city: bool = False) -> SentimentResult:
+        options = {"temperature": 0}
+        if config.OLLAMA_NUM_GPU is not None:
+            options["num_gpu"] = config.OLLAMA_NUM_GPU
         data = _ollama_post(f"{self.base_url}/api/chat", {
             "model": self.model, "stream": False, "format": "json",
-            "options": {"temperature": 0},
+            "options": options,
             "messages": [{"role": "user", "content": _prompt(text, candidate, city)}],
         }, timeout=self.timeout)
         return _parse_payload(data["message"]["content"], f"ollama/{self.model}")

@@ -15,10 +15,17 @@ web de 8 pestañas. Corre sin servicios de pago recurrentes salvo Apify (~USD 2-
 - Windows: `.\scripts\demo.ps1` · macOS: `bash scripts/demo.sh` → Ollama + servidor en :8000 +
   túnel público de cloudflared (la URL cambia en cada arranque).
 - Solo servidor: `python -m uvicorn src.api:app --host 0.0.0.0 --port 8000`.
-- Tests: `python -m pytest -q` (140 al escribir esto). El proyecto se construye con TDD: test
+- Tests: `python -m pytest -q` (144 al escribir esto). El proyecto se construye con TDD: test
   antes que el cambio de comportamiento.
 - `.env` (no está en git) trae `GOOGLE_API_KEY`, `APIFY_TOKEN`, `OLLAMA_MODEL`. `BRIGHTDATA_API_TOKEN`
   ya no se usa (créditos agotados 2026-09-25) pero el conector queda de respaldo si se recupera.
+- **`OLLAMA_NUM_GPU=0` en `.env` (mitigación temporal, 2026-09-26)**: el driver de NVIDIA
+  (`nvlddmkm.sys`) está crasheando el equipo entero bajo la carga sostenida de Ollama en GPU —
+  3 BSOD el mismo día, mismo código exacto `0x133 DPC_WATCHDOG_VIOLATION`, confirmado con
+  `!analyze -v` sobre el volcado (`nvlddmkm+0x10bf33` en la pila, dentro de una ISR). Con esta
+  variable, `src/sentiment.py` fuerza CPU en cada llamada a Ollama (más lento, pero no toca la
+  GPU). **Quitar la línea del `.env` (o poner `OLLAMA_NUM_GPU=` vacío) en cuanto se actualice el
+  driver de NVIDIA** — CPU-only no es el estado deseado a largo plazo, solo mientras tanto.
 - `monitor.db` (SQLite, modo **WAL** desde el 2026-09-26) — soporta el servidor y scripts de
   fondo escribiendo a la vez sin bloquearse. **Una sola máquina** debe tener el scheduler
   corriendo para no duplicar consumo de cuota de Apify/YouTube.
@@ -63,6 +70,14 @@ web de 8 pestañas. Corre sin servicios de pago recurrentes salvo Apify (~USD 2-
 - **Emociones de Ciudad con ejemplos**: la gráfica "¿Qué emoción transmite la ciudad?" tiene
   `onClick` por barra (igual que el histograma) que muestra citas de ejemplo debajo
   (`#city-emotion-detail`), en vez de ser solo un conteo sin forma de ver de qué se trata.
+- **"Actualizar ahora" en paralelo (2026-09-26)**: `scheduler.run_group()` corría cada fuente
+  (más de una decena de feeds de RSS/Google News) una por una, y `run_everything()` encadenaba
+  sus 4 grupos (fast/cse/youtube/social) igual de secuencial — solo sumaba tiempos de espera de
+  red sin motivo, ninguna fuente depende de otra. Ahora ambos usan `ThreadPoolExecutor`: cada
+  hilo abre su propia sesión de SQLAlchemy (nunca compartir una entre hilos) contra el mismo
+  engine, y el modo WAL ya soporta varios escritores a la vez. El botón del frontend también
+  dejó de esperar 25s fijos — ahora consulta `/health` hasta ver una corrida terminada después
+  del clic (salvavidas de 90s si algo se cuelga).
 - **`pipeline.context_text(mention)`** (extraído 2026-09-26): construye el texto con contexto que
   se manda al LLM para un comentario suelto (video/post al que responde). Antes vivía duplicado
   dentro de `score_pending()` y de nuevo en `scripts/backfill_emotions.py` -- se corrigió el bug

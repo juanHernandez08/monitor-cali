@@ -10,6 +10,10 @@ DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///monitor.db")
 SENTIMENT_BACKEND = os.environ.get("SENTIMENT_BACKEND", "ollama")
 OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
 OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "qwen2.5:14b")
+# Mitigación temporal (2026-09-26): el driver de NVIDIA (nvlddmkm.sys) está crasheando el equipo
+# (BSOD 0x133 DPC_WATCHDOG_VIOLATION) bajo la carga sostenida de Ollama en GPU. OLLAMA_NUM_GPU=0
+# fuerza CPU (más lento, pero no toca la GPU) mientras se actualiza el driver. None = decide Ollama.
+OLLAMA_NUM_GPU = int(os.environ["OLLAMA_NUM_GPU"]) if os.environ.get("OLLAMA_NUM_GPU") is not None else None
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
 CLAUDE_MODEL = os.environ.get("CLAUDE_MODEL", "claude-sonnet-5")
 
