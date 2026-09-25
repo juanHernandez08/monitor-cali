@@ -56,12 +56,12 @@ def create_app(session_factory=None, start_jobs: bool = True) -> FastAPI:
         return templates.TemplateResponse(request, "dashboard.html", {"v": _asset_version()})
 
     @app.get("/api/summary")
-    def api_summary(days: int = Query(7, ge=1, le=90)):
+    def api_summary(days: int = Query(7, ge=1, le=365)):
         with session() as s:
             return queries.summary(s, days=days)
 
     @app.get("/api/timeline")
-    def api_timeline(days: int = Query(7, ge=1, le=90)):
+    def api_timeline(days: int = Query(7, ge=1, le=365)):
         with session() as s:
             return queries.timeline(s, days=days)
 
@@ -83,7 +83,7 @@ def create_app(session_factory=None, start_jobs: bool = True) -> FastAPI:
                                 emotion=emotion, category=category, days=days, limit=limit, offset=offset, day=day)
 
     @app.get("/api/timeline/details")
-    def api_timeline_details(days: int = Query(7, ge=1, le=90)):
+    def api_timeline_details(days: int = Query(7, ge=1, le=365)):
         with session() as s:
             return queries.timeline_details(s, days=days)
 
@@ -109,7 +109,7 @@ def create_app(session_factory=None, start_jobs: bool = True) -> FastAPI:
             return queries.sources_by_candidate(s, days=days)
 
     @app.get("/api/topics")
-    def api_topics(days: int = Query(7, ge=1, le=90), kind: str | None = None):
+    def api_topics(days: int = Query(7, ge=1, le=365), kind: str | None = None):
         with session() as s:
             return queries.topics(s, days=days, kind=kind)
 
@@ -119,42 +119,42 @@ def create_app(session_factory=None, start_jobs: bool = True) -> FastAPI:
             return queries.peak_publication(s, candidate, day) or {}
 
     @app.get("/api/city/topics")
-    def api_city_topics(days: int = Query(7, ge=1, le=90)):
+    def api_city_topics(days: int = Query(7, ge=1, le=365)):
         with session() as s:
             return queries.city_topics(s, days=days)
 
     @app.get("/api/city/emotions")
-    def api_city_emotions(days: int = Query(7, ge=1, le=90)):
+    def api_city_emotions(days: int = Query(7, ge=1, le=365)):
         with session() as s:
             return queries.city_emotions(s, days=days, samples_per=3)
 
     @app.get("/api/city/opportunities")
-    def api_city_opportunities(days: int = Query(7, ge=1, le=90)):
+    def api_city_opportunities(days: int = Query(7, ge=1, le=365)):
         with session() as s:
             return queries.city_opportunities(s, days=days)
 
     @app.get("/api/council")
-    def api_council(days: int = Query(30, ge=1, le=90)):
+    def api_council(days: int = Query(30, ge=1, le=365)):
         with session() as s:
             return queries.council_overview(s, days=days)
 
     @app.get("/api/agenda")
-    def api_agenda(days: int = Query(30, ge=1, le=90)):
+    def api_agenda(days: int = Query(30, ge=1, le=365)):
         with session() as s:
             return queries.agenda(s, days=days)
 
     @app.get("/api/perception")
-    def api_perception(days: int = Query(30, ge=1, le=90)):
+    def api_perception(days: int = Query(30, ge=1, le=365)):
         with session() as s:
             return queries.citizen_perception(s, days=days)
 
     @app.get("/api/candidate/topics")
-    def api_candidate_topics(name: str, days: int = Query(30, ge=1, le=90)):
+    def api_candidate_topics(name: str, days: int = Query(30, ge=1, le=365)):
         with session() as s:
             return queries.candidate_topic_map(s, name, days=days)
 
     @app.get("/api/city/kpis")
-    def api_city_kpis(days: int = Query(7, ge=1, le=90)):
+    def api_city_kpis(days: int = Query(7, ge=1, le=365)):
         with session() as s:
             return queries.city_kpis(s, days=days)
 

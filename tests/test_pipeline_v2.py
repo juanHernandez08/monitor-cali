@@ -44,6 +44,25 @@ def test_ingest_uses_search_term_when_text_has_no_name(db_session):
     assert db_session.query(Mention).one().candidate_id == carlos.id
 
 
+def test_ingest_attributes_own_social_post_to_its_account_even_if_it_names_a_rival(db_session):
+    """Bug real 2026-09-26: el reel más visto de Carlos Arias ("¿Trincheras en Cali?") empezaba
+    "No Alfredo Mondragón, nuestro presidente..." -- el titular contenía el nombre completo de
+    otro candidato, así que find_matching_candidate lo atrapaba primero y el post entero quedaba
+    atribuido a Alfredo Mondragón en vez de a Carlos, dueño real de la cuenta. Para una publicación
+    propia (kind="post" en una fuente SOCIAL) el dueño de la cuenta (search_term) es un hecho
+    conocido por el conector, no una inferencia -- debe ganarle a una mención textual de un
+    tercero en su propio texto."""
+    carlos = Candidate(name="Carlos Arias", aliases=[])
+    mondragon = Candidate(name="Alfredo Mondragón", aliases=["Alfredo Mondragon"])
+    ig = Source(type=SourceType.SOCIAL, name="Instagram / Facebook (cuentas)")
+    db_session.add_all([carlos, mondragon, ig])
+    db_session.commit()
+    item = RawItem(external_id="ig:post:1", text="No Alfredo Mondragón, nuestro presidente no fue elegido ilegítimamente",
+                   url="https://www.instagram.com/p/AAA/", search_term="Carlos Arias", raw={"kind": "post", "platform": "instagram"})
+    assert ingest(db_session, ig, ListConnector([item])) == 1
+    assert db_session.query(Mention).one().candidate_id == carlos.id
+
+
 def test_ingest_records_run_and_score_pending_scores(db_session):
     carlos, _, s1, _ = _seed(db_session)
     ingest(db_session, s1, ListConnector([RawItem(external_id="g1", text="Carlos Arias habló")]))

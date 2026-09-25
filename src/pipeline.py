@@ -52,8 +52,16 @@ def ingest(session, source, connector: Connector, max_age_days: int = MAX_AGE_DA
             # comparten la URL de su post, así que para ellos solo cuenta el external_id.
             if url_norm and not is_comment and session.query(Mention).filter_by(url_normalized=url_norm).first():
                 continue
-            candidate = (find_matching_candidate(item.text, candidates)
-                         or find_candidate_by_term(item.search_term, candidates))
+            # Una publicación propia (post/tweet en la cuenta de un candidato) trae en search_term
+            # un hecho conocido por el conector -- el dueño de la cuenta -- no una inferencia. Debe
+            # ganarle a una mención textual de un tercero en su propio texto (p. ej. un candidato
+            # respondiéndole a un rival por su nombre completo en el titular de su propio reel).
+            if (item.raw or {}).get("kind") == "post" and source.type == SourceType.SOCIAL:
+                candidate = (find_candidate_by_term(item.search_term, candidates)
+                             or find_matching_candidate(item.text, candidates))
+            else:
+                candidate = (find_matching_candidate(item.text, candidates)
+                             or find_candidate_by_term(item.search_term, candidates))
             if candidate is not None and is_excluded(item.text, candidate):
                 continue
             if candidate is None:
