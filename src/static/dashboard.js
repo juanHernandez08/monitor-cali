@@ -31,24 +31,27 @@ function deepMerge(a, b) {
   for (const k in b) out[k] = (a[k] && typeof a[k] === "object" && !Array.isArray(a[k]) && typeof b[k] === "object" && !Array.isArray(b[k])) ? deepMerge(a[k], b[k]) : b[k];
   return out;
 }
-/* Barras horizontales, una sola serie (ranking o magnitud). `perBar` = array de colores o un color fijo. */
-function hbar(id, categories, data, perBar, { labelFmt } = {}) {
+/* Barras horizontales, una sola serie (ranking o magnitud). `perBar` = array de colores o un color fijo.
+   `onClick(categoryIndex)` es opcional: si se da, la barra se ve y se comporta como un botón. */
+function hbar(id, categories, data, perBar, { labelFmt, onClick } = {}) {
   chart(id, {
-    chart: { type: "bar", height: "100%" },
+    chart: { type: "bar", height: "100%", events: onClick ? { dataPointSelection: (e, ctx, cfg) => onClick(cfg.dataPointIndex) } : {} },
     series: [{ data }], xaxis: { categories, labels: { style: { colors: MUTED } } },
     plotOptions: { bar: { horizontal: true, borderRadius: 4, distributed: Array.isArray(perBar), barHeight: "62%" } },
     colors: Array.isArray(perBar) ? perBar : [perBar],
     dataLabels: { enabled: true, formatter: labelFmt || ((v) => v), style: { colors: [INK], fontWeight: 600 }, offsetX: 6 },
     legend: { show: false },
   });
+  if (onClick) $(id).style.cursor = "pointer";
 }
-/* Barras horizontales apiladas al 100% (positivo/neutral/negativo, ya como % 0-100). */
-function hbar100(id, categories, series) {
+/* Barras horizontales apiladas al 100% (ya como % 0-100). `colors` sigue el mismo orden que `series`
+   -- nunca asumir positivo/neutral/negativo: cada llamada dice explícitamente su propio orden. */
+function hbar100(id, categories, series, colors) {
   chart(id, {
     chart: { type: "bar", stacked: true, height: "100%" },
     series, xaxis: { categories, max: 100, labels: { formatter: (v) => Math.round(v) + "%" } },
     plotOptions: { bar: { horizontal: true, borderRadius: 3, barHeight: "62%" } },
-    colors: [GOOD, NEUTRAL_TONE, CRITICAL],
+    colors,
     dataLabels: { enabled: true, formatter: (v) => (v >= 8 ? Math.round(v) + "%" : ""), style: { colors: ["#fff"], fontWeight: 600 } },
     legend: { position: "bottom" }, tooltip: { y: { formatter: (v) => v + "%" } },
   });
@@ -171,7 +174,7 @@ async function loadSummary() {
   hbar100("#chart-sentiment", scored.map((r) => `${r.name} (${r.positive + r.negative + r.neutral})`), [
     { name: "Positivas", data: scored.map((r) => share(r, "positive")) },
     { name: "Neutrales", data: scored.map((r) => share(r, "neutral")) },
-    { name: "Negativas", data: scored.map((r) => share(r, "negative")) }]);
+    { name: "Negativas", data: scored.map((r) => share(r, "negative")) }], [GOOD, NEUTRAL_TONE, CRITICAL]);
   const byPos = [...scored].sort((a, b) => share(b, "positive") - share(a, "positive"));
   const byNeg = [...scored].sort((a, b) => share(b, "negative") - share(a, "negative"));
   const cRank = byPos.findIndex((r) => r.name === CARLOS);
@@ -314,9 +317,19 @@ async function loadAlerts() {
 
 /* ---------- feed (reutilizable: pestaña Publicaciones y vista de Perfil) ---------- */
 function srcName(m) { return m.platform ? (SRC_LABEL[m.platform] || m.platform) : (SRC[m.source_type] || esc(m.source)); }
+/* Google News y RSS son ambos "Prensa": sin esto salían como dos chips separados con el mismo nombre. */
+function mergedSources(sources) {
+  const out = {};
+  for (const [src, n] of Object.entries(sources)) {
+    const label = SRC_LABEL[src] || SRC[src] || src;
+    out[label] = (out[label] || 0) + n;
+  }
+  return out;
+}
 function sentTag(m) {
   if (!m.label) return `<span class="tag pending">pendiente</span>`;
-  return `<span class="tag ${m.label}">${LABEL[m.label]} ${m.score}</span>${m.topic ? `<div class="topic">${esc(m.topic)}</div>` : ""}`;
+  const emotion = m.emotion && m.emotion !== "sin emoción marcada" ? `<div class="topic">siente: ${esc(m.emotion)}</div>` : "";
+  return `<span class="tag ${m.label}">${LABEL[m.label]} ${m.score}</span>${m.topic ? `<div class="topic">${esc(m.topic)}</div>` : ""}${emotion}`;
 }
 function thumb(r) {
   let host = null;
@@ -370,15 +383,18 @@ async function loadFeed() {
   if ($("#f-candidate").value) p.set("candidate_id", $("#f-candidate").value);
   if ($("#f-source").value) p.set("source_type", $("#f-source").value);
   if ($("#f-label").value) p.set("label", $("#f-label").value);
+  if ($("#f-emotion").value) p.set("emotion", $("#f-emotion").value);
   renderFeedList("#feed", await j(`/api/feed?${p}`), { showCandidate: true });
 }
 
-/* ---------- tema por tema (genérico: se usa en el perfil de cualquier candidato) ---------- */
+/* ---------- tema por tema (genérico: perfil de candidato y detalle de ciudad) ---------- */
 function topicCard(t, i, prefix) {
-  return `<div class="topic-card">
+  const subtopics = (t.subtopics || []).filter((s) => s.topic !== t.topic.toLowerCase());
+  return `<div class="topic-card" id="${prefix}-card-${i}">
       <div class="head"><h3>${esc(t.topic)}</h3><div>${t.count} menciones · <span class="tag ${t.positive_pct >= 60 ? "positive" : t.positive_pct <= 30 ? "negative" : ""}">${t.positive_pct}% a favor</span></div></div>
       <div class="subs"><span class="tag positive">${t.positive} positivas</span><span class="tag">${t.neutral} neutrales</span><span class="tag negative">${t.negative} negativas</span>
-        ${Object.entries(t.sources).map(([src, n]) => `<span class="tag">${esc(SRC_LABEL[src] || SRC[src] || src)} · ${n}</span>`).join("")}</div>
+        ${Object.entries(mergedSources(t.sources)).map(([label, n]) => `<span class="tag">${esc(label)} · ${n}</span>`).join("")}</div>
+      ${subtopics.length ? `<div class="subs">${subtopics.map((s) => `<span class="tag">${esc(s.topic)} · ${s.count}</span>`).join("")}</div>` : ""}
       <button class="toggle" data-topic-idx="${i}" data-topic-prefix="${prefix}">▸ ver ${t.samples.length} comentario${t.samples.length === 1 ? "" : "s"} de ejemplo</button>
     </div>`;
 }
@@ -390,19 +406,33 @@ function renderTopicCards(containerSel, readSel, rows, prefix, visibleCount = 5)
     + (rest.length ? `<button class="toggle" id="${prefix}-more">▸ ver ${rest.length} tema${rest.length === 1 ? "" : "s"} más</button><div id="${prefix}-rest" style="display:none">${rest.map((t, i) => topicCard(t, i + visible.length, prefix)).join("")}</div>` : "")
     || `<div class="empty">Aún no hay suficientes menciones con tema identificado en el período.</div>`;
   $(`#${prefix}-more`)?.addEventListener("click", (e) => { $(`#${prefix}-rest`).style.display = "block"; e.target.remove(); });
-  $(containerSel).querySelectorAll(`[data-topic-prefix="${prefix}"]`).forEach((btn) => btn.addEventListener("click", () => {
-    const i = Number(btn.dataset.topicIdx); const t = topicStore[prefix][i];
-    if (btn.nextElementSibling?.classList.contains("thread")) { btn.nextElementSibling.remove(); btn.textContent = btn.textContent.replace("▾", "▸"); return; }
-    const div = document.createElement("div"); div.className = "thread";
-    div.innerHTML = t.samples.map(quote).join("");
-    btn.after(div);
-    btn.textContent = btn.textContent.replace("▸", "▾");
-  }));
+  $(containerSel).querySelectorAll(`[data-topic-prefix="${prefix}"]`).forEach((btn) => btn.addEventListener("click", () => expandTopicCard(prefix, Number(btn.dataset.topicIdx))));
   const top = rows[0];
   if ($(readSel)) $(readSel).innerHTML = top
     ? `El tema del que más se habla es <b>${esc(top.topic)}</b> (${top.count} menciones, ${top.positive_pct}% a favor).` +
       (rows[1] ? ` Le siguen <b>${esc(rows[1].topic)}</b>${rows[2] ? ` y <b>${esc(rows[2].topic)}</b>` : ""}.` : "")
     : "Sin temas identificados todavía en el período.";
+}
+/* Abre (o cierra) los comentarios de ejemplo de una tarjeta de tema y la lleva a la vista —
+   usable desde su propio botón o desde el clic en una barra del gráfico correspondiente. */
+function expandTopicCard(prefix, i, { scroll = false } = {}) {
+  const card = $(`#${prefix}-card-${i}`);
+  if (!card) return;
+  const rest = $(`#${prefix}-rest`);
+  if (rest && rest.contains(card) && rest.style.display === "none") { rest.style.display = "block"; $(`#${prefix}-more`)?.remove(); }
+  if (scroll) card.scrollIntoView({ behavior: "smooth", block: "center" });
+  const btn = card.querySelector(`[data-topic-idx="${i}"]`);
+  if (!btn) return;
+  const open = btn.nextElementSibling?.classList.contains("thread") ? btn.nextElementSibling : null;
+  if (open) {
+    if (!scroll) { open.remove(); btn.textContent = btn.textContent.replace("▾", "▸"); }  // clic directo en el botón: cierra
+    return;  // clic desde el gráfico: ya está abierto, solo hacer scroll (ya hecho arriba)
+  }
+  const t = topicStore[prefix][i];
+  const div = document.createElement("div"); div.className = "thread";
+  div.innerHTML = t.samples.map(quote).join("");
+  btn.after(div);
+  btn.textContent = btn.textContent.replace("▸", "▾");
 }
 
 /* ---------- perfil de candidato: se abre al tocar la tarjeta de Carlos o de un rival ---------- */
@@ -458,7 +488,7 @@ document.addEventListener("click", (e) => {
   if (card) openProfile(Number(card.dataset.candidateId), card.dataset.name);
 });
 $("#days").addEventListener("change", loadAll);
-["#f-candidate", "#f-source", "#f-label"].forEach((id) => $(id).addEventListener("change", loadFeed));
+["#f-candidate", "#f-source", "#f-label", "#f-emotion"].forEach((id) => $(id).addEventListener("change", loadFeed));
 $("#refresh").addEventListener("click", async () => {
   const b = $("#refresh"); b.disabled = true; b.textContent = "Actualizando…";
   await fetch("/api/refresh", { method: "POST" });
@@ -469,44 +499,35 @@ setInterval(loadAll, 120000);
 
 /* ---------- ciudad ---------- */
 const CAT_COLOR = BLUE;
-function trendTag(t) {
-  if (t === null || t === undefined) return `<span class="trend flat">nuevo</span>`;
-  if (t > 5) return `<span class="trend up">▲ ${t}%</span>`;
-  if (t < -5) return `<span class="trend down">▼ ${Math.abs(t)}%</span>`;
-  return `<span class="trend flat">= estable</span>`;
-}
 function cap(s) { return s ? s[0].toUpperCase() + s.slice(1) : s; }
+
+const EMOTION_COLOR = { "alegría": GOOD, "confianza": AQUA, "miedo": VIOLET, "sorpresa": YELLOW, "tristeza": BLUE,
+  "asco": ORANGE, "ira": CRITICAL, "anticipación": MAGENTA, "orgullo": GREEN, "sin emoción marcada": NEUTRAL_TONE };
 
 async function loadCity() {
   if (!$("#city-kpis")) return;
   const d = days();
-  const [topics, opps, kpis] = await Promise.all([j(`/api/city/topics?days=${d}`), j(`/api/city/opportunities?days=${d}`), j(`/api/city/kpis?days=${d}`)]);
+  const [topics, opps, kpis, emotions] = await Promise.all([
+    j(`/api/city/topics?days=${d}`), j(`/api/city/opportunities?days=${d}`), j(`/api/city/kpis?days=${d}`), j(`/api/city/emotions?days=${d}`)]);
+  const topEmotion = emotions.find((e) => e.emotion !== "sin emoción marcada") || emotions[0];
 
   $("#city-kpis").innerHTML = `
     <div class="kpi"><div class="label">Menciones sobre la ciudad</div><div class="value">${kpis.total}</div><div class="foot">noticias, videos, posts y comentarios · ${periodLabel()}</div></div>
     <div class="kpi"><div class="label">Tema del que más se habla</div><div class="value" style="font-size:20px">${cap(kpis.top_category || "—")}</div><div class="foot">por número de menciones</div></div>
-    <div class="kpi"><div class="label">Tema que más crece</div><div class="value" style="font-size:20px">${cap(kpis.rising_category || "—")}</div><div class="foot">${kpis.rising_pct !== null && kpis.rising_pct !== undefined ? `▲ ${kpis.rising_pct}% vs período anterior` : "sin período anterior"}</div></div>
+    <div class="kpi"><div class="label">Emoción dominante</div><div class="value" style="font-size:20px">${topEmotion ? cap(topEmotion.emotion) : "—"}</div><div class="foot">${topEmotion ? `${topEmotion.count} menciones` : ""}</div></div>
     <div class="kpi"><div class="label">Molestia ciudadana</div><div class="value ${kpis.negative_pct >= 40 ? "neg" : ""}">${kpis.total ? kpis.negative_pct + "%" : "—"}</div><div class="foot">menciones con queja, miedo o indignación</div></div>`;
 
   hbar("#chart-city-topics", topics.map((t) => cap(t.category)), topics.map((t) => t.count), CAT_COLOR,
-    { labelFmt: (v, o) => { const t = topics[o.dataPointIndex]; const tr = t.trend_pct; return tr === null || tr === undefined ? `${v}` : `${v}  ${tr > 5 ? "▲" : tr < -5 ? "▼" : "="} ${Math.abs(tr)}%`; } });
-  const rising = topics.filter((t) => t.trend_pct !== null).sort((a, b) => b.trend_pct - a.trend_pct)[0];
-  $("#read-city-topics").innerHTML = topics.length
-    ? `En ${periodLabel()}, Cali habló sobre todo de <b>${topics[0].category}</b> (${topics[0].count} menciones)` + (topics[1] ? `, luego de <b>${topics[1].category}</b> (${topics[1].count})` : "") + (topics[2] ? ` y <b>${topics[2].category}</b> (${topics[2].count})` : "") + ". " +
-      (rising && rising.trend_pct > 5 ? `El tema que más crece es <b>${rising.category}</b> (▲ ${rising.trend_pct}% frente al período anterior).` : "Ningún tema muestra un crecimiento marcado frente al período anterior.")
-    : "Aún no hay menciones de ciudad clasificadas en el período.";
+    { onClick: (idx) => expandTopicCard("city-t", idx, { scroll: true }) });
 
   const scored = topics.filter((t) => t.count > 0);
   hbar100("#chart-city-perception", scored.map((t) => `${cap(t.category)} (${t.count})`), [
     { name: "Molestia", data: scored.map((t) => pct(t.negative, t.count)) },
     { name: "Informativa", data: scored.map((t) => pct(t.neutral, t.count)) },
-    { name: "A favor", data: scored.map((t) => pct(t.positive, t.count)) }]);
-  const angriest = [...scored].sort((a, b) => pct(b.negative, b.count) - pct(a.negative, a.count))[0];
-  const happiest = [...scored].sort((a, b) => pct(b.positive, b.count) - pct(a.positive, a.count))[0];
-  $("#read-city-perception").innerHTML = scored.length
-    ? `Donde más molestia hay es en <b>${angriest.category}</b> (${pct(angriest.negative, angriest.count)}% de las menciones son quejas o denuncias). ` +
-      `El tema mejor recibido es <b>${happiest.category}</b> (${pct(happiest.positive, happiest.count)}% a favor).`
-    : "Sin datos en el período.";
+    { name: "A favor", data: scored.map((t) => pct(t.positive, t.count)) }], [CRITICAL, NEUTRAL_TONE, GOOD]);
+
+  hbar("#chart-city-emotions", emotions.map((e) => cap(e.emotion)), emotions.map((e) => e.count),
+    emotions.map((e) => EMOTION_COLOR[e.emotion] || MUTED));
 
   const hot = opps.hot_without_carlos, strong = opps.carlos_strong;
   $("#city-opps").innerHTML = `
@@ -515,11 +536,9 @@ async function loadCity() {
     <div class="opp strong"><h3>Temas donde Carlos ya suma</h3>
       ${strong.length ? `<ul>${strong.map((t) => `<li><b>${cap(t.category)}</b>: ${t.carlos_mentions} menciones de Carlos, ${t.carlos_positive_pct}% positivas · la ciudad habló ${t.city_count} veces del tema</li>`).join("")}</ul>` : `<div class="empty">Aún no hay temas con presencia positiva sostenida de Carlos en el período.</div>`}</div>`;
 
-  $("#city-detail").innerHTML = topics.map((t) => `<div class="topic-card">
-      <div class="head"><h3>${t.category}</h3><div>${trendTag(t.trend_pct)} · ${t.count} menciones · <span class="tag negative">${pct(t.negative, t.count)}% molestia</span></div></div>
-      <div class="subs">${t.subtopics.map((s) => `<span class="tag">${esc(s.topic)} · ${s.count}</span>`).join("") || `<span class="hint">sin subtemas identificados</span>`}</div>
-      ${t.samples.map((m) => `<div class="comment"><div>${esc(m.text).slice(0, 240)}<div class="who">${srcName(m)} · ${esc(m.author || "")} · ${fmtDate(m.published_at)}${m.url ? ` · <a href="${m.url}" target="_blank" rel="noopener">ver</a>` : ""}</div></div><div>${sentTag(m)}</div></div>`).join("")}
-    </div>`).join("") || `<div class="empty">Sin temas en el período.</div>`;
+  const normalized = topics.map((t) => ({ topic: cap(t.category), count: t.count, positive: t.positive, neutral: t.neutral,
+    negative: t.negative, positive_pct: pct(t.positive, t.count), sources: t.sources, samples: t.samples, subtopics: t.subtopics }));
+  renderTopicCards("#city-detail", null, normalized, "city-t", 6);
 }
 
 /* ---------- agenda ---------- */
@@ -559,7 +578,7 @@ async function loadAgenda() {
   hbar100("#chart-perception", withComments.map((r) => `${r.name} (${r.comments})`), [
     { name: "A favor", data: withComments.map((r) => r.positive_pct) },
     { name: "Neutral", data: withComments.map((r) => pct(r.neutral, r.comments)) },
-    { name: "En contra", data: withComments.map((r) => r.negative_pct) }]);
+    { name: "En contra", data: withComments.map((r) => r.negative_pct) }], [GOOD, NEUTRAL_TONE, CRITICAL]);
   const carlos = withComments.find((r) => r.name === CARLOS);
   const worst = [...withComments].sort((a, b) => b.negative_pct - a.negative_pct)[0];
   $("#read-perception").innerHTML = carlos

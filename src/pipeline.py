@@ -133,7 +133,8 @@ def score_pending(session, engine, limit: int = 20) -> int:
         session.add(SentimentScore(mention_id=mention.id, label=result.label, score=result.score,
                                    topic=result.topic, model=result.model,
                                    category=getattr(result, "category", None),
-                                   summary=getattr(result, "summary", None) or None))
+                                   summary=getattr(result, "summary", None) or None,
+                                   emotion=getattr(result, "emotion", None) or None))
         try:
             session.commit()
         except IntegrityError:  # otro proceso (el scheduler del servidor) ya la clasificó

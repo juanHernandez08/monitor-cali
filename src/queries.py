@@ -95,6 +95,7 @@ def _mention_dict(m: Mention) -> dict:
         "label": s.label.value if s else None, "score": s.score if s else None,
         "topic": s.topic if s else None, "model": s.model if s else None,
         "summary": (s.summary if s else None) or None,
+        "emotion": (s.emotion if s else None) or None,
     }
 
 
@@ -215,7 +216,7 @@ def _day_bounds(day: str) -> tuple[dt.datetime, dt.datetime]:
 
 
 def feed(session, candidate_id: int | None = None, source_type: str | None = None,
-         label: str | None = None, days: int = 30, limit: int = 100, offset: int = 0,
+         label: str | None = None, emotion: str | None = None, days: int = 30, limit: int = 100, offset: int = 0,
          day: str | None = None) -> list[dict]:
     """Filas = publicaciones (post, video, nota); los comentarios cuelgan de su publicación.
 
@@ -233,8 +234,12 @@ def feed(session, candidate_id: int | None = None, source_type: str | None = Non
         q = q.filter(WHEN >= d0, WHEN < d1)
     filtered = q.order_by(WHEN.desc(), Mention.id.desc()).limit(3000).all()
 
-    def passes_label(m: Mention) -> bool:
-        return not label or (m.sentiment is not None and m.sentiment.label.value == label)
+    def passes_filters(m: Mention) -> bool:
+        if label and (m.sentiment is None or m.sentiment.label.value != label):
+            return False
+        if emotion and (m.sentiment is None or (m.sentiment.emotion or "sin emoción marcada") != emotion):
+            return False
+        return True
 
     rows: dict[str, dict] = {}
     order: list[str] = []
@@ -243,7 +248,7 @@ def feed(session, candidate_id: int | None = None, source_type: str | None = Non
         if (m.raw or {}).get("kind") == "comment":
             key = _parent_key(m) or f"solo:{m.id}"
             comments_by_parent[key].append(m)
-        elif passes_label(m):
+        elif passes_filters(m):
             key = _parent_key(m) or f"solo:{m.id}"
             raw = m.raw or {}
             row = _mention_dict(m)
@@ -254,7 +259,7 @@ def feed(session, candidate_id: int | None = None, source_type: str | None = Non
             order.append(key)
 
     for key, comments in comments_by_parent.items():
-        matching = [c for c in comments if passes_label(c)]
+        matching = [c for c in comments if passes_filters(c)]
         if not matching and key not in rows:
             continue
         if key not in rows:  # publicación no guardada: fila sintética a partir del primer comentario
@@ -267,12 +272,12 @@ def feed(session, candidate_id: int | None = None, source_type: str | None = Non
                 "candidate_id": first.candidate_id, "source": first.source.name,
                 "source_type": first.source.type.value, "text": title, "url": url, "author": None,
                 "published_at": max(_when(c) for c in comments).isoformat(),
-                "label": None, "score": None, "topic": None, "model": None, "summary": None,
+                "label": None, "score": None, "topic": None, "model": None, "summary": None, "emotion": None,
                 "thumbnail": _thumbnail(first),
                 "comments": [], "comments_summary": _summary_of([]),
             }
             order.append(key)
-        shown = matching if label else comments
+        shown = matching if (label or emotion) else comments
         rows[key]["comments"] = [_mention_dict(c) for c in shown]
         rows[key]["comments_summary"] = _summary_of([_mention_dict(c) for c in comments])
         rows[key]["last_activity"] = max(rows[key]["published_at"], max(_when(c) for c in comments).isoformat())
@@ -347,6 +352,22 @@ def city_topics(session, days: int = 7, samples_per: int = 3, subtopics_per: int
             "samples": [_mention_dict(m) for m in samples],
             "sources": dict(Counter(((m.raw or {}).get("platform") or m.source.type.value) for m in ms)),
         })
+    rows.sort(key=lambda r: -r["count"])
+    return rows
+
+
+def city_emotions(session, days: int = 7, samples_per: int = 2) -> list[dict]:
+    """Qué emoción transmite la conversación de la ciudad (rueda de Plutchik + orgullo), con muestras."""
+    current = _city_rows(session, _since(days))
+    by_emotion: dict[str, list[Mention]] = defaultdict(list)
+    for m in current:
+        by_emotion[m.sentiment.emotion or "sin emoción marcada"].append(m)
+    rows = []
+    for emotion, ms in by_emotion.items():
+        comments = [m for m in ms if (m.raw or {}).get("kind") == "comment"]
+        pool = comments or ms
+        samples = sorted(pool, key=lambda m: -abs(m.sentiment.score))[:samples_per]
+        rows.append({"emotion": emotion, "count": len(ms), "samples": [_mention_dict(m) for m in samples]})
     rows.sort(key=lambda r: -r["count"])
     return rows
 

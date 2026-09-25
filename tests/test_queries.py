@@ -128,6 +128,29 @@ def test_feed_label_filter_keeps_publication_with_matching_comments(db_session):
     assert [x["text"] for x in rows[0]["comments"]] == ["malo"]
 
 
+def test_feed_emotion_filter_keeps_publication_with_matching_comments(db_session):
+    from src.queries import feed
+    carlos = Candidate(name="Carlos Arias", aliases=[])
+    ig = Source(type=SourceType.SOCIAL, name="IG")
+    db_session.add_all([carlos, ig])
+    db_session.commit()
+    now = dt.datetime.utcnow()
+    p = Mention(candidate_id=carlos.id, source_id=ig.id, external_id="ig:post:1", text="post", url="https://instagram.com/p/1/", raw={"kind": "post"}, published_at=now, fetched_at=now)
+    c1 = Mention(candidate_id=carlos.id, source_id=ig.id, external_id="ig:comment:1", text="que rabia", url="https://instagram.com/p/1/", raw={"kind": "comment", "post_title": "post"}, published_at=now, fetched_at=now)
+    c2 = Mention(candidate_id=carlos.id, source_id=ig.id, external_id="ig:comment:2", text="que alegria", url="https://instagram.com/p/1/", raw={"kind": "comment", "post_title": "post"}, published_at=now, fetched_at=now)
+    db_session.add_all([p, c1, c2])
+    db_session.flush()
+    db_session.add_all([
+        SentimentScore(mention_id=p.id, label=SentimentLabel.NEUTRAL, score=0.0, topic="t", model="f", emotion="sin emoción marcada"),
+        SentimentScore(mention_id=c1.id, label=SentimentLabel.NEGATIVE, score=-0.6, topic="t", model="f", emotion="ira"),
+        SentimentScore(mention_id=c2.id, label=SentimentLabel.POSITIVE, score=0.6, topic="t", model="f", emotion="alegría")])
+    db_session.commit()
+
+    rows = feed(db_session, days=7, emotion="ira")
+    assert len(rows) == 1 and rows[0]["text"] == "post"
+    assert [x["text"] for x in rows[0]["comments"]] == ["que rabia"]
+
+
 def test_summary_includes_avatar_from_instagram_posts(db_session, monkeypatch):
     from src import queries
     monkeypatch.setattr(queries.config, "SOCIAL_ACCOUNTS", [

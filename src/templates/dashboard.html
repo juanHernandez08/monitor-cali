@@ -105,6 +105,19 @@
             <option value="neutral">Neutral</option>
             <option value="positive">Positivo</option>
           </select>
+          <select id="f-emotion">
+            <option value="">Toda emoción</option>
+            <option value="alegría">Alegría</option>
+            <option value="confianza">Confianza</option>
+            <option value="miedo">Miedo</option>
+            <option value="sorpresa">Sorpresa</option>
+            <option value="tristeza">Tristeza</option>
+            <option value="asco">Asco / repulsión</option>
+            <option value="ira">Ira</option>
+            <option value="anticipación">Anticipación</option>
+            <option value="orgullo">Orgullo</option>
+            <option value="sin emoción marcada">Sin emoción marcada</option>
+          </select>
         </div>
       </div>
       <div id="feed" class="feed"></div>
@@ -167,27 +180,30 @@
   </div>
 
   <div id="tab-ciudad" class="tabpane">
-    <div class="intro panel">
-      <h2>De qué habla Cali y cómo lo siente la gente</h2>
-      <p>Aquí no se mira a los candidatos sino a la <b>ciudad</b>: noticias locales, videos de noticieros y publicaciones de medios, con los comentarios de la gente. Cada mención se ubica en un <b>tema</b> fijo (seguridad, movilidad, servicios públicos…) y se lee su <b>percepción</b>: <span class="tag negative">molestia</span> (queja, miedo, indignación), <span class="tag positive">a favor</span> (orgullo, celebración) o <span class="tag neutral">informativa</span>. Sirve para decidir de qué hablar y en qué tono.</p>
-    </div>
     <section class="kpis" id="city-kpis"></section>
+
     <section class="panel big">
-      <div class="panel-head"><div><h2>¿De qué habla Cali en este período?</h2><div class="hint">Menciones por tema. La flecha compara con el período inmediatamente anterior de la misma duración.</div></div></div>
-      <p class="reading" id="read-city-topics"></p>
+      <div class="panel-head"><div><h2>¿De qué habla Cali en este período?</h2><div class="hint">Menciones por tema: seguridad, movilidad, servicios públicos y demás. Toca una barra para ver su detalle abajo.</div></div></div>
       <div class="chart-box xl"><div id="chart-city-topics"></div></div>
     </section>
+
     <section class="panel big">
-      <div class="panel-head"><div><h2>¿Cómo lo siente la gente?</h2><div class="hint">De cada 100 menciones del tema, cuántas expresan molestia, cuántas son informativas y cuántas están a favor.</div></div></div>
-      <p class="reading" id="read-city-perception"></p>
+      <div class="panel-head"><div><h2>¿Cómo lo siente la gente?</h2><div class="hint">De cada 100 menciones del tema, cuántas son molestia (queja, miedo, indignación), cuántas informativas y cuántas a favor (orgullo, celebración).</div></div></div>
       <div class="chart-box xl"><div id="chart-city-perception"></div></div>
     </section>
+
+    <section class="panel big">
+      <div class="panel-head"><div><h2>¿Qué emoción transmite la ciudad?</h2><div class="hint">Más allá de positivo/negativo: qué siente concretamente quien escribe — miedo, ira, alegría, orgullo y demás.</div></div></div>
+      <div class="chart-box xl"><div id="chart-city-emotions"></div></div>
+    </section>
+
     <section class="panel big">
       <div class="panel-head"><div><h2>Oportunidades para Carlos Arias</h2><div class="hint">Cruce entre lo que preocupa a la ciudad y de lo que habla Carlos en el mismo período.</div></div></div>
       <div class="grid2" id="city-opps"></div>
     </section>
+
     <section class="panel big">
-      <div class="panel-head"><div><h2>Detalle por tema</h2><div class="hint">Subtemas más frecuentes y comentarios ciudadanos representativos, con link al original.</div></div></div>
+      <div class="panel-head"><div><h2>Detalle por tema</h2><div class="hint">Toca un tema para ver sus subtemas y comentarios ciudadanos representativos, con link al original.</div></div></div>
       <div id="city-detail" class="feed"></div>
     </section>
   </div>

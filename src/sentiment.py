@@ -15,6 +15,16 @@ CATEGORIES = [
 ]
 _CATEGORY_LINE = 'Además, asigna una "category" tomada EXACTAMENTE de esta lista: ' + ", ".join(CATEGORIES) + ".\n"
 
+# Rueda de emociones de Plutchik (8 básicas) + orgullo, frecuente en discurso político, + una salida
+# neutra. "asco" cubre también "repulsión"; "alegría" cubre "felicidad"/"emoción" positiva.
+EMOTIONS = [
+    "alegría", "confianza", "miedo", "sorpresa", "tristeza", "asco", "ira", "anticipación", "orgullo",
+    "sin emoción marcada",
+]
+_EMOTION_LINE = ('Además, asigna una "emotion" tomada EXACTAMENTE de esta lista, la que mejor describa lo que '
+                 'siente quien escribió el texto (no el tema): ' + ", ".join(EMOTIONS) + '. "asco" incluye '
+                 'repulsión/indignación visceral; "sin emoción marcada" es para texto puramente informativo.\n')
+
 CITY_PROMPT = """Eres un analista de opinión pública de Cali, Colombia.
 El siguiente texto (noticia, post o comentario) habla de la ciudad. Evalúa cómo lo percibe la ciudadanía:
 - "negative": queja, molestia, miedo, preocupación, denuncia, indignación.
@@ -24,7 +34,7 @@ Sé decidido: si hay cualquier inclinación, aunque sea leve, no uses "neutral";
 Lenguaje colombiano: "berraco/berraca", "bacano", "una chimba", "la rompió" son positivos; "qué pereza", "qué vaina", "ni mierda", "descarados" son negativos. Emojis: 👏🔥❤️💪 apoyo; 🤡💩🤮👎 rechazo; 😂🤣 burla si acompañan una crítica.
 
 El "topic" es el ASUNTO concreto en 2-4 palabras (p. ej. "agua en Terrón Colorado", "huecos en la calle 5"). NUNCA uses el tono como topic. Si el texto no trata ningún asunto (solo saludos, emojis o insultos genéricos), usa topic "sin tema".
-""" + _CATEGORY_LINE + """
+""" + _CATEGORY_LINE + _EMOTION_LINE + """
 Además, escribe un "summary": un resumen de UNA sola frase (máx. 25 palabras) de QUÉ DICE el texto,
 en español neutro, sin opinar. Para una noticia o post: de qué trata. Para un comentario: qué dice
 la persona. Si el texto ya es muy corto (un par de palabras), repítelo tal cual como summary.
@@ -32,7 +42,7 @@ la persona. Si el texto ya es muy corto (un par de palabras), repítelo tal cual
 Texto: {text}
 
 Responde SOLO con un JSON de la forma:
-{{"label": "positive" | "negative" | "neutral", "score": <float entre -1.0 y 1.0>, "topic": "<asunto o 'sin tema'>", "category": "<una de la lista>", "summary": "<resumen de una frase>"}}
+{{"label": "positive" | "negative" | "neutral", "score": <float entre -1.0 y 1.0>, "topic": "<asunto o 'sin tema'>", "category": "<una de la lista>", "summary": "<resumen de una frase>", "emotion": "<una de la lista>"}}
 """
 
 SENTIMENT_PROMPT = """Eres un analista de comunicación política de una campaña a la Alcaldía de Cali, Colombia.
@@ -57,9 +67,9 @@ Además, escribe un "summary": un resumen de UNA sola frase (máx. 25 palabras) 
 sobre {candidate}, en español neutro, sin opinar tú. Para una noticia o post: de qué trata en
 relación a él. Para un comentario: qué dice la persona. Si el texto ya es muy corto, repítelo tal
 cual como summary.
-""" + _CATEGORY_LINE + """
+""" + _CATEGORY_LINE + _EMOTION_LINE + """
 Responde SOLO con un JSON de la forma:
-{{"label": "positive" | "negative" | "neutral", "score": <float entre -1.0 y 1.0>, "topic": "<asunto en 2-4 palabras, 'rechazo e insultos' o 'sin tema'>", "category": "<una de la lista>", "summary": "<resumen de una frase>"}}
+{{"label": "positive" | "negative" | "neutral", "score": <float entre -1.0 y 1.0>, "topic": "<asunto en 2-4 palabras, 'rechazo e insultos' o 'sin tema'>", "category": "<una de la lista>", "summary": "<resumen de una frase>", "emotion": "<una de la lista>"}}
 """
 _JSON_FENCE = re.compile(r"^```(?:json)?\s*|\s*```$", re.MULTILINE)
 
@@ -72,6 +82,7 @@ class SentimentResult:
     model: str
     category: str = "otro"
     summary: str = ""
+    emotion: str = "sin emoción marcada"
 
 
 def _parse_payload(text: str, model: str) -> SentimentResult:
@@ -83,9 +94,12 @@ def _parse_payload(text: str, model: str) -> SentimentResult:
     category = str(payload.get("category", "otro")).strip().lower()
     if category not in CATEGORIES:
         category = "otro"
+    emotion = str(payload.get("emotion", "")).strip().lower()
+    if emotion not in EMOTIONS:
+        emotion = "sin emoción marcada"
     return SentimentResult(label=SentimentLabel(label), score=score,
                            topic=str(payload.get("topic", ""))[:80], model=model, category=category,
-                           summary=str(payload.get("summary", "")).strip()[:220])
+                           summary=str(payload.get("summary", "")).strip()[:220], emotion=emotion)
 
 
 def _prompt(text: str, candidate: str | None, city: bool = False) -> str:

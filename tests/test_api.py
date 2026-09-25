@@ -32,6 +32,7 @@ def test_json_routes(client):
     assert client.get("/api/topics").json() == []
     assert client.get("/health").json()["total_mentions"] == 1
     assert client.get("/api/city/topics").json() == []
+    assert client.get("/api/city/emotions").json() == []
     assert client.get("/api/city/opportunities").json() == {"hot_without_carlos": [], "carlos_strong": []}
     assert client.get("/api/city/kpis").json()["total"] == 0
     assert client.get("/api/agenda").json() == {"speak": [], "avoid": []}

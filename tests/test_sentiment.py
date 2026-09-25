@@ -51,3 +51,26 @@ def test_sentiment_engine_truncates_long_summary():
     engine = SentimentEngine(client=fake_client)
     result = engine.score("texto")
     assert len(result.summary) <= 220
+
+
+def test_sentiment_engine_parses_emotion_from_the_fixed_list():
+    fake_client = FakeAnthropicClient({
+        "label": "negative", "score": -0.6, "topic": "seguridad", "emotion": "miedo",
+    })
+    engine = SentimentEngine(client=fake_client)
+    result = engine.score("Que miedo, otra vez atracaron a alguien en el barrio.")
+    assert result.emotion == "miedo"
+
+
+def test_sentiment_engine_emotion_falls_back_when_not_in_the_list():
+    fake_client = FakeAnthropicClient({"label": "neutral", "score": 0.0, "topic": "x", "emotion": "aburrimiento"})
+    engine = SentimentEngine(client=fake_client)
+    result = engine.score("texto")
+    assert result.emotion == "sin emoción marcada"
+
+
+def test_sentiment_engine_emotion_defaults_when_absent():
+    fake_client = FakeAnthropicClient({"label": "neutral", "score": 0.0, "topic": "x"})
+    engine = SentimentEngine(client=fake_client)
+    result = engine.score("texto")
+    assert result.emotion == "sin emoción marcada"

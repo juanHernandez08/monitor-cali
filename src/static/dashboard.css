@@ -201,8 +201,6 @@ footer { color: var(--muted); font-size: 12px; line-height: 1.7; }
 .topic-card .head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
 .topic-card .head h3 { margin: 0; font-size: 15px; text-transform: capitalize; }
 .topic-card .subs { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0; }
-.trend { font-size: 12px; font-weight: 600; }
-.trend.up { color: var(--neg); } .trend.down { color: var(--pos); } .trend.flat { color: var(--muted); }
 
 .day-detail { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 12px; }
 .day-detail .panel-head { margin-bottom: 8px; }
