@@ -65,10 +65,12 @@ def test_city_sources_use_their_own_terms(db_session, monkeypatch):
     assert captured["terms"] == ["Cali"]
 
 
-def test_social_connector_routes_x_to_apify_when_token_present(db_session, monkeypatch):
+def test_social_connector_routes_everything_to_apify_when_token_present(db_session, monkeypatch):
+    """Con token de Apify, IG/FB/X van todos por Apify y Bright Data no se usa (créditos agotados
+    el 2026-09-25): un solo proveedor, más simple y sin gastar lo que ya no existe."""
     import src.scheduler as m
     from src.connectors.x_apify import XApifyConnector
-    from src.connectors.social_accounts import SocialAccountConnector
+    from src.connectors.social_apify import SocialApifyConnector
     monkeypatch.setenv("BRIGHTDATA_API_TOKEN", "t")
     monkeypatch.setenv("APIFY_TOKEN", "a")
     monkeypatch.setattr(m.config, "SOCIAL_ACCOUNTS", [
@@ -79,10 +81,25 @@ def test_social_connector_routes_x_to_apify_when_token_present(db_session, monke
     db_session.commit()
     conn = build_connector(src, db_session)
     kinds = {type(c).__name__ for c in conn.connectors}
-    assert kinds == {"SocialAccountConnector", "XApifyConnector"}
-    bd = next(c for c in conn.connectors if isinstance(c, SocialAccountConnector))
-    assert all(a["platform"] != "x" for a in bd.accounts)  # X ya no gasta créditos de Bright Data
+    assert kinds == {"SocialApifyConnector", "XApifyConnector"}
+    ig = next(c for c in conn.connectors if isinstance(c, SocialApifyConnector))
+    assert all(a["platform"] != "x" for a in ig.accounts)
     assert next(c for c in conn.connectors if isinstance(c, XApifyConnector)).accounts[0]["url"] == "https://x.com/x"
+
+
+def test_social_connector_falls_back_to_brightdata_without_apify_token(db_session, monkeypatch):
+    import src.scheduler as m
+    from src.connectors.social_accounts import SocialAccountConnector
+    monkeypatch.setenv("BRIGHTDATA_API_TOKEN", "t")
+    monkeypatch.delenv("APIFY_TOKEN", raising=False)
+    monkeypatch.setattr(m.config, "SOCIAL_ACCOUNTS", [
+        {"platform": "instagram", "url": "https://www.instagram.com/x/", "candidate": "Carlos Arias"}])
+    src = Source(type=SourceType.SOCIAL, name="IG")
+    db_session.add(src)
+    db_session.commit()
+    conn = build_connector(src, db_session)
+    kinds = {type(c).__name__ for c in conn.connectors}
+    assert kinds == {"SocialAccountConnector"}
 
 
 def test_next_run_fires_soon_when_a_restart_would_otherwise_postpone_it(db_session):

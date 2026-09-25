@@ -11,6 +11,7 @@ from src.connectors.google_news import GoogleNewsConnector
 from src.connectors.news_rss import RSSConnector
 from src.connectors.reddit_rss import RedditRSSConnector
 from src.connectors.social_accounts import SocialAccountConnector
+from src.connectors.social_apify import SocialApifyConnector
 from src.connectors.x_apify import XApifyConnector
 from src.connectors.youtube import YouTubeConnector
 from src.db import get_session
@@ -103,14 +104,23 @@ def _build(source: Source, session):
         month = dt.datetime.utcnow().strftime("%Y-%m")
         connectors = []
         x_accounts = [a for a in config.SOCIAL_ACCOUNTS if a["platform"] == "x"]
-        if apify and x_accounts:  # X con respuestas de la gente; libera créditos de Bright Data
+        ig_fb_accounts = [a for a in config.SOCIAL_ACCOUNTS if a["platform"] != "x"]
+        # Bright Data agotó sus créditos gratis el 2026-09-25 ("Customer is not active" en su
+        # Marketplace); con token de Apify, Instagram/Facebook/X van por ahí. Bright Data queda
+        # como respaldo solo si no hay token de Apify.
+        apify_credits = QuotaTracker(session, "apify", config.APIFY_MONTHLY_ITEMS, today=month) if apify else None
+        if apify and x_accounts:
             connectors.append(XApifyConnector(token=apify, accounts=x_accounts, window_days=config.SOCIAL_WINDOW_DAYS,
                                               known_last_dates=last_dates, known_post_texts=post_texts,
-                                              credits=QuotaTracker(session, "apify", config.APIFY_MONTHLY_ITEMS, today=month)))
-        if token:
-            accounts = [a for a in config.SOCIAL_ACCOUNTS if not (apify and a["platform"] == "x")]
+                                              credits=apify_credits))
+        if apify and ig_fb_accounts:
+            connectors.append(SocialApifyConnector(
+                token=apify, accounts=ig_fb_accounts, window_days=config.SOCIAL_WINDOW_DAYS, max_posts=config.SOCIAL_MAX_POSTS,
+                max_comments=config.SOCIAL_MAX_COMMENTS, comment_posts=config.SOCIAL_COMMENT_POSTS,
+                known_post_ids=known, pending_comment_posts=pending, known_last_dates=last_dates, credits=apify_credits))
+        elif token and ig_fb_accounts:
             connectors.append(SocialAccountConnector(
-                api_token=token, accounts=accounts, window_days=config.SOCIAL_WINDOW_DAYS, max_posts=config.SOCIAL_MAX_POSTS,
+                api_token=token, accounts=ig_fb_accounts, window_days=config.SOCIAL_WINDOW_DAYS, max_posts=config.SOCIAL_MAX_POSTS,
                 max_comments=config.SOCIAL_MAX_COMMENTS, comment_posts=config.SOCIAL_COMMENT_POSTS,
                 known_post_ids=known, pending_comment_posts=pending, known_last_dates=last_dates,
                 credits=QuotaTracker(session, "brightdata", config.BRIGHTDATA_MONTHLY_CREDITS, today=month)))
@@ -137,9 +147,9 @@ def _social_state(session, source: Source) -> tuple[dict[str, list[str]], list[d
         known.setdefault(account, []).append(post_id)
         if raw.get("platform") == "x":
             post_texts[post_id] = m.text
-            if m.published_at:
-                day = m.published_at.strftime("%Y-%m-%d")
-                last_dates[account] = max(last_dates.get(account, ""), day)
+        if m.published_at:  # también sirve a IG/FB por Apify, que no tiene "posts_to_not_include"
+            day = m.published_at.strftime("%Y-%m-%d")
+            last_dates[account] = max(last_dates.get(account, ""), day)
         num = raw.get("num_comments")
         try:
             num = int(str(num).replace(",", "")) if num is not None else 0
