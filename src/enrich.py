@@ -88,11 +88,13 @@ def enrich_pending(session, limit: int = 20) -> int:
             pass  # la conversación de ciudad no exige nombre ni tiene homónimos
         elif is_excluded(full_text, mention.candidate):
             mention.relevant = False  # el cuerpo revela un homónimo conocido
-        elif mention.body and not has_required_context(full_text, mention.candidate):
+        elif not has_required_context(full_text, mention.candidate):
             mention.relevant = False  # nombre común sin contexto local: no es esta persona
-        elif mention.body and not mentions_candidate(full_text, mention.candidate):
-            # Google News la devolvió por el término de búsqueda, pero el artículo completo
-            # no nombra al candidato (enlaces relacionados, etiquetas del medio): no cuenta.
+        elif not mentions_candidate(full_text, mention.candidate):
+            # Google News la devolvió por el término de búsqueda, pero ni el titular ni el
+            # cuerpo (si se pudo descargar) nombran al candidato: no cuenta. Antes esto se
+            # saltaba cuando la extracción del cuerpo fallaba (body=="") y la mención quedaba
+            # `relevant=True` para siempre aunque el titular tampoco lo nombrara.
             mention.relevant = False
         if image:
             mention.raw = {**(mention.raw or {}), "image": image}

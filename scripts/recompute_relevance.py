@@ -25,9 +25,11 @@ def is_relevant(mention, candidate) -> bool:
         blob = f"{mention.text} {mention.body or ''}"
         if is_excluded(blob, candidate):
             return False
-        if mention.body:  # con el cuerpo ya se puede exigir contexto y nombre
-            return has_required_context(blob, candidate) and mentions_candidate(blob, candidate)
-        return True
+        if mention.body is None:  # aún no se intentó enriquecer: se resolverá luego
+            return True
+        # body == "" (se intentó y no se pudo) cuenta igual que tener cuerpo: exigir
+        # nombre/contexto sobre lo que sí tenemos (el titular), no darlo por bueno para siempre.
+        return has_required_context(blob, candidate) and mentions_candidate(blob, candidate)
     if is_excluded(mention.text, candidate):
         return False
     is_comment = raw.get("kind") == "comment"

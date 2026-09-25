@@ -222,3 +222,27 @@ def test_recompute_drops_press_note_the_llm_tagged_as_homonimo(db_session):
     restored, dropped = recompute(db_session, only_council=True)
     assert dropped == 1
     assert m.relevant is False
+
+
+def test_recompute_drops_press_note_whose_title_never_names_candidate_even_with_empty_body(db_session):
+    """Mismo bug encontrado y corregido en enrich.py (auditoría 2026-09-26): body="" (intentado
+    sin éxito) es distinto de body=None (pendiente), pero `is_relevant` los trataba igual y nunca
+    exigía el nombre/contexto cuando el cuerpo no se pudo descargar. Con body=None sí debe seguir
+    dando el beneficio de la duda (aún no se intentó enriquecer)."""
+    from scripts.recompute_relevance import recompute
+    seed(db_session)
+    carlos = db_session.query(Candidate).filter_by(name="Carlos Arias").one()
+    press = db_session.query(Source).filter_by(type=SourceType.GOOGLE_NEWS).first()
+    now = dt.datetime.utcnow()
+    failed = Mention(candidate_id=carlos.id, source_id=press.id, external_id="g-failed",
+                     text="Terremoto sacude Colombia: reportan daños", body="",
+                     url="https://x/1", published_at=now, fetched_at=now, relevant=True)
+    pending = Mention(candidate_id=carlos.id, source_id=press.id, external_id="g-pending",
+                      text="Otra nota sin nombrarlo", body=None,
+                      url="https://x/2", published_at=now, fetched_at=now, relevant=True)
+    db_session.add_all([failed, pending])
+    db_session.commit()
+    restored, dropped = recompute(db_session, only_council=True)
+    assert dropped == 1
+    assert failed.relevant is False  # body="" ya se intentó y el titular tampoco lo nombra
+    assert pending.relevant is True  # body=None: aún no se sabe, se enriquecerá luego

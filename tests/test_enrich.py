@@ -154,3 +154,25 @@ def test_enrich_discards_news_whose_full_text_never_names_the_candidate(db_sessi
     enrich_pending(db_session, limit=10)
     assert db_session.query(Mention).filter_by(external_id="a").one().relevant is False  # no la nombra
     assert db_session.query(Mention).filter_by(external_id="b").one().relevant is True
+
+
+def test_enrich_discards_news_that_never_names_candidate_even_when_body_fetch_fails(db_session, monkeypatch):
+    """Auditoría 2026-09-26: si trafilatura no logra extraer el cuerpo (body queda en "", no en
+    None), el chequeo de nombre/contexto se saltaba por completo -- la mención quedaba
+    `relevant=True` para siempre aunque el titular (lo único que sí tenemos) nunca nombrara al
+    candidato. Encontrado en producción: 10 menciones de prensa atribuidas solo por search_term,
+    con body="" permanente, nunca corregidas. El chequeo debe correr sobre el titular igual."""
+    c = Candidate(name="Carlos Paz", aliases=[])
+    gn = Source(type=SourceType.GOOGLE_NEWS, name="Google News")
+    db_session.add_all([c, gn])
+    db_session.commit()
+    ingest(db_session, gn, ListConnector([
+        RawItem(external_id="a", text="Terremoto sacude Colombia: reportan daños", url="https://news.google.com/rss/articles/A", search_term="Carlos Paz"),
+    ]))
+    import src.enrich as m
+    monkeypatch.setattr(m, "resolve_url", lambda url: None)  # el medio bloquea el scraping
+    monkeypatch.setattr(m, "fetch_article", lambda url: (None, None))
+    enrich_pending(db_session, limit=10)
+    mention = db_session.query(Mention).one()
+    assert mention.body == ""
+    assert mention.relevant is False  # el titular tampoco lo nombra

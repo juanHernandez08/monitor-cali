@@ -42,8 +42,12 @@ CANDIDATES = [
         ],
     },
     {
+        # Congresista del Pacto Histórico: sin exigir contexto local, la mayoría de prensa que
+        # lo nombra es sobre su actividad legislativa nacional, no sobre Cali. Auditoría
+        # 2026-09-26: 61% de sus menciones de prensa no mencionaban "Cali" ni "Alcaldía".
         "name": "Alfredo Mondragón", "party": "Pacto Histórico",
         "aliases": ["Alfredo Mondragon"],
+        "context_terms": ["Cali", "Alcaldía", "Alcaldia"],
     },
     {
         "name": "Roberto Ortiz", "party": None,  # independiente; hoy concejal de Cali
@@ -69,6 +73,16 @@ CANDIDATES = [
     {
         "name": "Carlos Paz", "party": None,  # afiliación no confirmada en prensa
         "aliases": [],
+        # Homónimo geográfico: Villa Carlos Paz (Córdoba, Argentina) tiene medios locales que se
+        # llaman igual ("Carlos Paz Vivo", "El Diario de Carlos Paz") y cuyo nombre de publicación
+        # queda pegado al titular de Google News, coincidiendo con el nombre del candidato aunque
+        # la nota no sea sobre él. Auditoría 2026-09-26: 3 de 5 menciones de prensa eran de esos
+        # medios argentinos cubriendo un terremoto en Colombia, sin relación con el candidato.
+        "exclusions": [
+            "Carlos Paz Vivo", "eldiariodecarlospaz", "El Diario de Carlos Paz",
+            "Villa Carlos Paz", "Carlos Paz, Argentina", "Carlos Paz (Argentina)",
+            "Córdoba, Argentina", "Luis Carlos Paz",  # futbolista del América de Cali, años 60
+        ],
     },
     {
         "name": "Roger Mina", "party": None,  # gerente de Emcali; afiliación no confirmada
