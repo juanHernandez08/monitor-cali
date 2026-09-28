@@ -6,6 +6,12 @@ load_dotenv()
 
 DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///monitor.db")
 
+# Login del dashboard (HTTP Basic). Sin DASHBOARD_PASSWORD, el sitio queda abierto -- así sigue
+# funcionando como hasta ahora en desarrollo local. En la nube es OBLIGATORIO configurar ambas:
+# sin login, cualquiera con la URL ve las menciones, el análisis de sentimiento y la estrategia.
+DASHBOARD_USER = os.environ.get("DASHBOARD_USER")
+DASHBOARD_PASSWORD = os.environ.get("DASHBOARD_PASSWORD")
+
 # Sentimiento: "ollama" (local, gratis) o "claude" (requiere ANTHROPIC_API_KEY)
 SENTIMENT_BACKEND = os.environ.get("SENTIMENT_BACKEND", "ollama")
 OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")

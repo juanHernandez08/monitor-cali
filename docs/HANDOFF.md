@@ -16,8 +16,12 @@ salvo Apify (presupuesto aprobado: hasta 200.000 COP/mes, 2026-09-28).
 - Windows: `.\scripts\demo.ps1` · macOS: `bash scripts/demo.sh` → Ollama + servidor en :8000 +
   túnel público de cloudflared (la URL cambia en cada arranque).
 - Solo servidor: `python -m uvicorn src.api:app --host 0.0.0.0 --port 8000`.
-- Tests: `python -m pytest -q` (183 al escribir esto). El proyecto se construye con TDD: test
+- Tests: `python -m pytest -q` (189 al escribir esto). El proyecto se construye con TDD: test
   antes que el cambio de comportamiento.
+- **Login obligatorio en la nube (2026-09-28)**: `DASHBOARD_USER`/`DASHBOARD_PASSWORD` en `.env`
+  activan HTTP Basic delante de TODO (API y estáticos) -- sin ellas el sitio queda abierto, como
+  hasta ahora en local. Antes de desplegar en la nube, configurarlas SIEMPRE (ver sección
+  "Despliegue en la nube" abajo).
 - `.env` (no está en git) trae `GOOGLE_API_KEY`, `APIFY_TOKEN`, `OLLAMA_MODEL`. `BRIGHTDATA_API_TOKEN`
   ya no se usa (créditos agotados 2026-09-25) pero el conector queda de respaldo si se recupera.
 - **`OLLAMA_NUM_GPU=0` en `.env` (mitigación temporal, 2026-09-26)**: el driver de NVIDIA
@@ -282,6 +286,28 @@ candidato de esa pestaña ahora sale de `/api/social/candidates`, no de la lista
     tendencia (verde/rojo), reacción ciudadana (barras 100% apiladas), y las listas "temas que
     Carlos no ha tocado" y "estrategia recomendada". Verificado en vivo contra datos reales del
     2026-09-28 (navegador + PDF descargado), no solo con los tests.
+
+## Despliegue en la nube (prioridad del cliente desde 2026-09-28)
+
+`docs/cotizacion.md` tiene el plan ya costeado y aprobado: **Escenario B** (VPS + SQLite + Claude
+Haiku, ~USD 41/mes ≈ $132.000 COP, cabe cómodo en el presupuesto aprobado de 200.000 COP/mes).
+`docs/despliegue.md` quedó desactualizado (recomienda Railway + Postgres, un plan anterior) --
+seguir `cotizacion.md`, no `despliegue.md`, salvo que el cliente pida explícitamente Railway.
+
+Ya listo en código para desplegar:
+- `Dockerfile` (raíz del repo) -- usa `SENTIMENT_BACKEND=claude` automáticamente, corre el seed y
+  levanta uvicorn. No necesita cambios para un VPS o un PaaS con soporte Docker.
+- **Login obligatorio** (`DASHBOARD_USER`/`DASHBOARD_PASSWORD`, ver arriba) y encabezados de
+  seguridad HTTP (`X-Frame-Options`, `X-Content-Type-Options`, HSTS cuando hay HTTPS) en
+  `src/api.py`.
+
+Falta (acciones que solo el cliente puede hacer -- crear cuentas, pagar):
+1. Crear cuenta + servidor en el proveedor de VPS (DigitalOcean recomendado sobre Hetzner: en
+   sept-2026 varios planes CX de Hetzner aparecían agotados, ver `cotizacion.md` §7).
+2. Dominio propio si no tiene uno (~USD 12/año).
+3. Acceso SSH al servidor (IP + credenciales) para desplegar.
+4. Confirmar `ANTHROPIC_API_KEY` para producción (en la nube reemplaza a Ollama).
+5. Elegir usuario/contraseña del login del dashboard.
 
 ## Trabajar en dos máquinas
 

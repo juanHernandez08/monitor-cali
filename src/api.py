@@ -1,4 +1,6 @@
+import base64
 import logging
+import secrets
 import threading
 from contextlib import asynccontextmanager, contextmanager
 from pathlib import Path
@@ -43,6 +45,38 @@ def create_app(session_factory=None, start_jobs: bool = True) -> FastAPI:
             sched.shutdown(wait=False)
 
     app = FastAPI(title="Monitor Alcaldía de Cali 2027", lifespan=lifespan)
+
+    @app.middleware("http")
+    async def require_auth(request: Request, call_next):
+        """Login HTTP Basic delante de TODO (API y estáticos incluidos) -- sin esto, cualquiera
+        con la URL en la nube ve menciones, análisis de sentimiento y estrategia de campaña sin
+        ninguna barrera. Sin DASHBOARD_PASSWORD configurada, no hace nada (desarrollo local)."""
+        if not config.DASHBOARD_PASSWORD:
+            return await call_next(request)
+        header = request.headers.get("authorization", "")
+        valid = False
+        if header.startswith("Basic "):
+            try:
+                user, _, pwd = base64.b64decode(header[6:]).decode("utf-8").partition(":")
+                valid = (secrets.compare_digest(user, config.DASHBOARD_USER or "")
+                         and secrets.compare_digest(pwd, config.DASHBOARD_PASSWORD))
+            except Exception:
+                valid = False
+        if not valid:
+            return Response(status_code=401, headers={"WWW-Authenticate": 'Basic realm="Monitor Cali"'})
+        return await call_next(request)
+
+    @app.middleware("http")
+    async def security_headers(request: Request, call_next):
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Referrer-Policy"] = "same-origin"
+        response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+        if request.url.scheme == "https":
+            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        return response
+
     app.mount("/static", StaticFiles(directory=BASE / "static"), name="static")
     templates = Jinja2Templates(directory=BASE / "templates")
 
