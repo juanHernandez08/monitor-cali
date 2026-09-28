@@ -1,5 +1,7 @@
 """Consultas de lectura para el dashboard. Devuelven dicts listos para JSON."""
 import datetime as dt
+import re
+import unicodedata
 from collections import Counter, defaultdict
 
 from sqlalchemy import func, or_
@@ -13,6 +15,38 @@ from src.models import (
 CARLOS = "Carlos Arias"
 META_TOPICS = ("mención tangencial", "mencion tangencial", "homónimo", "homonimo", "sin tema", "etiqueta a otra cuenta")  # etiquetas de control, no temas
 BOGOTA = dt.timezone(dt.timedelta(hours=-5))
+# "deporte" nunca es una novedad para sugerir: recomendar que Carlos hable de un equipo o partido
+# alimenta la rivalidad entre hinchas en vez de ayudarlo (pedido del cliente 2026-09-28) -- si hay
+# una situación real (violencia, obra pública), entra por otra categoría (seguridad, infraestructura...).
+NOVEDADES_EXCLUDED_CATEGORIES = {"deporte"}
+_STOPWORDS = {"de", "la", "el", "en", "y", "del", "los", "las", "un", "una", "con", "para", "por",
+              "que", "se", "su", "a", "al", "lo", "sus", "sobre", "tras"}
+
+
+def _keywords(text: str) -> set[str]:
+    """Palabras distintivas de un texto: sin tildes, en minúscula, sin conectores ni palabras muy
+    cortas. Se usa para reconocer el mismo asunto real aunque el LLM le haya puesto una etiqueta
+    de "topic" distinta en cada mención (ver mentions_covering_topic)."""
+    plain = unicodedata.normalize("NFKD", text or "").encode("ascii", "ignore").decode()
+    words = re.findall(r"[a-z0-9]+", plain.lower())
+    return {w for w in words if w not in _STOPWORDS and len(w) > 2}
+
+
+def mention_keywords(mentions: list[Mention]) -> list[set[str]]:
+    """Palabras distintivas de cada mención (texto + topic), precalculadas una sola vez para
+    comparar contra muchos temas sin repetir el trabajo por cada uno."""
+    return [_keywords((m.sentiment.topic or "") + " " + (m.text or "")) for m in mentions]
+
+
+def mentions_covering_topic(topic: str, keywords: list[set[str]]) -> int:
+    """Cuántas menciones (ya reducidas a palabras con mention_keywords) hablan de `topic`. No
+    exige el topic idéntico -- el LLM no siempre etiqueta igual el mismo asunto real en dos
+    menciones distintas (p. ej. un post sobre la Operación Iron quedó con topic "seguridad", no
+    "Operación Iron"): alcanza con que las palabras distintivas del tema estén en la mención."""
+    topic_words = _keywords(topic)
+    if not topic_words:
+        return 0
+    return sum(1 for kw in keywords if topic_words <= kw)
 
 
 def _since(days: int) -> dt.datetime:
@@ -399,6 +433,86 @@ def social_candidates(session) -> list[dict]:
             for c in rows]
 
 
+def candidate_reach_comparison(session, days: int = 30, min_posts: int = 2) -> list[dict]:
+    """Alcance real por cuenta: promedio de interacción por publicación, ritmo de publicación y
+    tendencia (mitad reciente del período vs. la mitad anterior) -- la base numérica para explicar
+    por qué a Carlos le va mejor o peor que a sus rivales en redes, no solo cuánto publicó."""
+    posts = social_posts(session, days=days, limit=10000, sort="recent")
+    by_cand: dict[str, list[dict]] = defaultdict(list)
+    for p in posts:
+        by_cand[p["candidate"]].append(p)
+
+    rows = []
+    for cand, ps in by_cand.items():
+        if len(ps) < min_posts:
+            continue
+        ps.sort(key=lambda p: p["published_at"])
+        n = len(ps)
+        avg_engagement = round(sum(p["engagement"] for p in ps) / n)
+        half = n // 2
+        first, second = ps[:half], ps[half:]
+        avg_first = sum(p["engagement"] for p in first) / len(first) if first else None
+        avg_second = sum(p["engagement"] for p in second) / len(second) if second else None
+        trend_pct = (round((avg_second - avg_first) / avg_first * 100)
+                    if avg_first and avg_second is not None else None)
+        rows.append({
+            "candidate": cand, "posts": n, "posts_per_week": round(n / (days / 7), 1),
+            "avg_engagement": avg_engagement, "total_engagement": sum(p["engagement"] for p in ps),
+            "trend_pct": trend_pct,
+        })
+    rows.sort(key=lambda r: -r["avg_engagement"])
+    return rows
+
+
+def candidate_comment_reaction(session, days: int = 30, min_comments: int = 3) -> list[dict]:
+    """Cómo responde la ciudadanía a los posts PROPIOS de cada candidato/concejal (solo
+    comentarios dejados en su publicación, identificados por raw.account_candidate -- no
+    cualquier comentario que lo nombre de pasada)."""
+    since = _since(days)
+    rows = (session.query(Mention).join(SentimentScore).join(Source)
+            .filter(WHEN >= since, Source.type == SourceType.SOCIAL, Mention.relevant.is_(True)).all())
+    by_cand: dict[str, Counter] = defaultdict(Counter)
+    for m in rows:
+        raw = m.raw or {}
+        owner = raw.get("account_candidate")
+        if raw.get("kind") != "comment" or not owner:
+            continue
+        # Un comentario en el post de X que en realidad insulta o habla de Y queda atribuido a Y
+        # (pipeline.ingest() lo hace por texto, no por dueño de cuenta) -- no cuenta como reacción
+        # a X, aunque esté físicamente en su publicación.
+        if m.candidate.name != owner:
+            continue
+        by_cand[owner][m.sentiment.label] += 1
+    out = []
+    for cand, c in by_cand.items():
+        n = sum(c.values())
+        if n < min_comments:
+            continue
+        out.append({"candidate": cand, "comments": n,
+                    "positive_pct": pct(c.get(SentimentLabel.POSITIVE, 0), n),
+                    "neutral_pct": pct(c.get(SentimentLabel.NEUTRAL, 0), n),
+                    "negative_pct": pct(c.get(SentimentLabel.NEGATIVE, 0), n)})
+    out.sort(key=lambda r: -r["comments"])
+    return out
+
+
+def candidate_topic_gaps(session, candidate_name: str, days: int = 7, limit: int = 6) -> list[dict]:
+    """De las categorías de ciudad más mencionadas en el período, en cuáles este candidato no
+    aparece para NADA en sus propias menciones -- una categoría entera sin ninguna mención suya es
+    un hueco real de cobertura (usa la "category" fija del LLM, no el "topic" libre)."""
+    topics = city_topics(session, days=days)
+    candidate = session.query(Candidate).filter_by(name=candidate_name).first()
+    if not candidate:
+        return []
+    covered = {cat for (cat,) in (
+        session.query(SentimentScore.category).join(Mention)
+        .filter(Mention.candidate_id == candidate.id, Mention.relevant.is_(True), WHEN >= _since(days))
+        .distinct()
+    )}
+    gaps = [t for t in topics if t["category"] not in covered and t["category"] not in NOVEDADES_EXCLUDED_CATEGORIES]
+    return gaps[:limit]
+
+
 def sources_by_candidate(session, days: int = 30) -> dict:
     """Menciones relevantes por candidato y tipo de fuente (para la gráfica de canales)."""
     names = [c.name for c in session.query(Candidate).filter_by(active=True).filter(Candidate.kind == "candidate").all()]
@@ -518,15 +632,15 @@ def city_opportunities(session, days: int = 7, carlos_max: int = 2, min_count: i
     previous_counts = Counter({t: len(ms) for t, ms in _topic_rows(previous).items()})
 
     carlos = session.query(Candidate).filter_by(name=CARLOS).first()
-    carlos_by_topic: Counter = Counter()
+    carlos_mentions: list[Mention] = []
     carlos_by_cat: dict[str, Counter] = defaultdict(Counter)
     if carlos:
-        for m in (session.query(Mention).join(SentimentScore)
-                  .filter(Mention.candidate_id == carlos.id, Mention.relevant.is_(True), WHEN >= since)):
+        carlos_mentions = (session.query(Mention).join(SentimentScore)
+                           .filter(Mention.candidate_id == carlos.id, Mention.relevant.is_(True), WHEN >= since).all())
+        for m in carlos_mentions:
             carlos_by_cat[m.sentiment.category or "otro"][m.sentiment.label] += 1
-            t = (m.sentiment.topic or "").lower()
-            if t and t not in META_TOPICS:
-                carlos_by_topic[t] += 1
+    # Palabras de cada mención de Carlos, precalculadas una vez (no por cada tema que se evalúa).
+    carlos_keywords = mention_keywords(carlos_mentions)
 
     novedades = []
     for topic, ms in current_by_topic.items():
@@ -535,10 +649,12 @@ def city_opportunities(session, days: int = 7, carlos_max: int = 2, min_count: i
         trend = None if prev == 0 else round((count - prev) / prev * 100)
         is_new = prev == 0 and count >= min_count
         is_rising = trend is not None and trend >= min_trend_pct and count >= min_count
-        carlos_n = carlos_by_topic.get(topic, 0)
+        category = Counter(m.sentiment.category or "otro" for m in ms).most_common(1)[0][0]
+        if category in NOVEDADES_EXCLUDED_CATEGORIES:
+            continue
+        carlos_n = mentions_covering_topic(topic, carlos_keywords)
         if (is_new or is_rising) and carlos_n <= carlos_max:
             labels = Counter(m.sentiment.label for m in ms)
-            category = Counter(m.sentiment.category or "otro" for m in ms).most_common(1)[0][0]
             samples = sorted(ms, key=lambda m: -abs(m.sentiment.score))[:2]
             novedades.append({
                 "topic": topic, "category": category, "count": count, "is_new": is_new, "trend_pct": trend,

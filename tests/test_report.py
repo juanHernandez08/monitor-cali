@@ -1,6 +1,24 @@
 import datetime as dt
+import json
 
 from src.models import Candidate, Source, SourceType, Mention, SentimentScore, SentimentLabel
+
+
+class FakeNarrativeEngine:
+    def __init__(self, payload=None, raise_error=False):
+        self.payload = payload or {
+            "resumen_ejecutivo": "Resumen de prueba.",
+            "analisis": "Análisis de prueba.",
+            "estrategia": ["Acción 1", "Acción 2"],
+        }
+        self.raise_error = raise_error
+        self.prompts = []
+
+    def generate_text(self, prompt, max_tokens=1400):
+        self.prompts.append(prompt)
+        if self.raise_error:
+            raise RuntimeError("Ollama caído")
+        return json.dumps(self.payload)
 
 
 def _social_post(db_session, cand, src, ext, likes, comments, when_ago):
@@ -38,6 +56,53 @@ def test_build_report_includes_social_and_pending_sections(db_session):
     assert report["pending_review"]["total"] == 1
     assert report["pending_review"]["samples"][0]["text"].startswith("nota sin analizar")
     assert "city_topics" in report and "city_opportunities" in report
+    assert "reach_comparison" in report and "comment_reaction" in report and "topic_gaps" in report
+
+
+def test_build_report_without_engine_has_no_narrative(db_session):
+    from src.report import build_report
+    carlos = Candidate(name="Carlos Arias", aliases=[])
+    db_session.add(carlos)
+    db_session.commit()
+    report = build_report(db_session, date="2026-09-28")
+    assert report["narrative"] is None
+
+
+def test_build_report_with_engine_includes_narrative_grounded_in_real_numbers(db_session):
+    from src.report import build_report
+    carlos = Candidate(name="Carlos Arias", aliases=[])
+    clara = Candidate(name="Clara Luz Roldán", aliases=[])
+    social = Source(type=SourceType.SOCIAL, name="Instagram / Facebook (cuentas)")
+    db_session.add_all([carlos, clara, social])
+    db_session.commit()
+    _social_post(db_session, carlos, social, "p1", likes=20, comments=2, when_ago=1)
+    _social_post(db_session, carlos, social, "p2", likes=15, comments=1, when_ago=5)
+    _social_post(db_session, clara, social, "p3", likes=400, comments=50, when_ago=1)
+    _social_post(db_session, clara, social, "p4", likes=350, comments=40, when_ago=5)
+    db_session.commit()
+
+    engine = FakeNarrativeEngine()
+    report = build_report(db_session, date="2026-09-28", engine=engine)
+
+    assert report["narrative"] == {
+        "resumen_ejecutivo": "Resumen de prueba.",
+        "analisis": "Análisis de prueba.",
+        "estrategia": ["Acción 1", "Acción 2"],
+    }
+    # el prompt real que se le mandó al LLM debe tener las cifras calculadas, no solo pedirle que opine
+    assert "Clara Luz Roldán" in engine.prompts[0]
+    assert "Carlos Arias" in engine.prompts[0]
+    assert "alcance promedio" in engine.prompts[0]
+
+
+def test_narrative_generation_fails_gracefully_without_breaking_the_report(db_session):
+    from src.report import build_report
+    carlos = Candidate(name="Carlos Arias", aliases=[])
+    db_session.add(carlos)
+    db_session.commit()
+    report = build_report(db_session, date="2026-09-28", engine=FakeNarrativeEngine(raise_error=True))
+    assert report["narrative"] is None  # no revienta el resto del reporte
+    assert report["date"] == "2026-09-28"
 
 
 def test_generate_and_store_persists_and_is_idempotent_per_day(db_session):
@@ -47,11 +112,13 @@ def test_generate_and_store_persists_and_is_idempotent_per_day(db_session):
     db_session.add(carlos)
     db_session.commit()
 
-    r1 = generate_and_store(db_session, date="2026-09-28")
+    engine = FakeNarrativeEngine()
+    r1 = generate_and_store(db_session, date="2026-09-28", engine=engine)
     assert db_session.query(Report).count() == 1
-    r2 = generate_and_store(db_session, date="2026-09-28")
+    r2 = generate_and_store(db_session, date="2026-09-28", engine=engine)
     assert db_session.query(Report).count() == 1  # mismo día: actualiza, no duplica
     assert r1.id == r2.id
+    assert r2.data["narrative"]["resumen_ejecutivo"] == "Resumen de prueba."
 
 
 def test_report_to_pdf_bytes(db_session):
@@ -85,7 +152,17 @@ def test_report_to_pdf_with_real_city_topics_and_social_data(db_session):
     _social_post(db_session, carlos, social, "p1", likes=10, comments=2, when_ago=1)
     db_session.commit()
 
-    report = build_report(db_session, date="2026-09-28")
+    report = build_report(db_session, date="2026-09-28", engine=FakeNarrativeEngine())
     assert report["city_topics"][0]["category"] == "movilidad y transporte"
+    pdf_bytes = report_to_pdf(report)
+    assert pdf_bytes[:4] == b"%PDF"
+
+
+def test_report_to_pdf_without_narrative_still_works(db_session):
+    from src.report import build_report, report_to_pdf
+    carlos = Candidate(name="Carlos Arias", aliases=[])
+    db_session.add(carlos)
+    db_session.commit()
+    report = build_report(db_session, date="2026-09-28")  # sin engine -> narrative None
     pdf_bytes = report_to_pdf(report)
     assert pdf_bytes[:4] == b"%PDF"

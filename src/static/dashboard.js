@@ -622,12 +622,44 @@ async function showReport(date) {
   const r = await j(`/api/reports/${date}`);
   if (r.error) { $("#rep-body").innerHTML = `<div class="empty">${esc(r.error)}</div>`; return; }
   const k = r.social_kpis;
+  const n = r.narrative;
+  const reach = r.reach_comparison || [];
+  const reaction = r.comment_reaction || [];
+  const gaps = r.topic_gaps || [];
+  const trendRows = reach.filter((c) => c.trend_pct !== null);
+
   $("#rep-body").innerHTML = `
     <section class="kpis">
       <div class="kpi"><div class="label">Publicaciones (redes)</div><div class="value">${k.total_posts}</div><div class="foot">últimos ${r.social_window_days} días</div></div>
       <div class="kpi"><div class="label">Likes</div><div class="value">${fmtNum(k.total_likes)}</div></div>
       <div class="kpi"><div class="label">Comentarios</div><div class="value">${fmtNum(k.total_comments)}</div></div>
       <div class="kpi"><div class="label">Pendiente de análisis</div><div class="value ${r.pending_review.total ? "neg" : ""}">${r.pending_review.total}</div></div>
+    </section>
+    ${n ? `
+    <section class="intro panel">
+      <h2>Resumen ejecutivo</h2>
+      <p>${esc(n.resumen_ejecutivo)}</p>
+    </section>
+    <section class="panel">
+      <div class="panel-head"><h2>Por qué el alcance de Carlos es el que es</h2><span class="hint">análisis basado en las cifras de este corte, últimos ${r.comparison_window_days} días</span></div>
+      <p class="reading">${esc(n.analisis)}</p>
+    </section>` : `
+    <section class="intro panel">
+      <h2>Análisis narrativo no disponible en este corte</h2>
+      <p>El motor de análisis no respondió al generar este reporte. Las cifras y gráficas de abajo son reales e íntegras igual.</p>
+    </section>`}
+    <section class="panel">
+      <div class="panel-head"><div><h2>Alcance promedio por publicación</h2><div class="hint">likes + comentarios por publicación, candidatos y concejales con al menos 2 posts en ${r.comparison_window_days} días. Carlos en azul.</div></div></div>
+      <div class="chart-box" id="chart-rep-reach"></div>
+    </section>
+    ${trendRows.length ? `
+    <section class="panel">
+      <div class="panel-head"><div><h2>Tendencia de alcance</h2><div class="hint">variación entre la primera y la segunda mitad del período -- verde sube, rojo baja</div></div></div>
+      <div class="chart-box" id="chart-rep-trend"></div>
+    </section>` : ""}
+    <section class="panel">
+      <div class="panel-head"><div><h2>Reacción ciudadana en comentarios propios</h2><div class="hint">solo comentarios dejados en la publicación de cada quien, mínimo 3 comentarios</div></div></div>
+      <div class="chart-box" id="chart-rep-reaction"></div>
     </section>
     <section class="panel">
       <div class="panel-head"><h2>Publicaciones por candidato y concejal</h2><span class="hint">últimos ${r.social_window_days} días</span></div>
@@ -645,9 +677,18 @@ async function showReport(date) {
       <div class="chart-box" id="chart-rep-topics"></div>
     </section>
     <section class="panel alerts">
+      <div class="panel-head"><h2>Temas de ciudad de los que Carlos no ha hablado</h2><span class="hint">categorías con conversación real en la ciudad, sin ninguna publicación de Carlos</span></div>
+      <ul>${gaps.length ? gaps.map((g) => `<li><b>${cap(g.category)}</b>: ${g.count} menciones en la ciudad, 0 de Carlos</li>`).join("") : `<li class="empty">Carlos tiene al menos una mención en todas las categorías activas.</li>`}</ul>
+    </section>
+    <section class="panel alerts">
       <div class="panel-head"><h2>Novedades donde Carlos podría hablar</h2></div>
       <ul>${r.city_opportunities.novedades.length ? r.city_opportunities.novedades.map((t) => `<li><b>${cap(t.topic)}</b> <span class="hint">(${cap(t.category)})</span>: ${t.count} menciones · Carlos: ${t.carlos_mentions === 0 ? "sin presencia" : `${t.carlos_mentions} menciones`}</li>`).join("") : `<li class="empty">Sin novedades sin presencia de Carlos en el período.</li>`}</ul>
     </section>
+    ${n ? `
+    <section class="panel alerts">
+      <div class="panel-head"><h2>Estrategia recomendada</h2></div>
+      <ul>${n.estrategia.map((s) => `<li>${esc(s)}</li>`).join("") || `<li class="empty">Sin recomendaciones en este corte.</li>`}</ul>
+    </section>` : ""}
     <section class="panel">
       <div class="panel-head"><h2>Pendiente de análisis</h2><span class="hint">${r.pending_review.total} menciones totales sin clasificar aún, algunas de muestra abajo</span></div>
       <div class="feed">${r.pending_review.samples.length ? r.pending_review.samples.map((s) => `<article class="item">
@@ -662,6 +703,17 @@ async function showReport(date) {
   hbar("#chart-rep-candidates", byCand.map((c) => c.candidate), byCand.map((c) => c.count),
     byCand.map((c) => c.candidate === CARLOS ? BLUE : CARLOS_GRAY));
   hbar("#chart-rep-topics", r.city_topics.map((t) => cap(t.category)), r.city_topics.map((t) => t.count), BLUE);
+  hbar("#chart-rep-reach", reach.map((c) => c.candidate), reach.map((c) => c.avg_engagement),
+    reach.map((c) => c.candidate === CARLOS ? BLUE : CARLOS_GRAY));
+  if (trendRows.length) {
+    hbar("#chart-rep-trend", trendRows.map((c) => c.candidate), trendRows.map((c) => c.trend_pct),
+      trendRows.map((c) => c.trend_pct >= 0 ? GOOD : CRITICAL), { labelFmt: (v) => (v >= 0 ? "+" : "") + v + "%" });
+  }
+  const withReaction = reaction.filter((c) => c.comments > 0);
+  hbar100("#chart-rep-reaction", withReaction.map((c) => `${cap(c.candidate)} (${c.comments})`), [
+    { name: "Positivo", data: withReaction.map((c) => c.positive_pct) },
+    { name: "Neutral", data: withReaction.map((c) => c.neutral_pct) },
+    { name: "Negativo", data: withReaction.map((c) => c.negative_pct) }], [GOOD, NEUTRAL_TONE, CRITICAL]);
 }
 
 $("#rep-date")?.addEventListener("change", () => showReport($("#rep-date").value));

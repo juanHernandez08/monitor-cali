@@ -65,3 +65,20 @@ def test_build_engine_prefers_claude_when_key_present(monkeypatch):
 def test_build_engine_defaults_to_ollama(monkeypatch):
     monkeypatch.delenv("SENTIMENT_BACKEND", raising=False)
     assert isinstance(build_sentiment_engine(), OllamaSentimentEngine)
+
+
+def test_ollama_engine_generate_text_returns_raw_content_not_json_parsed(monkeypatch):
+    captured = {}
+
+    def fake_post(url, json_body, timeout):
+        captured["body"] = json_body
+        return {"message": {"content": "Texto libre de análisis, no JSON."}}
+
+    import src.sentiment as m
+    monkeypatch.setattr(m, "_ollama_post", fake_post)
+
+    text = OllamaSentimentEngine(model="qwen2.5:14b").generate_text("escribe un análisis", max_tokens=500)
+
+    assert text == "Texto libre de análisis, no JSON."
+    assert "format" not in captured["body"]  # no fuerza JSON, es texto libre
+    assert captured["body"]["messages"][0]["content"] == "escribe un análisis"

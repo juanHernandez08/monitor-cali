@@ -167,6 +167,71 @@ def test_city_opportunities_surfaces_new_or_rising_topics_regardless_of_tone(db_
     assert "baches" not in novedades  # sin crecimiento, no es novedad
 
 
+def test_city_opportunities_excludes_sports_topics_from_novedades(db_session):
+    """Feedback del cliente 2026-09-28: no sugerir que Carlos hable de partidos/equipos --
+    fomenta rivalidad entre hinchas en vez de ayudarlo. "deporte" nunca debe salir en novedades,
+    aunque sea un tema nuevo o en alza como cualquier otro."""
+    from src.queries import city_opportunities
+    city = Candidate(name=CITY_NAME, kind="city", aliases=[])
+    feed = Source(type=SourceType.RSS, name="Q'hubo", config={"feed_url": "x", "city": True})
+    db_session.add_all([city, feed])
+    db_session.commit()
+    now = dt.datetime.utcnow()
+    rows = [
+        (city, "a", "Santa Fe vs Cali termina en polémica", "deporte", "santa fe vs cali", "negative", -0.3, 1),
+        (city, "b", "Hinchas celebran el triunfo", "deporte", "santa fe vs cali", "positive", 0.5, 1),
+        (city, "c", "Análisis del partido", "deporte", "santa fe vs cali", "neutral", 0.0, 1),
+    ]
+    for cand, ext, text, cat, topic, label, score, ago in rows:
+        when = now - dt.timedelta(days=ago)
+        m = Mention(candidate_id=cand.id, source_id=feed.id, external_id=ext, text=text, url=f"https://x/{ext}",
+                    raw={}, author="u", published_at=when, fetched_at=when)
+        db_session.add(m)
+        db_session.flush()
+        db_session.add(SentimentScore(mention_id=m.id, label=SentimentLabel(label), score=score, topic=topic, model="f", category=cat))
+    db_session.commit()
+
+    o = city_opportunities(db_session, days=7)
+    assert "santa fe vs cali" not in {x["topic"] for x in o["novedades"]}
+
+
+def test_city_opportunities_recognizes_carlos_presence_by_keywords_when_his_own_topic_label_differs(db_session):
+    """Bug real (2026-09-28): un post de Carlos sobre la Operación Iron quedó clasificado con
+    topic "seguridad" (demasiado genérico), no "Operación Iron" -- el emparejamiento por topic
+    EXACTO nunca lo veía, así que la ciudad mostraba "Carlos: sin presencia" en un tema del que sí
+    había hablado, con el texto completo nombrándolo. Ahora también se busca por palabras del
+    tema dentro del texto/topic de sus menciones."""
+    from src.queries import city_opportunities
+    city = Candidate(name=CITY_NAME, kind="city", aliases=[])
+    carlos = Candidate(name="Carlos Arias", aliases=[])
+    feed = Source(type=SourceType.RSS, name="Q'hubo", config={"feed_url": "x", "city": True})
+    social = Source(type=SourceType.SOCIAL, name="Instagram / Facebook (cuentas)")
+    db_session.add_all([city, carlos, feed, social])
+    db_session.commit()
+    now = dt.datetime.utcnow()
+    rows = [
+        (city, feed, "a", "Operación Iron captura a varios", "seguridad", "Operación Iron", "positive", 0.3, 1),
+        (city, feed, "b", "Operación Iron se extiende", "seguridad", "Operación Iron", "positive", 0.4, 1),
+        (city, feed, "c", "Balance de la Operación Iron", "seguridad", "Operación Iron", "neutral", 0.0, 1),
+        (carlos, social, "d", "La seguridad se recupera con decisión. La Operación IRON marca un paso importante.",
+         "seguridad", "seguridad", "positive", 0.6, 1),
+    ]
+    for cand, src, ext, text, cat, topic, label, score, ago in rows:
+        when = now - dt.timedelta(days=ago)
+        m = Mention(candidate_id=cand.id, source_id=src.id, external_id=ext, text=text, url=f"https://x/{ext}",
+                    raw={}, author="u", published_at=when, fetched_at=when)
+        db_session.add(m)
+        db_session.flush()
+        db_session.add(SentimentScore(mention_id=m.id, label=SentimentLabel(label), score=score, topic=topic, model="f", category=cat))
+    db_session.commit()
+
+    # Con el emparejamiento exacto anterior, carlos_mentions daba 0 aquí (el topic de Carlos era
+    # "seguridad", no "Operación Iron") y el tema entraba a novedades como si él no hubiera
+    # hablado. Con carlos_max=0 debe quedar afuera, porque su presencia real ahora sí se cuenta.
+    o = city_opportunities(db_session, days=7, carlos_max=0)
+    assert "operación iron" not in {x["topic"] for x in o["novedades"]}
+
+
 def test_city_kpis(db_session):
     from src.queries import city_kpis
     _seed_city(db_session)

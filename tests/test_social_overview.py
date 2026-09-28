@@ -161,4 +161,100 @@ def test_social_candidates_lists_race_candidates_and_councilors_not_city(db_sess
 
     names = {r["name"] for r in social_candidates(db_session)}
     assert names == {"Carlos Arias", "Clara Luz Roldán", "Audry María Toro Echavarría"}
-    assert "Cali (ciudad)" not in names
+
+
+def test_candidate_reach_comparison_ranks_by_average_engagement_and_shows_trend(db_session):
+    from src.queries import candidate_reach_comparison
+    carlos = Candidate(name="Carlos Arias", party="U", aliases=[])
+    clara = Candidate(name="Clara Luz Roldán", party="U", aliases=[])
+    ig = Source(type=SourceType.SOCIAL, name="Instagram / Facebook (cuentas)")
+    db_session.add_all([carlos, clara, ig])
+    db_session.commit()
+    now = dt.datetime.utcnow()
+
+    def _post(cand, ext, likes, comments, when_ago):
+        m = Mention(candidate_id=cand.id, source_id=ig.id, external_id=ext, text=ext,
+                    url=f"https://x/{ext}", raw={"kind": "post", "platform": "instagram",
+                                                 "num_comments": comments, "record": {"likesCount": likes}},
+                    published_at=now - dt.timedelta(days=when_ago), fetched_at=now)
+        db_session.add(m)
+        db_session.flush()
+        db_session.add(SentimentScore(mention_id=m.id, label=SentimentLabel.POSITIVE, score=0.5, topic="t", model="f"))
+
+    # Carlos: alcance bajo y estable (empeorando levemente en la mitad reciente del período).
+    _post(carlos, "c1", likes=45, comments=5, when_ago=25)
+    _post(carlos, "c2", likes=55, comments=5, when_ago=20)
+    _post(carlos, "c3", likes=30, comments=5, when_ago=5)
+    _post(carlos, "c4", likes=20, comments=5, when_ago=2)
+    # Clara: alcance mucho más alto y creciendo.
+    _post(clara, "d1", likes=200, comments=20, when_ago=25)
+    _post(clara, "d2", likes=250, comments=20, when_ago=20)
+    _post(clara, "d3", likes=600, comments=50, when_ago=5)
+    _post(clara, "d4", likes=700, comments=50, when_ago=2)
+    db_session.commit()
+
+    rows = {r["candidate"]: r for r in candidate_reach_comparison(db_session, days=30)}
+    assert rows["Clara Luz Roldán"]["avg_engagement"] > rows["Carlos Arias"]["avg_engagement"]
+    assert rows["Clara Luz Roldán"]["trend_pct"] > 0  # va en alza
+    assert rows["Carlos Arias"]["trend_pct"] < 0  # va en baja
+    ranked = candidate_reach_comparison(db_session, days=30)
+    assert ranked[0]["candidate"] == "Clara Luz Roldán"  # ordenado por alcance promedio, de mayor a menor
+
+
+def test_candidate_comment_reaction_only_counts_comments_on_the_candidates_own_post(db_session):
+    from src.queries import candidate_comment_reaction
+    carlos = Candidate(name="Carlos Arias", party="U", aliases=[])
+    mondragon = Candidate(name="Alfredo Mondragón", party="Pacto Histórico", aliases=[])
+    ig = Source(type=SourceType.SOCIAL, name="Instagram / Facebook (cuentas)")
+    db_session.add_all([carlos, mondragon, ig])
+    db_session.commit()
+    now = dt.datetime.utcnow()
+
+    def _comment(ext, text, label, owner, target_candidate):
+        m = Mention(candidate_id=target_candidate.id, source_id=ig.id, external_id=ext, text=text,
+                    url="https://x/post", raw={"kind": "comment", "platform": "instagram", "account_candidate": owner},
+                    published_at=now - dt.timedelta(days=1), fetched_at=now)
+        db_session.add(m)
+        db_session.flush()
+        db_session.add(SentimentScore(mention_id=m.id, label=SentimentLabel(label), score=0.0, topic="t", model="f"))
+
+    # 3 comentarios en la publicación PROPIA de Carlos: 2 positivos, 1 negativo.
+    _comment("m1", "bien", "positive", "Carlos Arias", carlos)
+    _comment("m2", "bien2", "positive", "Carlos Arias", carlos)
+    _comment("m3", "mal", "negative", "Carlos Arias", carlos)
+    # Un insulto a Mondragón EN esa misma publicación de Carlos: no debe contar para Carlos.
+    _comment("m4", "Mondragón es un ladrón", "negative", "Carlos Arias", mondragon)
+    db_session.commit()
+
+    rows = {r["candidate"]: r for r in candidate_comment_reaction(db_session, days=30, min_comments=1)}
+    assert rows["Carlos Arias"]["comments"] == 3
+    assert rows["Carlos Arias"]["positive_pct"] == 67
+    assert "Alfredo Mondragón" not in rows  # el insulto fue en el post de Carlos, no en uno propio de Mondragón
+
+
+def test_candidate_topic_gaps_lists_categories_the_candidate_never_touched(db_session):
+    from src.queries import candidate_topic_gaps
+    city = Candidate(name="Cali (ciudad)", kind="city", aliases=[])
+    carlos = Candidate(name="Carlos Arias", aliases=[])
+    feed = Source(type=SourceType.RSS, name="Q'hubo", config={"feed_url": "x", "city": True})
+    db_session.add_all([city, carlos, feed])
+    db_session.commit()
+    now = dt.datetime.utcnow()
+
+    def _m(cand, ext, text, cat, label="neutral", score=0.0):
+        m = Mention(candidate_id=cand.id, source_id=feed.id, external_id=ext, text=text, url=f"https://x/{ext}",
+                    raw={}, published_at=now - dt.timedelta(days=1), fetched_at=now)
+        db_session.add(m)
+        db_session.flush()
+        db_session.add(SentimentScore(mention_id=m.id, label=SentimentLabel(label), score=score, topic="t", model="f", category=cat))
+
+    _m(city, "a", "hueco en la via", "movilidad y transporte")
+    _m(city, "b", "otro hueco", "movilidad y transporte")
+    _m(city, "c", "fuga de agua", "servicios públicos")
+    _m(carlos, "d", "Carlos habla de seguridad", "seguridad")  # Carlos sí tocó seguridad
+    db_session.commit()
+
+    gaps = {g["category"] for g in candidate_topic_gaps(db_session, "Carlos Arias", days=7)}
+    assert "movilidad y transporte" in gaps
+    assert "servicios públicos" in gaps
+    assert "seguridad" not in gaps  # ya lo tocó

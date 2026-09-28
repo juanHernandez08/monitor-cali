@@ -76,6 +76,16 @@ def test_sentiment_engine_emotion_defaults_when_absent():
     assert result.emotion == "sin emoción marcada"
 
 
+def test_sentiment_engine_generate_text_returns_raw_text_not_json_parsed():
+    class FakeTextClient:
+        def __init__(self, text):
+            self.messages = SimpleNamespace(create=lambda **kw: SimpleNamespace(
+                content=[SimpleNamespace(type="text", text=text)]))
+
+    engine = SentimentEngine(client=FakeTextClient("Análisis libre, no estructura JSON."))
+    assert engine.generate_text("escribe un análisis") == "Análisis libre, no estructura JSON."
+
+
 def test_sentiment_engine_retired_emotions_fall_back_to_no_emotion():
     # "sorpresa" y "anticipación" se retiraron de la lista (2026-09-28, pedido del cliente:
     # "anticipación no es una emoción como tal", y ambas casi nunca se usaban en la práctica).

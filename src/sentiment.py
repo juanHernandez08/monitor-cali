@@ -131,6 +131,18 @@ class SentimentEngine:
                 return _parse_payload(block.text, self.model)
         raise ValueError("La respuesta de Claude no contiene un bloque de texto")
 
+    def generate_text(self, prompt: str, max_tokens: int = 1400) -> str:
+        """Texto libre (no la clasificación JSON de score()) -- para el análisis narrativo del
+        reporte diario, que necesita redactar, no clasificar."""
+        response = self.client.messages.create(
+            model=self.model, max_tokens=max_tokens,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        for block in response.content:
+            if getattr(block, "type", "text") == "text":
+                return block.text.strip()
+        raise ValueError("La respuesta de Claude no contiene un bloque de texto")
+
 
 def _ollama_post(url: str, json_body: dict, timeout: int) -> dict:
     req = urllib.request.Request(url, data=json.dumps(json_body).encode(),
@@ -157,6 +169,18 @@ class OllamaSentimentEngine:
             "messages": [{"role": "user", "content": _prompt(text, candidate, city)}],
         }, timeout=self.timeout)
         return _parse_payload(data["message"]["content"], f"ollama/{self.model}")
+
+    def generate_text(self, prompt: str, max_tokens: int = 1400) -> str:
+        """Texto libre (no la clasificación JSON de score()) -- para el análisis narrativo del
+        reporte diario, que necesita redactar, no clasificar."""
+        options = {"temperature": 0.3}
+        if config.OLLAMA_NUM_GPU is not None:
+            options["num_gpu"] = config.OLLAMA_NUM_GPU
+        data = _ollama_post(f"{self.base_url}/api/chat", {
+            "model": self.model, "stream": False, "options": options,
+            "messages": [{"role": "user", "content": prompt}],
+        }, timeout=self.timeout)
+        return data["message"]["content"].strip()
 
 
 def build_sentiment_engine():

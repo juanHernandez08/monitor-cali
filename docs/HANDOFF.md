@@ -16,7 +16,7 @@ salvo Apify (presupuesto aprobado: hasta 200.000 COP/mes, 2026-09-28).
 - Windows: `.\scripts\demo.ps1` · macOS: `bash scripts/demo.sh` → Ollama + servidor en :8000 +
   túnel público de cloudflared (la URL cambia en cada arranque).
 - Solo servidor: `python -m uvicorn src.api:app --host 0.0.0.0 --port 8000`.
-- Tests: `python -m pytest -q` (172 al escribir esto). El proyecto se construye con TDD: test
+- Tests: `python -m pytest -q` (183 al escribir esto). El proyecto se construye con TDD: test
   antes que el cambio de comportamiento.
 - `.env` (no está en git) trae `GOOGLE_API_KEY`, `APIFY_TOKEN`, `OLLAMA_MODEL`. `BRIGHTDATA_API_TOKEN`
   ya no se usa (créditos agotados 2026-09-25) pero el conector queda de respaldo si se recupera.
@@ -248,6 +248,40 @@ candidato de esa pestaña ahora sale de `/api/social/candidates`, no de la lista
   no `"topic"` -- el PDF tiraba `KeyError` en cuanto había datos de ciudad reales. Corregido en
   `report.py` y en `dashboard.js`; se agregó `tests/test_report.py::test_report_to_pdf_with_real_city_topics_and_social_data`
   para que no vuelva a pasar sin que un test lo note.
+- **Reporte rehecho como análisis de datos, no solo cifras (2026-09-28, mismo día)**: el cliente
+  mandó feedback duro con un documento de referencia ("muy mal hecho, muy pobre") pidiendo un
+  analista de verdad: por qué el alcance de Carlos es el que es frente a sus rivales, y una
+  estrategia basada en eso. Se agregó:
+  - `queries.candidate_reach_comparison()`: alcance promedio por publicación, ritmo semanal y
+    tendencia (primera vs. segunda mitad del período) por candidato/concejal.
+  - `queries.candidate_comment_reaction()`: % positivo/neutral/negativo de los comentarios en la
+    publicación PROPIA de cada quien (no cualquier comentario que lo nombre de pasada -- exige que
+    `Mention.candidate` coincida con `raw.account_candidate`, si no un insulto a un tercero dejado
+    en el post de X se contaba como reacción a X).
+  - `queries.candidate_topic_gaps()`: categorías de ciudad con volumen real donde el candidato no
+    tiene NINGUNA mención propia -- usa la `category` fija del LLM, exacta, no el `topic` libre.
+  - `sentiment.py`: nuevo método `generate_text(prompt)` en ambos motores (Claude/Ollama) -- texto
+    libre, no la clasificación JSON de `score()`. Se usa una sola vez por reporte para redactar
+    "resumen ejecutivo", "por qué" y "estrategia" **a partir de las cifras ya calculadas arriba**
+    (nunca le pasamos texto libre de menciones: el prompt (`report.ANALYST_PROMPT`) le prohíbe
+    inventar hechos que no estén en los números dados, y si el LLM falla el reporte se genera
+    igual, solo sin esa sección). Probado en producción real (2026-09-28): detectó que Carlos
+    tiene 100% de comentarios positivos en sus propias publicaciones (67 de 67) -- señal real de
+    audiencia autoseleccionada, exactamente el tipo de hallazgo que pedía el cliente.
+  - Dos bugs reales de `city_opportunities()` corregidos con TDD en el mismo commit:
+    1. **Nunca sugerir equipos deportivos**: `NOVEDADES_EXCLUDED_CATEGORIES = {"deporte"}` -- el
+       cliente fue explícito: recomendar que Carlos hable de un partido/equipo fomenta rivalidad
+       entre hinchas en vez de ayudarlo.
+    2. **"Carlos: sin presencia" en temas de los que sí había hablado**: el emparejamiento era por
+       `topic` EXACTO entre la mención de ciudad y la de Carlos, pero el LLM no siempre etiqueta
+       igual el mismo asunto real (un post de Carlos sobre la Operación Iron quedó con topic
+       "seguridad", no "Operación Iron"). Ahora `queries.mentions_covering_topic()` compara
+       palabras distintivas del texto/topic, no el string exacto -- confirmado con datos reales:
+       antes daba "Carlos: sin presencia" en Operación Iron, ahora "Carlos: 1 menciones".
+  - Pestaña Reporte y PDF ampliados con las gráficas nuevas: alcance promedio por candidato,
+    tendencia (verde/rojo), reacción ciudadana (barras 100% apiladas), y las listas "temas que
+    Carlos no ha tocado" y "estrategia recomendada". Verificado en vivo contra datos reales del
+    2026-09-28 (navegador + PDF descargado), no solo con los tests.
 
 ## Trabajar en dos máquinas
 
