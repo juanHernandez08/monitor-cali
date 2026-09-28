@@ -217,16 +217,22 @@ def _day_bounds(day: str) -> tuple[dt.datetime, dt.datetime]:
 
 def feed(session, candidate_id: int | None = None, source_type: str | None = None,
          label: str | None = None, emotion: str | None = None, category: str | None = None,
-         days: int = 30, limit: int = 100, offset: int = 0, day: str | None = None) -> list[dict]:
+         city: bool = False, days: int = 30, limit: int = 100, offset: int = 0, day: str | None = None) -> list[dict]:
     """Filas = publicaciones (post, video, nota); los comentarios cuelgan de su publicación.
 
     Los filtros se aplican a las menciones; una publicación aparece si ella o alguno de sus
     comentarios pasa el filtro. Comentarios sin publicación guardada forman una fila sintética
-    (kind="comments") con el título del video/post.
+    (kind="comments") con el título del video/post. `city=True` trae solo lo que no nombra a
+    ningún candidato (la conversación general de Cali), igual que la pestaña Ciudad.
     """
     q = (session.query(Mention).outerjoin(SentimentScore).join(Source).join(Candidate)
          .filter(WHEN >= _since(days), Mention.relevant.is_(True)))
-    q = q.filter(Mention.candidate_id == candidate_id) if candidate_id else q.filter(Candidate.kind == "candidate")
+    if city:
+        q = q.filter(Candidate.kind == "city")
+    elif candidate_id:
+        q = q.filter(Mention.candidate_id == candidate_id)
+    else:
+        q = q.filter(Candidate.kind == "candidate")
     if source_type:
         q = q.filter(Source.type == SourceType(source_type))
     if day:
@@ -433,6 +439,20 @@ def city_emotions(session, days: int = 7, samples_per: int = 2) -> list[dict]:
         samples = sorted(pool, key=lambda m: -abs(m.sentiment.score))[:samples_per]
         rows.append({"emotion": emotion, "count": len(ms), "samples": [_mention_dict(m) for m in samples]})
     rows.sort(key=lambda r: -r["count"])
+    return rows
+
+
+def city_emotion_by_topic(session, days: int = 7) -> list[dict]:
+    """Cruce tema x emoción: para cada categoría, cuántas menciones de cada emoción -- para el
+    mapa de calor "qué emoción transmite cada tema" (pedido del cliente 2026-09-26)."""
+    current = _city_rows(session, _since(days))
+    by_cat: dict[str, Counter] = defaultdict(Counter)
+    for m in current:
+        cat = m.sentiment.category or "otro"
+        emo = m.sentiment.emotion or "sin emoción marcada"
+        by_cat[cat][emo] += 1
+    rows = [{"category": cat, "emotions": dict(counter), "total": sum(counter.values())} for cat, counter in by_cat.items()]
+    rows.sort(key=lambda r: -r["total"])
     return rows
 
 

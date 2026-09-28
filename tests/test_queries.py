@@ -176,6 +176,62 @@ def test_feed_category_filter_keeps_publication_with_matching_comments(db_sessio
     assert [x["text"] for x in rows[0]["comments"]] == ["sobre seguridad"]
 
 
+def test_feed_city_true_shows_only_city_mentions_not_candidates(db_session):
+    """Pedido del cliente 2026-09-26: la pestaña Ciudad estaba "muy estática" -- solo mostraba
+    resúmenes agregados. Necesita el mismo feed de publicaciones que Publicaciones, pero de todo
+    lo que pasa en Cali (prensa/IG/FB/X que no nombra a ningún candidato en particular)."""
+    from src.queries import feed
+    from src.pipeline import CITY_NAME
+    city = Candidate(name=CITY_NAME, kind="city", aliases=[])
+    carlos = Candidate(name="Carlos Arias", aliases=[])
+    gn = Source(type=SourceType.GOOGLE_NEWS, name="Google News")
+    db_session.add_all([city, carlos, gn])
+    db_session.commit()
+    now = dt.datetime.utcnow()
+    city_m = Mention(candidate_id=city.id, source_id=gn.id, external_id="a", text="Cortes de agua en Cali",
+                     url="https://x/a", raw={}, published_at=now, fetched_at=now)
+    cand_m = Mention(candidate_id=carlos.id, source_id=gn.id, external_id="b", text="Carlos Arias pide plan",
+                     url="https://x/b", raw={}, published_at=now, fetched_at=now)
+    db_session.add_all([city_m, cand_m])
+    db_session.flush()
+    db_session.add_all([
+        SentimentScore(mention_id=city_m.id, label=SentimentLabel.NEGATIVE, score=-0.5, topic="agua", model="f", category="servicios públicos"),
+        SentimentScore(mention_id=cand_m.id, label=SentimentLabel.POSITIVE, score=0.5, topic="plan", model="f", category="otro")])
+    db_session.commit()
+
+    rows = feed(db_session, days=7, city=True)
+    assert [r["text"] for r in rows] == ["Cortes de agua en Cali"]
+
+
+def test_city_emotion_by_topic_cross_tab(db_session):
+    from src.queries import city_emotion_by_topic
+    from src.pipeline import CITY_NAME
+    city = Candidate(name=CITY_NAME, kind="city", aliases=[])
+    gn = Source(type=SourceType.GOOGLE_NEWS, name="Google News")
+    db_session.add_all([city, gn])
+    db_session.commit()
+    now = dt.datetime.utcnow()
+    rows_data = [
+        ("a", "servicios públicos", "ira"), ("b", "servicios públicos", "ira"),
+        ("c", "servicios públicos", "miedo"), ("d", "deporte", "alegría"),
+    ]
+    for ext, cat, emo in rows_data:
+        m = Mention(candidate_id=city.id, source_id=gn.id, external_id=ext, text=ext, url=f"https://x/{ext}",
+                    raw={}, published_at=now, fetched_at=now)
+        db_session.add(m)
+        db_session.flush()
+        db_session.add(SentimentScore(mention_id=m.id, label=SentimentLabel.NEGATIVE, score=-0.3, topic="t",
+                                      model="f", category=cat, emotion=emo))
+    db_session.commit()
+
+    rows = city_emotion_by_topic(db_session, days=7)
+    sp = next(r for r in rows if r["category"] == "servicios públicos")
+    assert sp["emotions"] == {"ira": 2, "miedo": 1}
+    assert sp["total"] == 3
+    deporte = next(r for r in rows if r["category"] == "deporte")
+    assert deporte["emotions"] == {"alegría": 1}
+
+
 def test_summary_includes_avatar_from_instagram_posts(db_session, monkeypatch):
     from src import queries
     monkeypatch.setattr(queries.config, "SOCIAL_ACCOUNTS", [

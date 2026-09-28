@@ -288,6 +288,11 @@
     </section>
 
     <section class="panel big">
+      <div class="panel-head"><div><h2>¿Qué emoción transmite cada tema?</h2><div class="hint">Cruce tema × emoción: dentro de cada tema, qué tan presente está cada emoción. Más oscuro = más menciones.</div></div></div>
+      <div class="chart-box xl"><div id="chart-city-heatmap"></div></div>
+    </section>
+
+    <section class="panel big">
       <div class="panel-head"><div><h2>Oportunidades para Carlos Arias</h2><div class="hint">Temas nuevos o en fuerte alza en la ciudad (sea cual sea su tono) donde Carlos aún no tiene presencia, y temas donde ya suma.</div></div></div>
       <div class="grid2" id="city-opps"></div>
     </section>
@@ -295,6 +300,62 @@
     <section class="panel big">
       <div class="panel-head"><div><h2>Detalle por tema</h2><div class="hint">Toca un tema para ver sus subtemas y comentarios ciudadanos representativos, con link al original.</div></div></div>
       <div id="city-detail" class="feed"></div>
+    </section>
+
+    <section class="panel feed-panel">
+      <div class="feed-head">
+        <div><h2>Todo lo que pasa en Cali</h2><span class="hint">cada publicación de prensa, Instagram, Facebook y X que no nombra a ningún candidato — con su sentimiento, el de sus comentarios, el tema y la emoción</span></div>
+        <div class="filters">
+          <select id="city-f-source">
+            <option value="">Todas las fuentes</option>
+            <option value="google_news">Prensa (Google News)</option>
+            <option value="rss">Prensa (RSS)</option>
+            <option value="reddit">Reddit</option>
+            <option value="youtube">YouTube</option>
+            <option value="social">Instagram / Facebook / X</option>
+          </select>
+          <select id="city-f-label">
+            <option value="">Todo sentimiento</option>
+            <option value="negative">Negativo</option>
+            <option value="neutral">Neutral</option>
+            <option value="positive">Positivo</option>
+          </select>
+          <select id="city-f-emotion">
+            <option value="">Toda emoción</option>
+            <option value="alegría">Alegría</option>
+            <option value="confianza">Confianza</option>
+            <option value="miedo">Miedo</option>
+            <option value="sorpresa">Sorpresa</option>
+            <option value="tristeza">Tristeza</option>
+            <option value="asco">Asco / repulsión</option>
+            <option value="ira">Ira</option>
+            <option value="anticipación">Anticipación</option>
+            <option value="orgullo">Orgullo</option>
+            <option value="sin emoción marcada">Sin emoción marcada</option>
+          </select>
+          <select id="city-f-category">
+            <option value="">Todos los temas</option>
+            <option value="seguridad">Seguridad</option>
+            <option value="movilidad y transporte">Movilidad y transporte</option>
+            <option value="terremoto y reconstrucción">Terremoto y reconstrucción</option>
+            <option value="servicios públicos">Servicios públicos</option>
+            <option value="salud">Salud</option>
+            <option value="educación">Educación</option>
+            <option value="empleo y economía">Empleo y economía</option>
+            <option value="vivienda">Vivienda</option>
+            <option value="medio ambiente y clima">Medio ambiente y clima</option>
+            <option value="cultura y eventos">Cultura y eventos</option>
+            <option value="deporte">Deporte</option>
+            <option value="corrupción y gobierno">Corrupción y gobierno</option>
+            <option value="política y elecciones">Política y elecciones</option>
+            <option value="orden público y protestas">Orden público y protestas</option>
+            <option value="infraestructura y obras">Infraestructura y obras</option>
+            <option value="animales">Animales</option>
+            <option value="otro">Otro</option>
+          </select>
+        </div>
+      </div>
+      <div id="city-feed" class="feed"></div>
     </section>
   </div>
 

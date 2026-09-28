@@ -76,11 +76,12 @@ def create_app(session_factory=None, start_jobs: bool = True) -> FastAPI:
     @app.get("/api/feed")
     def api_feed(candidate_id: int | None = None, source_type: str | None = None,
                  label: str | None = None, emotion: str | None = None, category: str | None = None,
-                 days: int = Query(30, ge=1, le=365), limit: int = Query(60, le=300), offset: int = 0,
-                 day: str | None = None):
+                 city: bool = False, days: int = Query(30, ge=1, le=365), limit: int = Query(60, le=300),
+                 offset: int = 0, day: str | None = None):
         with session() as s:
             return queries.feed(s, candidate_id=candidate_id, source_type=source_type, label=label,
-                                emotion=emotion, category=category, days=days, limit=limit, offset=offset, day=day)
+                                emotion=emotion, category=category, city=city, days=days, limit=limit,
+                                offset=offset, day=day)
 
     @app.get("/api/timeline/details")
     def api_timeline_details(days: int = Query(7, ge=1, le=365)):
@@ -127,6 +128,11 @@ def create_app(session_factory=None, start_jobs: bool = True) -> FastAPI:
     def api_city_emotions(days: int = Query(7, ge=1, le=365)):
         with session() as s:
             return queries.city_emotions(s, days=days, samples_per=3)
+
+    @app.get("/api/city/emotion-by-topic")
+    def api_city_emotion_by_topic(days: int = Query(7, ge=1, le=365)):
+        with session() as s:
+            return queries.city_emotion_by_topic(s, days=days)
 
     @app.get("/api/city/opportunities")
     def api_city_opportunities(days: int = Query(7, ge=1, le=365)):

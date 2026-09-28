@@ -554,7 +554,7 @@ async function loadAll() {
   const rows = await loadSummary();
   loadQuadrant(rows);
   loadCandidatesTab(rows);
-  await Promise.all([loadTimeline(rows), loadSources(), loadTopics(), loadAlerts(), loadFeed(), loadMeta(), loadStatus(), loadCity(), loadHistorico(), loadInstitutionalHistory(), loadAgenda(), (typeof loadCouncil === "function" ? loadCouncil() : null)]);
+  await Promise.all([loadTimeline(rows), loadSources(), loadTopics(), loadAlerts(), loadFeed(), loadMeta(), loadStatus(), loadCity(), loadCityFeed(), loadHistorico(), loadInstitutionalHistory(), loadAgenda(), (typeof loadCouncil === "function" ? loadCouncil() : null)]);
 }
 
 document.querySelectorAll(".side-nav .tab").forEach((b) => b.addEventListener("click", () => {
@@ -575,6 +575,7 @@ document.addEventListener("click", (e) => {
 $("#days").addEventListener("change", loadAll);
 ["#f-candidate", "#f-source", "#f-label", "#f-emotion", "#f-category"].forEach((id) => $(id).addEventListener("change", loadFeed));
 ["#meta-f-candidate", "#meta-f-platform", "#meta-f-sort"].forEach((id) => $(id).addEventListener("change", loadMeta));
+["#city-f-source", "#city-f-label", "#city-f-emotion", "#city-f-category"].forEach((id) => $(id).addEventListener("change", loadCityFeed));
 $("#refresh").addEventListener("click", async () => {
   const b = $("#refresh"); b.disabled = true; b.textContent = "Actualizando…";
   const clickedAt = Date.now();
@@ -600,12 +601,14 @@ function cap(s) { return s ? s[0].toUpperCase() + s.slice(1) : s; }
 
 const EMOTION_COLOR = { "alegría": GOOD, "confianza": AQUA, "miedo": VIOLET, "sorpresa": YELLOW, "tristeza": BLUE,
   "asco": ORANGE, "ira": CRITICAL, "anticipación": MAGENTA, "orgullo": GREEN, "sin emoción marcada": NEUTRAL_TONE };
+const EMOTIONS_ORDER = ["alegría", "confianza", "miedo", "sorpresa", "tristeza", "asco", "ira", "anticipación", "orgullo", "sin emoción marcada"];
 
 async function loadCity() {
   if (!$("#city-kpis")) return;
   const d = days();
-  const [topics, opps, kpis, emotions] = await Promise.all([
-    j(`/api/city/topics?days=${d}`), j(`/api/city/opportunities?days=${d}`), j(`/api/city/kpis?days=${d}`), j(`/api/city/emotions?days=${d}`)]);
+  const [topics, opps, kpis, emotions, emoByTopic] = await Promise.all([
+    j(`/api/city/topics?days=${d}`), j(`/api/city/opportunities?days=${d}`), j(`/api/city/kpis?days=${d}`), j(`/api/city/emotions?days=${d}`),
+    j(`/api/city/emotion-by-topic?days=${d}`)]);
   const topEmotion = emotions.find((e) => e.emotion !== "sin emoción marcada") || emotions[0];
 
   $("#city-kpis").innerHTML = `
@@ -642,6 +645,30 @@ async function loadCity() {
   const normalized = topics.map((t) => ({ topic: cap(t.category), count: t.count, positive: t.positive, neutral: t.neutral,
     negative: t.negative, positive_pct: pct(t.positive, t.count), sources: t.sources, samples: t.samples, subtopics: t.subtopics }));
   renderTopicCards("#city-detail", null, normalized, "city-t", 6);
+
+  if ($("#chart-city-heatmap")) {
+    const rows = emoByTopic.slice(0, 12);
+    chart("#chart-city-heatmap", {
+      chart: { type: "heatmap", height: Math.max(220, rows.length * 34) },
+      series: rows.map((r) => ({ name: cap(r.category), data: EMOTIONS_ORDER.map((e) => ({ x: cap(e), y: r.emotions[e] || 0 })) })),
+      colors: [BLUE],
+      plotOptions: { heatmap: { colorScale: { ranges: [{ from: 0, to: 0, color: GRID }] } } },
+      dataLabels: { enabled: true, style: { colors: [INK] } },
+      xaxis: { labels: { style: { colors: MUTED } } },
+      legend: { show: false },
+    });
+  }
+}
+
+/* ---------- Ciudad: feed completo de todo lo que pasa en Cali ---------- */
+async function loadCityFeed() {
+  if (!$("#city-feed")) return;
+  const p = new URLSearchParams({ days: days(), limit: 80, city: true });
+  if ($("#city-f-source").value) p.set("source_type", $("#city-f-source").value);
+  if ($("#city-f-label").value) p.set("label", $("#city-f-label").value);
+  if ($("#city-f-emotion").value) p.set("emotion", $("#city-f-emotion").value);
+  if ($("#city-f-category").value) p.set("category", $("#city-f-category").value);
+  renderFeedList("#city-feed", await j(`/api/feed?${p}`), { showCandidate: false });
 }
 
 /* ---------- Histórico: período actual vs. período anterior ---------- */

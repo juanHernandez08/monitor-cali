@@ -15,7 +15,7 @@ web de 8 pestañas. Corre sin servicios de pago recurrentes salvo Apify (~USD 2-
 - Windows: `.\scripts\demo.ps1` · macOS: `bash scripts/demo.sh` → Ollama + servidor en :8000 +
   túnel público de cloudflared (la URL cambia en cada arranque).
 - Solo servidor: `python -m uvicorn src.api:app --host 0.0.0.0 --port 8000`.
-- Tests: `python -m pytest -q` (151 al escribir esto). El proyecto se construye con TDD: test
+- Tests: `python -m pytest -q` (153 al escribir esto). El proyecto se construye con TDD: test
   antes que el cambio de comportamiento.
 - `.env` (no está en git) trae `GOOGLE_API_KEY`, `APIFY_TOKEN`, `OLLAMA_MODEL`. `BRIGHTDATA_API_TOKEN`
   ya no se usa (créditos agotados 2026-09-25) pero el conector queda de respaldo si se recupera.
@@ -84,6 +84,17 @@ web de 8 pestañas. Corre sin servicios de pago recurrentes salvo Apify (~USD 2-
   de abajo en un solo lugar la primera vez, pero casi se queda desactualizado el otro. Cualquier
   script nuevo que necesite ese contexto (comentarios, reclasificaciones) debe importar esta
   función, no copiarla.
+- **Ciudad ya no es solo un resumen (2026-09-28)**: la pestaña estaba limitada a agregados
+  (temas, KPIs, oportunidades) sin forma de ver el contenido de fondo. Se agregó: (1) panel
+  "¿Qué emoción transmite cada tema?", un heatmap tema×emoción (`queries.city_emotion_by_topic()`,
+  `/api/city/emotion-by-topic`) con las 12 categorías más mencionadas; (2) panel "Todo lo que pasa
+  en Cali" al final de la pestaña -- feed completo (prensa, YouTube, Instagram/Facebook/X) de
+  menciones con `Candidate.kind == "city"`, con sentimiento por publicación y por comentario,
+  tema y emoción visibles, y los mismos filtros que Publicaciones (`queries.feed(..., city=True)`,
+  ya soportado por `/api/feed?city=true`). Reutiliza `renderFeedList()` sin cambios. **Ojo**: al
+  agregar cualquier ruta nueva en `api.py` hay que reiniciar uvicorn -- los cambios en `.py` no se
+  recargan solos (a diferencia de `.js`/`.html`), y este mismo cambio quedó devolviendo 404 en el
+  servidor corriendo hasta reiniciarlo.
 
 ## Reglas que el cliente exigió (no relajar)
 
