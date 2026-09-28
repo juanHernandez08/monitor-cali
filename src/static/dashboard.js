@@ -732,7 +732,13 @@ document.querySelectorAll(".side-nav .tab").forEach((b) => b.addEventListener("c
   document.querySelectorAll(".tab").forEach((x) => x.classList.toggle("active", x === b));
   document.querySelectorAll(".tabpane").forEach((p) => p.classList.toggle("active", p.id === `tab-${b.dataset.tab}`));
   window.scrollTo({ top: 0 });
+  $(".sidebar")?.classList.remove("open");
+  $("#menu-toggle")?.setAttribute("aria-expanded", "false");
 }));
+$("#menu-toggle")?.addEventListener("click", () => {
+  const open = $(".sidebar").classList.toggle("open");
+  $("#menu-toggle").setAttribute("aria-expanded", String(open));
+});
 document.querySelectorAll(".sub-nav .subtab").forEach((b) => b.addEventListener("click", () => {
   document.querySelectorAll(".sub-nav .subtab").forEach((x) => x.classList.toggle("active", x === b));
   document.querySelectorAll(".subtabpane").forEach((p) => p.classList.toggle("active", p.id === `subtab-${b.dataset.subtab}`));
