@@ -15,10 +15,12 @@ CATEGORIES = [
 ]
 _CATEGORY_LINE = 'Además, asigna una "category" tomada EXACTAMENTE de esta lista: ' + ", ".join(CATEGORIES) + ".\n"
 
-# Rueda de emociones de Plutchik (8 básicas) + orgullo, frecuente en discurso político, + una salida
-# neutra. "asco" cubre también "repulsión"; "alegría" cubre "felicidad"/"emoción" positiva.
+# Rueda de emociones de Plutchik + orgullo, frecuente en discurso político, + una salida neutra.
+# "asco" cubre también "repulsión"; "alegría" cubre "felicidad"/"emoción" positiva. "sorpresa" y
+# "anticipación" se retiraron (2026-09-28, pedido del cliente): casi nunca se usaban en la práctica
+# y "anticipación" en particular no se lee como una emoción propiamente dicha en este contexto.
 EMOTIONS = [
-    "alegría", "confianza", "miedo", "sorpresa", "tristeza", "asco", "ira", "anticipación", "orgullo",
+    "alegría", "confianza", "miedo", "tristeza", "asco", "ira", "orgullo",
     "sin emoción marcada",
 ]
 _EMOTION_LINE = ('Además, asigna una "emotion" tomada EXACTAMENTE de esta lista, la que mejor describa lo que '

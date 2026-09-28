@@ -82,6 +82,7 @@ function ago(iso) {
   return m < 60 ? `hace ${m} min` : m < 1440 ? `hace ${Math.round(m / 60)} h` : `hace ${Math.round(m / 1440)} d`;
 }
 function fmtDate(iso) { return new Date(iso + "Z").toLocaleString("es-CO", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }); }
+function fmtNum(x) { return (x || 0).toLocaleString("es-CO"); }
 
 /* Medidor semicircular (0-100): verde si va bien, ámbar en zona media, rojo si va mal. */
 function renderGauge(id, value) {
@@ -158,12 +159,6 @@ async function loadSummary() {
   const sel = $("#f-candidate"); const cur = sel.value;
   sel.innerHTML = `<option value="">Todos los candidatos</option>` + rows.map((r) => `<option value="${r.candidate_id}">${esc(r.name)}</option>`).join("");
   sel.value = cur;
-  const metaSel = $("#meta-f-candidate");
-  if (metaSel) {
-    const metaCur = metaSel.value;
-    metaSel.innerHTML = `<option value="">Todos los candidatos</option>` + rows.map((r) => `<option value="${r.candidate_id}">${esc(r.name)}</option>`).join("");
-    metaSel.value = metaCur;
-  }
 
   // ¿De quién se habla más?
   const byVol = [...rows].sort((a, b) => b.mentions - a.mentions);
@@ -321,6 +316,15 @@ async function loadAlerts() {
   </li>`).join("") : `<li class="empty">Sin menciones negativas fuertes sobre Carlos Arias en el período.</li>`;
 }
 
+async function loadSocialStrong() {
+  if (!$("#social-strong")) return;
+  const s = await j(`/api/social/strong?days=${Math.min(days(), 90)}`);
+  $("#social-strong").innerHTML = s.length ? s.map((p) => `<li>
+    <span class="tag positive">${p.multiplier}×</span> <b>${esc(p.candidate)}</b>: ${esc(p.text).slice(0, 160)}
+    <div class="meta">${SRC_LABEL[p.platform] || p.platform} · ❤️ ${fmtNum(p.likes)} · 💬 ${fmtNum(p.comments)}${p.views ? ` · 👁 ${fmtNum(p.views)}` : ""} · habitual: ~${fmtNum(p.baseline)} · ${ago(p.published_at)}${p.url ? ` · <a href="${p.url}" target="_blank" rel="noopener">ver</a>` : ""}</div>
+  </li>`).join("") : `<li class="empty">Sin publicaciones muy por encima de lo habitual en el período.</li>`;
+}
+
 /* ---------- feed (reutilizable: pestaña Publicaciones y vista de Perfil) ---------- */
 function srcName(m) { return m.platform ? (SRC_LABEL[m.platform] || m.platform) : (SRC[m.source_type] || esc(m.source)); }
 /* Google News y RSS son ambos "Prensa": sin esto salían como dos chips separados con el mismo nombre. */
@@ -395,15 +399,23 @@ async function loadFeed() {
 }
 
 /* ---------- Meta y redes: publicaciones de Instagram/Facebook/X por alcance ---------- */
+let metaCandidatesLoaded = false;
 async function loadMeta() {
   if (!$("#meta-kpis")) return;
+  if (!metaCandidatesLoaded) {
+    metaCandidatesLoaded = true;
+    const metaSel = $("#meta-f-candidate");
+    const people = await j("/api/social/candidates");
+    metaSel.innerHTML = `<option value="">Todos (candidatos y concejales)</option>` +
+      people.map((r) => `<option value="${r.candidate_id}">${esc(r.name)}${r.is_councilor ? " (concejal)" : ""}</option>`).join("");
+  }
   const d = days();
   const p = new URLSearchParams({ days: d });
   if ($("#meta-f-candidate").value) p.set("candidate_id", $("#meta-f-candidate").value);
   if ($("#meta-f-platform").value) p.set("platform", $("#meta-f-platform").value);
   if ($("#meta-f-sort").value) p.set("sort", $("#meta-f-sort").value);
   const [kpis, posts] = await Promise.all([j(`/api/social/kpis?days=${d}`), j(`/api/social/posts?${p}`)]);
-  const n = (x) => (x || 0).toLocaleString("es-CO");
+  const n = fmtNum;
 
   $("#meta-kpis").innerHTML = `
     <div class="kpi"><div class="label">Publicaciones</div><div class="value">${kpis.total_posts}</div><div class="foot">Instagram, Facebook y X · ${periodLabel()}</div></div>
@@ -428,6 +440,41 @@ async function loadMeta() {
       </div>
     </article>`).join("") : `<div class="empty">Sin publicaciones con esos filtros en el período.</div>`;
 }
+
+/* ---------- Investigar un perfil cualquiera, en vivo (no queda guardado) ---------- */
+async function investigateProfile() {
+  const url = $("#inv-url").value.trim();
+  const platform = $("#inv-platform").value;
+  if (!url) return;
+  const btn = $("#inv-go"); btn.disabled = true; btn.textContent = "Investigando…";
+  $("#inv-result").innerHTML = `<div class="empty">Consultando ${esc(url)}…</div>`;
+  try {
+    const r = await fetch(`/api/investigate?${new URLSearchParams({ url, platform })}`);
+    const data = await r.json();
+    if (!r.ok) { $("#inv-result").innerHTML = `<div class="empty">${esc(data.error || "No se pudo investigar ese perfil.")}</div>`; return; }
+    if (!data.total_posts) { $("#inv-result").innerHTML = `<div class="empty">Sin publicaciones recientes encontradas para esa cuenta.</div>`; return; }
+    $("#inv-result").innerHTML = `
+      <div class="kpis" style="margin-bottom:10px">
+        <div class="kpi"><div class="label">Publicaciones traídas</div><div class="value">${data.total_posts}</div></div>
+        <div class="kpi"><div class="label">Likes totales</div><div class="value">${fmtNum(data.total_likes)}</div></div>
+        <div class="kpi"><div class="label">Comentarios totales</div><div class="value">${fmtNum(data.total_comments)}</div></div>
+        <div class="kpi"><div class="label">Alcance promedio</div><div class="value">${fmtNum(data.avg_engagement)}</div></div>
+      </div>
+      <div class="feed">${data.posts.map((p) => `<article class="item">
+        <div class="body">
+          <div class="meta"><span>${esc(p.author || "")}</span><span>${p.published_at ? fmtDate(p.published_at) : ""}</span>${p.url ? `<a href="${p.url}" target="_blank" rel="noopener">ver original ↗</a>` : ""}</div>
+          <div class="text">${esc(p.text).slice(0, 200)}</div>
+        </div>
+        <div class="side"><div class="hint">❤️ ${fmtNum(p.likes)} · 💬 ${fmtNum(p.comments)}${p.views ? ` · 👁 ${fmtNum(p.views)}` : ""}</div></div>
+      </article>`).join("")}</div>`;
+  } catch (e) {
+    $("#inv-result").innerHTML = `<div class="empty">Error consultando ese perfil.</div>`;
+  } finally {
+    btn.disabled = false; btn.textContent = "Investigar";
+  }
+}
+$("#inv-go").addEventListener("click", investigateProfile);
+$("#inv-url").addEventListener("keydown", (e) => { if (e.key === "Enter") investigateProfile(); });
 
 /* ---------- tema por tema (genérico: perfil de candidato y detalle de ciudad) ---------- */
 function topicCard(t, i, prefix) {
@@ -554,8 +601,79 @@ async function loadAll() {
   const rows = await loadSummary();
   loadQuadrant(rows);
   loadCandidatesTab(rows);
-  await Promise.all([loadTimeline(rows), loadSources(), loadTopics(), loadAlerts(), loadFeed(), loadMeta(), loadStatus(), loadCity(), loadCityFeed(), loadHistorico(), loadInstitutionalHistory(), loadAgenda(), (typeof loadCouncil === "function" ? loadCouncil() : null)]);
+  await Promise.all([loadTimeline(rows), loadSources(), loadTopics(), loadAlerts(), loadSocialStrong(), loadFeed(), loadMeta(), loadStatus(), loadCity(), loadCityFeed(), loadHistorico(), loadInstitutionalHistory(), loadAgenda(), loadReporte(), (typeof loadCouncil === "function" ? loadCouncil() : null)]);
 }
+
+/* ---------- Reporte diario ---------- */
+async function loadReporte() {
+  if (!$("#rep-date")) return;
+  const list = await j("/api/reports");
+  const dates = list.map((r) => r.date);
+  const sel = $("#rep-date");
+  const cur = sel.value;
+  sel.innerHTML = dates.length ? dates.map((d) => `<option value="${d}">${d}</option>`).join("")
+    : `<option value="">Sin reportes todavía</option>`;
+  sel.value = dates.includes(cur) ? cur : (dates[0] || "");
+  if (sel.value) await showReport(sel.value);
+  else $("#rep-body").innerHTML = `<div class="empty">Aún no se ha generado ningún reporte. Tocá "Generar el de hoy".</div>`;
+}
+
+async function showReport(date) {
+  const r = await j(`/api/reports/${date}`);
+  if (r.error) { $("#rep-body").innerHTML = `<div class="empty">${esc(r.error)}</div>`; return; }
+  const k = r.social_kpis;
+  $("#rep-body").innerHTML = `
+    <section class="kpis">
+      <div class="kpi"><div class="label">Publicaciones (redes)</div><div class="value">${k.total_posts}</div><div class="foot">últimos ${r.social_window_days} días</div></div>
+      <div class="kpi"><div class="label">Likes</div><div class="value">${fmtNum(k.total_likes)}</div></div>
+      <div class="kpi"><div class="label">Comentarios</div><div class="value">${fmtNum(k.total_comments)}</div></div>
+      <div class="kpi"><div class="label">Pendiente de análisis</div><div class="value ${r.pending_review.total ? "neg" : ""}">${r.pending_review.total}</div></div>
+    </section>
+    <section class="panel">
+      <div class="panel-head"><h2>Publicaciones por candidato y concejal</h2><span class="hint">últimos ${r.social_window_days} días</span></div>
+      <div class="chart-box" id="chart-rep-candidates"></div>
+    </section>
+    <section class="panel alerts">
+      <div class="panel-head"><h2>Actividad fuerte en redes</h2></div>
+      <ul>${r.strong_social.length ? r.strong_social.map((p) => `<li>
+        <span class="tag positive">${p.multiplier}×</span> <b>${esc(p.candidate)}</b>: ${esc(p.text).slice(0, 160)}
+        <div class="meta">${SRC_LABEL[p.platform] || p.platform} · ❤️ ${fmtNum(p.likes)} · 💬 ${fmtNum(p.comments)}${p.url ? ` · <a href="${p.url}" target="_blank" rel="noopener">ver</a>` : ""}</div>
+      </li>`).join("") : `<li class="empty">Sin publicaciones fuera de lo habitual.</li>`}</ul>
+    </section>
+    <section class="panel">
+      <div class="panel-head"><h2>Temas de ciudad — los más mencionados</h2><span class="hint">últimos ${r.city_window_days} días</span></div>
+      <div class="chart-box" id="chart-rep-topics"></div>
+    </section>
+    <section class="panel alerts">
+      <div class="panel-head"><h2>Novedades donde Carlos podría hablar</h2></div>
+      <ul>${r.city_opportunities.novedades.length ? r.city_opportunities.novedades.map((t) => `<li><b>${cap(t.topic)}</b> <span class="hint">(${cap(t.category)})</span>: ${t.count} menciones · Carlos: ${t.carlos_mentions === 0 ? "sin presencia" : `${t.carlos_mentions} menciones`}</li>`).join("") : `<li class="empty">Sin novedades sin presencia de Carlos en el período.</li>`}</ul>
+    </section>
+    <section class="panel">
+      <div class="panel-head"><h2>Pendiente de análisis</h2><span class="hint">${r.pending_review.total} menciones totales sin clasificar aún, algunas de muestra abajo</span></div>
+      <div class="feed">${r.pending_review.samples.length ? r.pending_review.samples.map((s) => `<article class="item">
+        <div class="body">
+          <div class="meta"><span class="cand">${esc(s.candidate)}</span><span class="tag src">${esc(s.source)}</span>${s.url ? `<a href="${s.url}" target="_blank" rel="noopener">ver original ↗</a>` : ""}</div>
+          <div class="text">${esc(s.text)}</div>
+        </div>
+      </article>`).join("") : `<div class="empty">Nada pendiente por ahora.</div>`}</div>
+    </section>`;
+
+  const byCand = k.by_candidate;
+  hbar("#chart-rep-candidates", byCand.map((c) => c.candidate), byCand.map((c) => c.count),
+    byCand.map((c) => c.candidate === CARLOS ? BLUE : CARLOS_GRAY));
+  hbar("#chart-rep-topics", r.city_topics.map((t) => cap(t.category)), r.city_topics.map((t) => t.count), BLUE);
+}
+
+$("#rep-date")?.addEventListener("change", () => showReport($("#rep-date").value));
+$("#rep-generate")?.addEventListener("click", async () => {
+  const b = $("#rep-generate"); b.disabled = true; b.textContent = "Generando…";
+  try { await fetch("/api/reports/generate", { method: "POST" }); await loadReporte(); }
+  finally { b.disabled = false; b.textContent = "Generar el de hoy"; }
+});
+$("#rep-pdf")?.addEventListener("click", () => {
+  const d = $("#rep-date").value;
+  if (d) window.open(`/api/reports/${d}/pdf`, "_blank");
+});
 
 document.querySelectorAll(".side-nav .tab").forEach((b) => b.addEventListener("click", () => {
   lastTab = b.dataset.tab;
@@ -599,9 +717,9 @@ setInterval(loadAll, 120000);
 const CAT_COLOR = BLUE;
 function cap(s) { return s ? s[0].toUpperCase() + s.slice(1) : s; }
 
-const EMOTION_COLOR = { "alegría": GOOD, "confianza": AQUA, "miedo": VIOLET, "sorpresa": YELLOW, "tristeza": BLUE,
-  "asco": ORANGE, "ira": CRITICAL, "anticipación": MAGENTA, "orgullo": GREEN, "sin emoción marcada": NEUTRAL_TONE };
-const EMOTIONS_ORDER = ["alegría", "confianza", "miedo", "sorpresa", "tristeza", "asco", "ira", "anticipación", "orgullo", "sin emoción marcada"];
+const EMOTION_COLOR = { "alegría": GOOD, "confianza": AQUA, "miedo": VIOLET, "tristeza": BLUE,
+  "asco": ORANGE, "ira": CRITICAL, "orgullo": GREEN, "sin emoción marcada": NEUTRAL_TONE };
+const EMOTIONS_ORDER = ["alegría", "confianza", "miedo", "tristeza", "asco", "ira", "orgullo", "sin emoción marcada"];
 
 async function loadCity() {
   if (!$("#city-kpis")) return;

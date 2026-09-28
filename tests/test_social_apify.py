@@ -101,3 +101,28 @@ def test_ignores_x_accounts(monkeypatch):
     monkeypatch.setattr(m.requests, "post", lambda *a, **k: (_ for _ in ()).throw(AssertionError("no debía llamar")))
     x_account = {"platform": "x", "url": "https://x.com/a", "candidate": None}
     assert SocialApifyConnector(token="t", accounts=[x_account]).fetch([]) == []
+
+
+def test_investigate_profile_fetches_any_instagram_url_live_with_metrics(monkeypatch):
+    from src.connectors.social_apify import investigate_profile
+    calls = _patch(monkeypatch, {"apify~instagram-scraper": [IG_POST_NEW, IG_POST_KNOWN]})
+    posts = investigate_profile(token="t", url="https://www.instagram.com/unrival/", platform="instagram", max_posts=20)
+
+    posts_call = next(j for u, j in calls if "instagram-scraper" in u)
+    assert posts_call["directUrls"] == ["https://www.instagram.com/unrival/"] and posts_call["resultsLimit"] == 20
+    assert "onlyPostsNewerThan" not in posts_call  # investigar trae lo más reciente sin ventana fija
+
+    assert len(posts) == 2  # a diferencia del pipeline normal, no filtra "ya conocidos"
+    newest = posts[0]
+    assert newest["id"] == "p1" and newest["text"] == "Cali merece más #BuenosCiudadanos"
+    assert newest["likes"] == 0 and newest["comments"] == 12  # IG_POST_NEW no trae likesCount
+    assert newest["engagement"] == 12
+
+
+def test_investigate_profile_facebook(monkeypatch):
+    from src.connectors.social_apify import investigate_profile
+    _patch(monkeypatch, {"apify~facebook-posts-scraper": [FB_POST_NEW]})
+    posts = investigate_profile(token="t", url="https://www.facebook.com/unrival/", platform="facebook")
+    assert len(posts) == 1
+    assert posts[0]["text"] == "Gracias Cali" and posts[0]["author"] == "Clara Luz Roldan"
+    assert posts[0]["comments"] == 4

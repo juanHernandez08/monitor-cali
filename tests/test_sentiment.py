@@ -74,3 +74,13 @@ def test_sentiment_engine_emotion_defaults_when_absent():
     engine = SentimentEngine(client=fake_client)
     result = engine.score("texto")
     assert result.emotion == "sin emoción marcada"
+
+
+def test_sentiment_engine_retired_emotions_fall_back_to_no_emotion():
+    # "sorpresa" y "anticipación" se retiraron de la lista (2026-09-28, pedido del cliente:
+    # "anticipación no es una emoción como tal", y ambas casi nunca se usaban en la práctica).
+    for retired in ("sorpresa", "anticipación"):
+        fake_client = FakeAnthropicClient({"label": "neutral", "score": 0.0, "topic": "x", "emotion": retired})
+        engine = SentimentEngine(client=fake_client)
+        result = engine.score("texto")
+        assert result.emotion == "sin emoción marcada"

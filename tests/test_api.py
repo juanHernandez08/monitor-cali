@@ -42,6 +42,8 @@ def test_json_routes(client):
     assert client.get("/api/candidate/topics?name=Carlos Arias").json() == []
     assert client.get("/api/social/posts").json() == []
     assert client.get("/api/social/kpis").json()["total_posts"] == 0
+    assert client.get("/api/social/candidates").json() == [{"candidate_id": 1, "name": "Carlos Arias", "party": None, "is_councilor": False}]
+    assert client.get("/api/social/strong").json() == []
     hist = client.get("/api/institutional-history").json()
     assert len(hist["administrations"]) == 4
     assert len(hist["debt_timeline"]) == 2
@@ -51,3 +53,51 @@ def test_refresh_returns_202(client, monkeypatch):
     import src.api as m
     monkeypatch.setattr(m, "run_everything", lambda: None)
     assert client.post("/api/refresh").status_code == 202
+
+
+def test_investigate_requires_a_real_instagram_or_facebook_url(client, monkeypatch):
+    import src.api as m
+    monkeypatch.setattr(m.config, "APIFY_TOKEN", "fake-token")
+    r = client.get("/api/investigate", params={"url": "https://example.com/x", "platform": "instagram"})
+    assert r.status_code == 400
+
+
+def test_investigate_requires_apify_token_configured(client, monkeypatch):
+    import src.api as m
+    monkeypatch.setattr(m.config, "APIFY_TOKEN", None)
+    r = client.get("/api/investigate", params={"url": "https://www.instagram.com/unrival/", "platform": "instagram"})
+    assert r.status_code == 400
+
+
+def test_reports_generate_list_get_and_pdf(client):
+    r = client.post("/api/reports/generate")
+    assert r.status_code == 200
+    date = r.json()["date"]
+
+    assert len(client.get("/api/reports").json()) == 1
+    assert client.get("/api/reports/latest").json()["date"] == date
+    assert client.get(f"/api/reports/{date}").json()["date"] == date
+    assert client.get("/api/reports/2000-01-01").status_code == 404
+
+    pdf = client.get(f"/api/reports/{date}/pdf")
+    assert pdf.status_code == 200
+    assert pdf.headers["content-type"] == "application/pdf"
+    assert pdf.content[:4] == b"%PDF"
+
+
+def test_investigate_returns_live_stats_for_a_profile(client, monkeypatch):
+    import src.api as m
+    monkeypatch.setattr(m.config, "APIFY_TOKEN", "fake-token")
+    fake_posts = [
+        {"id": "1", "text": "post fuerte", "url": "https://www.instagram.com/p/1/", "author": "unrival",
+         "published_at": "2026-09-20T00:00:00", "likes": 900, "comments": 100, "views": 0, "engagement": 1000},
+        {"id": "2", "text": "post normal", "url": "https://www.instagram.com/p/2/", "author": "unrival",
+         "published_at": "2026-09-10T00:00:00", "likes": 40, "comments": 5, "views": 0, "engagement": 45},
+    ]
+    monkeypatch.setattr(m, "investigate_profile", lambda token, url, platform, **k: fake_posts)
+    r = client.get("/api/investigate", params={"url": "https://www.instagram.com/unrival/", "platform": "instagram"})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["total_posts"] == 2
+    assert body["total_likes"] == 940 and body["total_comments"] == 105
+    assert body["top_post"]["text"] == "post fuerte"

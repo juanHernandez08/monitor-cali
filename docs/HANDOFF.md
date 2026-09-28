@@ -1,21 +1,22 @@
 # HANDOFF — Monitor de menciones, Alcaldía de Cali 2027
 
 Documento para retomar el proyecto en otra máquina o en otra sesión sin el historial de chat.
-Léelo completo antes de tocar código. Estado al **2026-09-26** (auditoría nocturna).
+Léelo completo antes de tocar código. Estado al **2026-09-28**.
 
 ## Qué es
 
 Bot + dashboard que captura menciones de los **9 candidatos** a la Alcaldía de Cali 2027 (cliente:
 campaña de **Carlos Arias**, concejal, Partido de la U) y de los **21 concejales de Cali**, las
 clasifica por sentimiento, tema, categoría y **emoción** con un LLM, y las muestra en un tablero
-web de 8 pestañas. Corre sin servicios de pago recurrentes salvo Apify (~USD 2-10/mes).
+web de **9 pestañas** (se agregó Reporte, ver abajo). Corre sin servicios de pago recurrentes
+salvo Apify (presupuesto aprobado: hasta 200.000 COP/mes, 2026-09-28).
 
 ## Cómo se corre
 
 - Windows: `.\scripts\demo.ps1` · macOS: `bash scripts/demo.sh` → Ollama + servidor en :8000 +
   túnel público de cloudflared (la URL cambia en cada arranque).
 - Solo servidor: `python -m uvicorn src.api:app --host 0.0.0.0 --port 8000`.
-- Tests: `python -m pytest -q` (153 al escribir esto). El proyecto se construye con TDD: test
+- Tests: `python -m pytest -q` (172 al escribir esto). El proyecto se construye con TDD: test
   antes que el cambio de comportamiento.
 - `.env` (no está en git) trae `GOOGLE_API_KEY`, `APIFY_TOKEN`, `OLLAMA_MODEL`. `BRIGHTDATA_API_TOKEN`
   ya no se usa (créditos agotados 2026-09-25) pero el conector queda de respaldo si se recupera.
@@ -142,8 +143,30 @@ web de 8 pestañas. Corre sin servicios de pago recurrentes salvo Apify (~USD 2-
 | Bright Data | `social_accounts.py` | Respaldo inactivo; se usa solo si no hay `APIFY_TOKEN` |
 | Google CSE | `google_cse.py` | Inactivo (API cerrada a clientes nuevos, 403) |
 
-Faltan handles de redes de: Alfredo Mondragón, Mabel Lara, Carlos Paz, Roger Mina, y de la
-mayoría de los 19 concejales (hoy solo cubiertos por prensa).
+**Cobertura de redes ampliada (2026-09-28)**: `config.SOCIAL_ACCOUNTS` pasó de 3 cuentas (Carlos
+Arias, Roberto Ortiz, Clara Luz Roldán) a **24**, cubriendo casi todos los candidatos y concejales.
+Causa raíz del bug reportado por el cliente ("un reel de la concejal Audry Toro no aparece"): el
+conector nunca la scrapeaba porque su cuenta no estaba en esta lista -- no era un problema de
+clasificación. Cada cuenta nueva se verificó visitando el perfil real (bio + cargo/partido
+coincidente), nunca solo un handle que suena parecido. Detalle y caveats en el commit; los más
+importantes:
+- **Carlos Paz**: sin cuenta -- no se pudo verificar ninguna con confianza (homónimos: DJ,
+  ciudad argentina, futbolista de los 60).
+- **Mabel Lara** (`mabellaranews`): identidad confirmada (599K seguidores), pero su bio no
+  menciona Cali/Nuevo Liberalismo y prensa reciente la muestra en el gabinete de Éder (Secretaria
+  de Desarrollo Económico) -- confirmar con el cliente si sigue activa como candidata 2027.
+- **Luis Fernando Salazar** (`luisfernandosalazarg`): registros oficiales del Concejo lo nombran
+  "Salazar Guapacha", no "Salazar Monsalve" como está en `COUNCILORS` -- mismo perfil en todo lo
+  demás (ingeniero, Pacto Histórico, curul desde nov-2024), pero revisar el segundo apellido.
+- **Ana Leidy Erazo Ruiz** (`anaerazor`): prensa indica que renunció a la curul en nov-2025 para
+  asumir como representante a la Cámara -- la cuenta es real y suya, pero `COUNCILORS` puede estar
+  desactualizado (¿ya tiene reemplazo en el Concejo?).
+- **Roger Mina** (`x.com/RogerMinaC`): verificado de forma indirecta (X bloqueó la carga directa
+  del perfil), corroborado por caché de buscador + la cuenta oficial de Emcali etiquetándolo.
+
+`social_posts()`/`social_kpis()` (pestaña Meta y redes) ahora incluyen concejales, no solo a los
+9 candidatos a la alcaldía (antes filtraban `Candidate.kind == "candidate"` a secas). El filtro de
+candidato de esa pestaña ahora sale de `/api/social/candidates`, no de la lista de 9 de Resumen.
 
 ## Pendientes conocidos / próxima fase
 
@@ -195,6 +218,36 @@ mayoría de los 19 concejales (hoy solo cubiertos por prensa).
   El JSON cambió de `hot_without_carlos` a `novedades` (clave nueva, revisar si algo más la usa).
 - Alertas por correo/Telegram; radio/TV (fuera de alcance, ver `docs/cotizacion.md`).
 - Despliegue en VPS (`docs/cotizacion.md`, `docs/despliegue.md`) — sigue corriendo en el PC local.
+- **Emociones "sorpresa" y "anticipación" retiradas (2026-09-28)**: pedido del cliente
+  ("anticipación no es una emoción como tal") -- ambas casi nunca se usaban en la práctica.
+  `sentiment.EMOTIONS` quedó en 7 + "sin emoción marcada". Las 12 menciones ya guardadas con esos
+  valores se reclasificaron con `scripts/reclassify_retired_emotions.py` (seguro de re-correr si
+  aparece algún caso suelto).
+- **Alerta de actividad fuerte en redes (2026-09-28)**: `queries.social_strong_posts()` compara
+  cada publicación contra el promedio de alcance de esa MISMA cuenta (no un umbral fijo igual para
+  todos) -- necesita al menos 2 publicaciones previas de esa cuenta para tener con qué comparar.
+  Panel nuevo en Resumen, al lado de Alertas. Esto es justo lo que le faltaba al monitor para
+  cumplir su propósito: antes nada avisaba cuando algo se viraliza.
+- **"Investigar un perfil" (2026-09-28)**: panel nuevo arriba de Meta y redes -- pegás CUALQUIER
+  URL de Instagram/Facebook (rival, cuenta nueva) y `investigate_profile()`
+  (`src/connectors/social_apify.py`) trae sus publicaciones recientes al momento vía Apify, sin
+  pasar por `SOCIAL_ACCOUNTS` ni guardar nada en la base de datos. Gasta créditos de Apify en
+  cada consulta -- pensado para uso puntual, no para monitoreo recurrente.
+- **Reporte diario, lunes a viernes (2026-09-28)**: pestaña nueva "Reporte". Se genera solo a las
+  7 a.m. hora Bogotá (`scheduler.job_daily_report`, cron `mon-fri`) y también a demanda con el
+  botón "Generar el de hoy". Cubre: actividad en redes de candidatos y concejales (últimos 3 días,
+  para que el reporte del lunes alcance a cubrir el fin de semana), publicaciones con fuerza fuera
+  de lo habitual, temas de ciudad más mencionados y "novedades" (últimos 7 días, reusa
+  `city_opportunities()`), y cuántas menciones siguen sin analizar (`SentimentScore` pendiente).
+  Queda guardado en la tabla `reports` (un JSON por día, se sobreescribe si se regenera el mismo
+  día) -- `src/report.py` tiene el cálculo y el armado del PDF (`reportlab`, nueva dependencia en
+  `requirements.txt`). Botón "Descargar PDF" en la pestaña baja `/api/reports/{date}/pdf`. Tanto
+  la pestaña como el PDF incluyen gráficas de barras (publicaciones por candidato/concejal, temas
+  de ciudad) -- pedido explícito del cliente, no solo texto. **Bug real atrapado al probar con
+  datos reales (no con listas vacías)**: `queries.city_topics()` devuelve la clave `"category"`,
+  no `"topic"` -- el PDF tiraba `KeyError` en cuanto había datos de ciudad reales. Corregido en
+  `report.py` y en `dashboard.js`; se agregó `tests/test_report.py::test_report_to_pdf_with_real_city_topics_and_social_data`
+  para que no vuelva a pasar sin que un test lo note.
 
 ## Trabajar en dos máquinas
 

@@ -4,14 +4,18 @@ from contextlib import asynccontextmanager, contextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, Query, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from src import queries
+from src import config, queries
+from src.connectors.social_apify import investigate_profile
 from src.db import SessionLocal, init_db
+from src.report import build_report, generate_and_store, report_to_pdf
 from src.scheduler import run_everything, start_scheduler
 from scripts.seed_sources import seed
+
+INVESTIGATE_HOSTS = ("instagram.com", "facebook.com")
 
 log = logging.getLogger(__name__)
 BASE = Path(__file__).parent
@@ -99,6 +103,38 @@ def create_app(session_factory=None, start_jobs: bool = True) -> FastAPI:
         with session() as s:
             return queries.social_kpis(s, days=days)
 
+    @app.get("/api/social/candidates")
+    def api_social_candidates():
+        with session() as s:
+            return queries.social_candidates(s)
+
+    @app.get("/api/social/strong")
+    def api_social_strong(days: int = Query(7, ge=1, le=90)):
+        with session() as s:
+            return queries.social_strong_posts(s, days=days)
+
+    @app.get("/api/investigate")
+    def api_investigate(url: str, platform: str = "instagram"):
+        from urllib.parse import urlparse
+        if platform not in ("instagram", "facebook"):
+            return JSONResponse({"error": "plataforma no soportada"}, status_code=400)
+        host = (urlparse(url).hostname or "").removeprefix("www.")
+        if host not in INVESTIGATE_HOSTS:
+            return JSONResponse({"error": "la URL debe ser de instagram.com o facebook.com"}, status_code=400)
+        if not config.APIFY_TOKEN:
+            return JSONResponse({"error": "falta APIFY_TOKEN en el servidor"}, status_code=400)
+        posts = investigate_profile(config.APIFY_TOKEN, url, platform)
+        total_likes = sum(p["likes"] for p in posts)
+        total_comments = sum(p["comments"] for p in posts)
+        total_views = sum(p["views"] for p in posts)
+        return {
+            "url": url, "platform": platform, "total_posts": len(posts),
+            "total_likes": total_likes, "total_comments": total_comments, "total_views": total_views,
+            "avg_engagement": round((total_likes + total_comments) / len(posts)) if posts else 0,
+            "top_post": max(posts, key=lambda p: p["engagement"]) if posts else None,
+            "posts": posts,
+        }
+
     @app.get("/api/alerts")
     def api_alerts(days: int = Query(30, ge=1, le=365)):
         with session() as s:
@@ -171,6 +207,45 @@ def create_app(session_factory=None, start_jobs: bool = True) -> FastAPI:
             "administrations": [{**a, "status_counts": status_counts(a)} for a in ADMINISTRATIONS],
             "debt_timeline": debt_timeline(),
         }
+
+    @app.get("/api/reports")
+    def api_reports_list():
+        from src.models import Report
+        with session() as s:
+            rows = s.query(Report).order_by(Report.date.desc()).limit(30).all()
+            return [{"date": r.date, "generated_at": r.generated_at.isoformat()} for r in rows]
+
+    @app.get("/api/reports/latest")
+    def api_reports_latest():
+        from src.models import Report
+        with session() as s:
+            r = s.query(Report).order_by(Report.date.desc()).first()
+            return r.data if r else None
+
+    @app.get("/api/reports/{date}")
+    def api_reports_get(date: str):
+        from src.models import Report
+        with session() as s:
+            r = s.query(Report).filter_by(date=date).first()
+            if r is None:
+                return JSONResponse({"error": "no hay reporte para esa fecha"}, status_code=404)
+            return r.data
+
+    @app.post("/api/reports/generate")
+    def api_reports_generate():
+        with session() as s:
+            r = generate_and_store(s)
+            return r.data
+
+    @app.get("/api/reports/{date}/pdf")
+    def api_reports_pdf(date: str):
+        from src.models import Report
+        with session() as s:
+            r = s.query(Report).filter_by(date=date).first()
+            data = r.data if r else build_report(s, date=date)
+        pdf = report_to_pdf(data)
+        return Response(content=pdf, media_type="application/pdf",
+                        headers={"Content-Disposition": f'attachment; filename="reporte-{date}.pdf"'})
 
     @app.get("/health")
     def health():

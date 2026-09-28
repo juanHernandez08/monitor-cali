@@ -73,3 +73,92 @@ def test_social_kpis_aggregate_totals_and_top_post(db_session):
     assert k["top_post"]["text"] == "Trincheras en Cali"
     by_cand = {r["candidate"]: r["count"] for r in k["by_candidate"]}
     assert by_cand == {"Carlos Arias": 2, "Clara Luz Roldán": 1}
+
+
+def test_social_posts_includes_councilors_not_only_race_candidates(db_session):
+    # Bug real (2026-09-28): un reel de la concejal Audry Toro no aparecía en "Meta y redes"
+    # porque social_posts() solo miraba Candidate.kind == "candidate", nunca "councilor".
+    from src.queries import social_posts
+    audry = Candidate(name="Audry María Toro Echavarría", party="U", aliases=[], kind="councilor", council=True)
+    ig = Source(type=SourceType.SOCIAL, name="Instagram / Facebook (cuentas)")
+    db_session.add_all([audry, ig])
+    db_session.commit()
+    now = dt.datetime.utcnow()
+    m = Mention(candidate_id=audry.id, source_id=ig.id, external_id="ig:post:audry", text="Reel con fuerza",
+                url="https://x/audry", raw={"kind": "post", "platform": "instagram", "num_comments": 300,
+                                             "record": {"likesCount": 4000, "videoPlayCount": 90000}},
+                published_at=now - dt.timedelta(days=1), fetched_at=now)
+    db_session.add(m)
+    db_session.flush()
+    db_session.add(SentimentScore(mention_id=m.id, label=SentimentLabel.POSITIVE, score=0.6, topic="t", model="f"))
+    db_session.commit()
+
+    rows = social_posts(db_session, days=30)
+    assert any(r["candidate"] == "Audry María Toro Echavarría" and r["engagement"] == 4300 for r in rows)
+
+
+def test_social_strong_posts_flags_engagement_well_above_the_accounts_own_average(db_session):
+    from src.queries import social_strong_posts
+    carlos = Candidate(name="Carlos Arias", party="U", aliases=[])
+    ig = Source(type=SourceType.SOCIAL, name="Instagram / Facebook (cuentas)")
+    db_session.add_all([carlos, ig])
+    db_session.commit()
+    now = dt.datetime.utcnow()
+
+    def _post(ext, likes, comments, when_ago):
+        m = Mention(candidate_id=carlos.id, source_id=ig.id, external_id=ext, text=ext,
+                    url=f"https://x/{ext}", raw={"kind": "post", "platform": "instagram",
+                                                 "num_comments": comments, "record": {"likesCount": likes}},
+                    published_at=now - dt.timedelta(days=when_ago), fetched_at=now)
+        db_session.add(m)
+        db_session.flush()
+        db_session.add(SentimentScore(mention_id=m.id, label=SentimentLabel.POSITIVE, score=0.5, topic="t", model="f"))
+
+    # Historial normal: ~50 de alcance por post.
+    _post("p1", likes=40, comments=10, when_ago=60)
+    _post("p2", likes=45, comments=8, when_ago=45)
+    _post("p3", likes=50, comments=5, when_ago=30)
+    # Este sí se dispara muy por encima de su propio promedio reciente.
+    _post("p4", likes=2000, comments=300, when_ago=2)
+    db_session.commit()
+
+    strong = social_strong_posts(db_session, days=7, multiplier=3.0)
+    assert len(strong) == 1
+    assert strong[0]["text"] == "p4"
+    assert strong[0]["engagement"] == 2300
+    assert strong[0]["baseline"] > 0
+    assert strong[0]["multiplier"] >= 3.0
+
+
+def test_social_strong_posts_needs_enough_history_to_judge(db_session):
+    # Sin historial previo no hay "propio promedio" contra qué comparar -- no se alerta
+    # a ciegas la primera publicación de una cuenta recién agregada.
+    from src.queries import social_strong_posts
+    carlos = Candidate(name="Carlos Arias", party="U", aliases=[])
+    ig = Source(type=SourceType.SOCIAL, name="Instagram / Facebook (cuentas)")
+    db_session.add_all([carlos, ig])
+    db_session.commit()
+    now = dt.datetime.utcnow()
+    m = Mention(candidate_id=carlos.id, source_id=ig.id, external_id="only", text="unica",
+                url="https://x/only", raw={"kind": "post", "platform": "instagram",
+                                           "num_comments": 500, "record": {"likesCount": 3000}},
+                published_at=now - dt.timedelta(days=1), fetched_at=now)
+    db_session.add(m)
+    db_session.flush()
+    db_session.add(SentimentScore(mention_id=m.id, label=SentimentLabel.POSITIVE, score=0.5, topic="t", model="f"))
+    db_session.commit()
+
+    assert social_strong_posts(db_session, days=7) == []
+
+
+def test_social_candidates_lists_race_candidates_and_councilors_not_city(db_session):
+    from src.queries import social_candidates
+    carlos, clara = _seed(db_session)
+    audry = Candidate(name="Audry María Toro Echavarría", party="U", aliases=[], kind="councilor", council=True)
+    cali = Candidate(name="Cali (ciudad)", aliases=[], kind="city")
+    db_session.add_all([audry, cali])
+    db_session.commit()
+
+    names = {r["name"] for r in social_candidates(db_session)}
+    assert names == {"Carlos Arias", "Clara Luz Roldán", "Audry María Toro Echavarría"}
+    assert "Cali (ciudad)" not in names

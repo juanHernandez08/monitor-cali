@@ -246,6 +246,13 @@ def job_social():
         log.info("social: %s", run_group(s, SOCIAL_GROUP))
 
 
+def job_daily_report():
+    from src.report import generate_and_store
+    with get_session() as s:
+        r = generate_and_store(s)
+        log.info("reporte diario generado: %s", r.date)
+
+
 def job_score():
     engine = build_sentiment_engine()
     with get_session() as s:
@@ -306,5 +313,8 @@ def start_scheduler() -> BackgroundScheduler:
     # Bright Data: solo se pagan posts nuevos y comentarios pendientes; el contador mensual frena en el tope.
     sched.add_job(job_social, "interval", hours=12, id="social", max_instances=1, coalesce=True, next_run_time=social_next)
     sched.add_job(job_score, "interval", minutes=2, id="score", max_instances=1, coalesce=True)
+    # Reporte diario, lunes a viernes -- el cliente lo revisa al llegar en la mañana.
+    sched.add_job(job_daily_report, "cron", day_of_week="mon-fri", hour=7, minute=0,
+                  id="daily_report", max_instances=1, coalesce=True)
     sched.start()
     return sched

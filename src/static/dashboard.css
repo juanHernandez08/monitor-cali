@@ -46,7 +46,7 @@ h2 { font-size: 15px; margin: 0; font-weight: 600; }
 .sub { color: var(--muted); font-size: 12px; margin-top: 2px; }
 .controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .lastrun { color: var(--muted); font-size: 12px; }
-select, button { padding: 9px 14px; border: 1px solid var(--line); border-radius: 999px; background: #fff; font: inherit; color: var(--ink); }
+select, button, input[type=text] { padding: 9px 14px; border: 1px solid var(--line); border-radius: 999px; background: #fff; font: inherit; color: var(--ink); }
 button { background: var(--brand); color: #fff; border-color: var(--brand); cursor: pointer; font-weight: 500; }
 button:hover { background: var(--brand-2); }
 button:disabled { opacity: .6; cursor: default; }

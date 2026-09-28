@@ -121,3 +121,15 @@ class ApiUsage(Base):
     count = Column(Integer, default=0, nullable=False)
 
     __table_args__ = (UniqueConstraint("service", "day", name="uq_api_usage_service_day"),)
+
+
+class Report(Base):
+    """Reporte diario (lunes a viernes): actividad en redes, temas de ciudad y pendientes de
+    análisis. Se guarda como JSON en vez de recalcularse cada vez -- así un reporte de un día ya
+    pasado no cambia si después se reprocesan menciones de ese período."""
+    __tablename__ = "reports"
+
+    id = Column(Integer, primary_key=True)
+    date = Column(String, nullable=False, unique=True)  # YYYY-MM-DD (hora Bogotá)
+    generated_at = Column(DateTime, default=dt.datetime.utcnow, nullable=False)
+    data = Column(JSON, nullable=False)

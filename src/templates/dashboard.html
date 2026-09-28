@@ -28,6 +28,7 @@
     <button class="tab" data-tab="ciudad"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 9h.01M9 13h.01M15 9h.01M15 13h.01M10 21v-5h4v5"/></svg><span>Ciudad</span></button>
     <button class="tab" data-tab="historico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg><span>Histórico</span></button>
     <button class="tab" data-tab="agenda"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>Agenda</span></button>
+    <button class="tab" data-tab="reporte"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12h6M9 16h6M9 8h1"/><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg><span>Reporte</span></button>
   </nav>
   <div class="side-foot">
     <div class="live-card">
@@ -67,6 +68,10 @@
     <section class="panel alerts">
       <div class="panel-head"><h2>Alertas</h2><span class="hint">menciones negativas fuertes sobre Carlos Arias</span></div>
       <ul id="alerts"></ul>
+    </section>
+    <section class="panel alerts">
+      <div class="panel-head"><h2>Actividad fuerte en redes</h2><span class="hint">publicaciones (de cualquier candidato o concejal) muy por encima del alcance habitual de esa cuenta</span></div>
+      <ul id="social-strong"></ul>
     </section>
   </div>
 
@@ -156,11 +161,9 @@
             <option value="alegría">Alegría</option>
             <option value="confianza">Confianza</option>
             <option value="miedo">Miedo</option>
-            <option value="sorpresa">Sorpresa</option>
             <option value="tristeza">Tristeza</option>
             <option value="asco">Asco / repulsión</option>
             <option value="ira">Ira</option>
-            <option value="anticipación">Anticipación</option>
             <option value="orgullo">Orgullo</option>
             <option value="sin emoción marcada">Sin emoción marcada</option>
           </select>
@@ -191,6 +194,18 @@
   </div>
 
   <div id="tab-meta" class="tabpane">
+    <section class="panel">
+      <div class="panel-head"><h2>Investigar un perfil</h2><span class="hint">trae publicaciones recientes de CUALQUIER cuenta pública de Instagram/Facebook al momento -- rivales, cuentas nuevas, lo que sea. Consulta puntual, no queda guardada.</span></div>
+      <div class="filters" style="margin-bottom:10px">
+        <select id="inv-platform" style="max-width:130px">
+          <option value="instagram">Instagram</option>
+          <option value="facebook">Facebook</option>
+        </select>
+        <input id="inv-url" type="text" placeholder="https://www.instagram.com/usuario/" style="flex:1;min-width:260px">
+        <button id="inv-go">Investigar</button>
+      </div>
+      <div id="inv-result"></div>
+    </section>
     <section class="kpis" id="meta-kpis"></section>
     <section class="panel">
       <div class="panel-head"><h2>Publicaciones por candidato</h2><span class="hint">Instagram, Facebook y X — solo posts, no comentarios</span></div>
@@ -325,11 +340,9 @@
             <option value="alegría">Alegría</option>
             <option value="confianza">Confianza</option>
             <option value="miedo">Miedo</option>
-            <option value="sorpresa">Sorpresa</option>
             <option value="tristeza">Tristeza</option>
             <option value="asco">Asco / repulsión</option>
             <option value="ira">Ira</option>
-            <option value="anticipación">Anticipación</option>
             <option value="orgullo">Orgullo</option>
             <option value="sin emoción marcada">Sin emoción marcada</option>
           </select>
@@ -408,6 +421,21 @@
       <div class="chart-box xl"><div id="chart-perception"></div></div>
       <div id="perception-detail" class="feed" style="margin-top:14px"></div>
     </section>
+  </div>
+
+  <div id="tab-reporte" class="tabpane">
+    <div class="intro panel">
+      <h2>Reporte diario</h2>
+      <p>Se genera solo, de lunes a viernes en la mañana: actividad en redes de candidatos y concejales, publicaciones con fuerza fuera de lo habitual, temas de ciudad y lo que todavía no se ha analizado. Queda guardado -- podés revisar cualquier día anterior.</p>
+    </div>
+    <section class="panel">
+      <div class="filters">
+        <select id="rep-date"></select>
+        <button id="rep-generate">Generar el de hoy</button>
+        <button id="rep-pdf">Descargar PDF</button>
+      </div>
+    </section>
+    <div id="rep-body"></div>
   </div>
 
   <footer id="status"></footer>

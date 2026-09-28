@@ -113,6 +113,46 @@ SOCIAL_ACCOUNTS = [
     {"platform": "instagram", "url": "https://www.instagram.com/noticalioficial/", "candidate": None},
     # X (Twitter): solo posts de la cuenta (Bright Data no trae las respuestas). Completar handles.
     {"platform": "x", "url": "https://x.com/claraluzroldan", "candidate": "Clara Luz Roldán"},
+    # Concejales y candidatos restantes -- investigación 2026-09-28, cada cuenta confirmada
+    # visitando el perfil real y contrastando la bio con el cargo/partido (nunca solo un handle
+    # que suena parecido). Candidato "Carlos Paz" queda sin cuenta: no se pudo verificar ninguna
+    # con confianza, y hay homónimos conocidos (DJ, ciudad argentina, futbolista) -- ver
+    # config.py CANDIDATES para el detalle de esas exclusiones.
+    {"platform": "instagram", "url": "https://www.instagram.com/audrytoro/", "candidate": "Audry María Toro Echavarría"},
+    {"platform": "instagram", "url": "https://www.instagram.com/alfredolidersocial/", "candidate": "Alfredo Mondragón"},
+    # OJO: bio no menciona Cali/Nuevo Liberalismo explícitamente; prensa reciente la muestra en el
+    # gabinete de Éder (Secretaria de Desarrollo Económico), no en campaña activa -- confirmar con
+    # el cliente si sigue vigente como candidata antes de darle peso en el análisis.
+    {"platform": "instagram", "url": "https://www.instagram.com/mabellaranews/", "candidate": "Mabel Lara"},
+    {"platform": "instagram", "url": "https://www.instagram.com/franciamarquezm/", "candidate": "Francia Márquez"},
+    # Verificado de forma indirecta (perfil de X bloqueó la carga directa): bio coincidente vía
+    # caché de buscador + la propia cuenta oficial de Emcali etiquetando este handle como suyo.
+    {"platform": "x", "url": "https://x.com/RogerMinaC", "candidate": "Roger Mina"},
+    {"platform": "instagram", "url": "https://www.instagram.com/ireneveleztorres/", "candidate": "Irene Vélez"},
+    {"platform": "instagram", "url": "https://www.instagram.com/concejaltania/", "candidate": "Tania Fernández Sánchez"},
+    {"platform": "instagram", "url": "https://www.instagram.com/hepelaez/", "candidate": "Henry Peláez Cifuentes"},
+    {"platform": "instagram", "url": "https://www.instagram.com/soycarlospinilla/", "candidate": "Carlos Hernando Pinilla Malo"},
+    {"platform": "instagram", "url": "https://www.instagram.com/fabioalonsoarroyave/", "candidate": "Fabio Alonso Arroyave Botero"},
+    {"platform": "instagram", "url": "https://www.instagram.com/james10agudelo/", "candidate": "James Junior Agudelo Arevalo"},
+    {"platform": "instagram", "url": "https://www.instagram.com/flowerojas/", "candidate": "Flower Enrique Rojas Torres"},
+    {"platform": "instagram", "url": "https://www.instagram.com/rodrisalazarco/", "candidate": "Rodrigo Salazar Sarmiento"},
+    {"platform": "instagram", "url": "https://www.instagram.com/carlospatinomoya/", "candidate": "Carlos Ariel Patiño"},
+    # Prensa (nov-2025): renunció a la curul para asumir como representante a la Cámara -- puede
+    # que ya no sea concejal activa. Confirmar si sigue vigente en el Concejo de Cali o si hay que
+    # actualizar la lista COUNCILORS con su reemplazo.
+    {"platform": "instagram", "url": "https://www.instagram.com/anaerazor/", "candidate": "Ana Leidy Erazo Ruiz"},
+    # OJO: registros oficiales del Concejo lo nombran "Salazar Guapacha", no "Salazar Monsalve"
+    # (mismo nombre/apellido, mismo perfil -- ingeniero, Pacto Histórico, curul desde nov-2024 por
+    # fallo del Consejo de Estado). Confirmar el segundo apellido antes de confiar del todo.
+    {"platform": "instagram", "url": "https://www.instagram.com/luisfernandosalazarg/", "candidate": "Luis Fernando Salazar"},
+    {"platform": "x", "url": "https://x.com/MariaCconcejala", "candidate": "María del Carmen Londoño"},
+    {"platform": "instagram", "url": "https://www.instagram.com/andresescobar2030/", "candidate": "Rafael Andrés Escobar González"},
+    {"platform": "instagram", "url": "https://www.instagram.com/juanfmurgueitio/", "candidate": "Juan Felipe Murgueitio"},
+    {"platform": "instagram", "url": "https://www.instagram.com/edisonlucumilucumi/", "candidate": "Edison Lucumi Lucumi"},
+    {"platform": "instagram", "url": "https://www.instagram.com/alexahernandezcedeno/", "candidate": "Alexandra Hernández Cedeño"},
+    {"platform": "instagram", "url": "https://www.instagram.com/marloncubillos_/", "candidate": "Marlon Andrés Cubillos Borrero"},
+    {"platform": "instagram", "url": "https://www.instagram.com/ladaniplaza/", "candidate": "Daniela Plaza Saldarriaga"},
+    {"platform": "instagram", "url": "https://www.instagram.com/edison_concejal/", "candidate": "Edison Alberto Giraldo Hoyos"},
 ]
 # Presupuesto: plan gratuito de Bright Data (5.000 registros/mes). Consumo estimado con estos topes y
 # 10 cuentas: ~1.200 registros/mes (solo posts nuevos + comentarios de los posts más comentados).

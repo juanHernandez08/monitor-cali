@@ -320,10 +320,13 @@ def social_posts(session, days: int = 30, candidate_id: int | None = None, platf
                  sort: str = "engagement", limit: int = 200) -> list[dict]:
     """Publicaciones (no comentarios) de Instagram/Facebook/X, con alcance para ordenar por
     desempeño real en vez de solo cronología -- lo que pidió el cliente para "el análisis de las
-    publicaciones" en la pestaña Meta y redes."""
+    publicaciones" en la pestaña Meta y redes. Incluye candidatos Y concejales (kind != "city"):
+    antes solo miraba kind == "candidate" y una publicación con mucha fuerza de un concejal (p.
+    ej. un reel de Audry Toro) quedaba invisible en esta pestaña -- justo lo que se supone que
+    este monitor debe detectar."""
     q = (session.query(Mention).outerjoin(SentimentScore).join(Source).join(Candidate)
          .filter(WHEN >= _since(days), Mention.relevant.is_(True), Source.type == SourceType.SOCIAL,
-                 Candidate.kind == "candidate"))
+                 Candidate.kind != "city"))
     if candidate_id:
         q = q.filter(Mention.candidate_id == candidate_id)
     rows = [m for m in q.all() if (m.raw or {}).get("kind") == "post"]
@@ -357,6 +360,43 @@ def social_kpis(session, days: int = 30) -> dict:
         "top_post": max(posts, key=lambda p: p["engagement"]) if posts else None,
         "by_candidate": [{"candidate": k, "count": v} for k, v in by_candidate.most_common()],
     }
+
+
+def social_strong_posts(session, days: int = 7, multiplier: float = 3.0, min_history: int = 2,
+                        min_engagement: int = 30) -> list[dict]:
+    """Publicaciones (de cualquier candidato o concejal) cuyo alcance dispara muy por encima del
+    propio promedio reciente de esa cuenta -- alerta de actividad fuerte en redes sin depender de
+    un umbral fijo igual para una cuenta grande que para una chica. Necesita al menos
+    `min_history` publicaciones ANTERIORES de esa misma cuenta para tener con qué comparar; una
+    cuenta recién agregada no dispara alerta en su primera publicación."""
+    since = _since(days).isoformat()
+    by_account: dict[tuple[str, str], list[dict]] = defaultdict(list)
+    for p in social_posts(session, days=365, limit=10000, sort="recent"):
+        by_account[(p["candidate"], p["platform"])].append(p)
+    strong = []
+    for posts in by_account.values():
+        posts.sort(key=lambda p: p["published_at"])
+        for i, p in enumerate(posts):
+            history = posts[:i]
+            if len(history) < min_history or p["published_at"] < since:
+                continue
+            baseline = sum(h["engagement"] for h in history) / len(history)
+            if baseline <= 0:
+                continue
+            if p["engagement"] >= max(min_engagement, baseline * multiplier):
+                strong.append({**p, "baseline": round(baseline), "multiplier": round(p["engagement"] / baseline, 1)})
+    strong.sort(key=lambda p: -p["multiplier"])
+    return strong
+
+
+def social_candidates(session) -> list[dict]:
+    """Candidatos y concejales (todo menos el candidato especial de ciudad), para poblar el
+    filtro de "Meta y redes" -- antes ese filtro solo listaba a los 9 candidatos a la alcaldía."""
+    rows = (session.query(Candidate).filter_by(active=True).filter(Candidate.kind != "city")
+            .order_by(Candidate.name).all())
+    rows.sort(key=lambda c: c.name != CARLOS)
+    return [{"candidate_id": c.id, "name": c.name, "party": c.party, "is_councilor": c.kind == "councilor"}
+            for c in rows]
 
 
 def sources_by_candidate(session, days: int = 30) -> dict:

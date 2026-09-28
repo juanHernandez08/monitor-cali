@@ -45,6 +45,12 @@ def _to_int(value) -> int:
         return 0
 
 
+def _call_actor(actor: str, payload: dict, token: str, timeout: int) -> list[dict]:
+    r = requests.post(ENDPOINT.format(actor=actor), params={"token": token}, json=payload, timeout=timeout)
+    r.raise_for_status()
+    return [x for x in r.json() if isinstance(x, dict)]
+
+
 class SocialApifyConnector:
     source_name = "social_apify"
 
@@ -73,9 +79,7 @@ class SocialApifyConnector:
             self.credits.consume(n)
 
     def _run(self, actor: str, payload: dict) -> list[dict]:
-        r = requests.post(ENDPOINT.format(actor=actor), params={"token": self.token}, json=payload, timeout=self.timeout)
-        r.raise_for_status()
-        return [x for x in r.json() if isinstance(x, dict)]
+        return _call_actor(actor, payload, self.token, self.timeout)
 
     def _since(self, account: dict) -> str:
         last = self.known_last_dates.get(account["url"])
@@ -169,3 +173,38 @@ class SocialApifyConnector:
                 search_term=candidate,
             ))
         return items
+
+
+def investigate_profile(token: str, url: str, platform: str, max_posts: int = 20, timeout: int = 180) -> list[dict]:
+    """Trae publicaciones recientes de CUALQUIER cuenta pública de Instagram/Facebook al momento,
+    sin pasar por config.SOCIAL_ACCOUNTS ni known_post_ids -- para "investigar" un perfil sobre la
+    marcha (un rival, una cuenta nueva, cualquiera). Gasta créditos de Apify en cada llamada:
+    pensado para una consulta puntual desde el dashboard, no para monitoreo recurrente."""
+    if platform == "instagram":
+        raw_posts = _call_actor(IG_POSTS_ACTOR, {"directUrls": [url], "resultsType": "posts",
+                                                  "resultsLimit": max_posts}, token, timeout)
+    else:
+        raw_posts = _call_actor(FB_POSTS_ACTOR, {"startUrls": [{"url": url}], "resultsLimit": max_posts}, token, timeout)
+    posts = []
+    for p in raw_posts:
+        if platform == "instagram":
+            post_id, text, post_url = p.get("id"), str(p.get("caption") or "").strip(), p.get("url")
+            published, author = _parse_date(p.get("timestamp")), p.get("ownerUsername")
+            likes = _to_int(p.get("likesCount"))
+            comments = _to_int(p.get("commentsCount"))
+            views = _to_int(p.get("videoPlayCount") or p.get("videoViewCount"))
+        else:
+            post_id, text, post_url = p.get("postId"), str(p.get("text") or "").strip(), p.get("url")
+            published, author = _parse_date(p.get("time")), (p.get("user") or {}).get("name")
+            likes = _to_int(p.get("likes") or p.get("reactionLikeCount"))
+            comments = _to_int(p.get("comments"))
+            views = _to_int(p.get("viewsCount") or p.get("videoPostViewCount"))
+        if not post_id:
+            continue
+        posts.append({
+            "id": str(post_id), "text": text, "url": post_url, "author": author,
+            "published_at": published.isoformat() if published else None,
+            "likes": likes, "comments": comments, "views": views, "engagement": likes + comments,
+        })
+    posts.sort(key=lambda p: p["published_at"] or "", reverse=True)
+    return posts
