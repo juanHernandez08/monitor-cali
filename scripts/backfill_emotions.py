@@ -1,7 +1,8 @@
-"""Rellena la "emotion" de menciones ya clasificadas antes de que ese campo existiera.
+"""Rellena "emotion", "emotion_nuance" y/o "apalancador" de menciones ya clasificadas antes de que
+esos campos existieran.
 
-Solo agrega la emoción a SentimentScore.emotion cuando está vacía; no toca label, score,
-topic, category ni summary ya guardados -- el resto del análisis ya fue revisado por el
+Solo agrega lo que falte a SentimentScore cuando alguno de los tres está vacío; no toca label,
+score, topic, category ni summary ya guardados -- el resto del análisis ya fue revisado por el
 cliente y no hay que arriesgarlo.
 
     python -m scripts.backfill_emotions              # todo lo pendiente
@@ -31,7 +32,8 @@ def run(session, engine, limit: int | None = None, batch: int = 1) -> int:
         take = batch if limit is None else min(batch, limit - done)
         pending = (
             session.query(Mention).join(SentimentScore)
-            .filter(SentimentScore.emotion.is_(None))
+            .filter((SentimentScore.emotion.is_(None)) | (SentimentScore.emotion_nuance.is_(None))
+                    | (SentimentScore.apalancador.is_(None)))
             .order_by(Mention.id)
             .limit(take)
             .all()
@@ -46,6 +48,8 @@ def run(session, engine, limit: int | None = None, batch: int = 1) -> int:
                 log.exception("backfill de emoción falló para mention %s", mention.id)
                 return done  # Ollama caído u otro fallo: parar aquí, reintentar más tarde
             mention.sentiment.emotion = getattr(result, "emotion", None) or "sin emoción marcada"
+            mention.sentiment.emotion_nuance = getattr(result, "emotion_nuance", "")
+            mention.sentiment.apalancador = getattr(result, "apalancador", "")
             done += 1
         session.commit()
     return done

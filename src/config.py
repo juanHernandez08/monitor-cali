@@ -48,8 +48,13 @@ CANDIDATES = [
         # Homónimos conocidos: si aparecen en el titular o el cuerpo, la mención se descarta.
         "exclusions": [
             "Arias Orjuela", "Arias Orejuela", "Arias Navarro", "Jhon Arias", "Alfredo Arias",
-            "Pastor Carlos Arias", "Carlos Miguel Arias", "Juan Carlos Arias",
+            "Pastor Carlos Arias", "Carlos Miguel Arias", "Juan Carlos Arias", "Luis Carlos Arias",
         ],
+        # "Carlos Arias" es un nombre común (auditoría 2026-09-29: prensa nacional sobre un
+        # futbolista "Luis Carlos Arias" se colaba sin este filtro). Igual que Mondragón/Márquez/
+        # Vélez, solo aplica a prensa (ver matching.has_required_context / enrich.py) -- no a
+        # redes ni comentarios, donde la atribución viene de la cuenta, no del texto.
+        "context_terms": ["Cali", "Alcaldía", "Alcaldia", "Concejo"],
     },
     {
         # Congresista del Pacto Histórico: sin exigir contexto local, la mayoría de prensa que

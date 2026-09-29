@@ -130,6 +130,8 @@ def _mention_dict(m: Mention) -> dict:
         "topic": s.topic if s else None, "model": s.model if s else None,
         "summary": (s.summary if s else None) or None,
         "emotion": (s.emotion if s else None) or None,
+        "emotion_nuance": (s.emotion_nuance if s else None) or None,
+        "apalancador": (s.apalancador if s else None) or None,
     }
 
 
@@ -267,7 +269,9 @@ def feed(session, candidate_id: int | None = None, source_type: str | None = Non
         q = q.filter(Mention.candidate_id == candidate_id)
     else:
         q = q.filter(Candidate.kind == "candidate")
-    if source_type:
+    if source_type == "prensa":  # Google News + RSS combinados -- pestaña Publicaciones > Prensa
+        q = q.filter(Source.type.in_([SourceType.GOOGLE_NEWS, SourceType.RSS]))
+    elif source_type:
         q = q.filter(Source.type == SourceType(source_type))
     if day:
         d0, d1 = _day_bounds(day)
@@ -315,6 +319,7 @@ def feed(session, candidate_id: int | None = None, source_type: str | None = Non
                 "source_type": first.source.type.value, "text": title, "url": url, "author": None,
                 "published_at": max(_when(c) for c in comments).isoformat(),
                 "label": None, "score": None, "topic": None, "model": None, "summary": None, "emotion": None,
+                "emotion_nuance": None, "apalancador": None,
                 "thumbnail": _thumbnail(first),
                 "comments": [], "comments_summary": _summary_of([]),
             }
@@ -581,7 +586,7 @@ def city_topics(session, days: int = 7, samples_per: int = 3, subtopics_per: int
 
 
 def city_emotions(session, days: int = 7, samples_per: int = 2) -> list[dict]:
-    """Qué emoción transmite la conversación de la ciudad (rueda de Plutchik + orgullo), con muestras."""
+    """Qué emoción transmite la conversación de la ciudad (rueda de emociones), con muestras."""
     current = _city_rows(session, _since(days))
     by_emotion: dict[str, list[Mention]] = defaultdict(list)
     for m in current:

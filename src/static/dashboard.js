@@ -156,9 +156,11 @@ async function loadSummary() {
         ${bar(r)}
       </div></button>`).join("");
 
-  const sel = $("#f-candidate"); const cur = sel.value;
-  sel.innerHTML = `<option value="">Todos los candidatos</option>` + rows.map((r) => `<option value="${r.candidate_id}">${esc(r.name)}</option>`).join("");
-  sel.value = cur;
+  const candOptions = `<option value="">Todos los candidatos</option>` + rows.map((r) => `<option value="${r.candidate_id}">${esc(r.name)}</option>`).join("");
+  for (const id of ["#f-candidate", "#yt-f-candidate", "#rd-f-candidate"]) {
+    const s = $(id); if (!s) continue;
+    const cur = s.value; s.innerHTML = candOptions; s.value = cur;
+  }
 
   // ¿De quién se habla más?
   const byVol = [...rows].sort((a, b) => b.mentions - a.mentions);
@@ -338,7 +340,9 @@ function mergedSources(sources) {
 }
 function sentTag(m) {
   if (!m.label) return `<span class="tag pending">pendiente</span>`;
-  const emotion = m.emotion && m.emotion !== "sin emoción marcada" ? `<div class="topic">siente: ${esc(m.emotion)}</div>` : "";
+  const emotionText = m.emotion && m.emotion !== "sin emoción marcada"
+    ? (m.emotion_nuance ? `${m.emotion} (${m.emotion_nuance})` : m.emotion) : "";
+  const emotion = emotionText ? `<div class="topic">siente: ${esc(emotionText)}${m.apalancador ? ` — por: ${esc(m.apalancador)}` : ""}</div>` : "";
   return `<span class="tag ${m.label}">${LABEL[m.label]} ${m.score}</span>${m.topic ? `<div class="topic">${esc(m.topic)}</div>` : ""}${emotion}`;
 }
 function thumb(r) {
@@ -387,16 +391,22 @@ function toggleComments(sel, idx, btn) {
   item.appendChild(div);
   btn.textContent = btn.textContent.replace("▸", "▾");
 }
-async function loadFeed() {
-  if (!$("#f-candidate")) return;
-  const p = new URLSearchParams({ days: days(), limit: 80 });
-  if ($("#f-candidate").value) p.set("candidate_id", $("#f-candidate").value);
-  if ($("#f-source").value) p.set("source_type", $("#f-source").value);
-  if ($("#f-label").value) p.set("label", $("#f-label").value);
-  if ($("#f-emotion").value) p.set("emotion", $("#f-emotion").value);
-  if ($("#f-category").value) p.set("category", $("#f-category").value);
-  renderFeedList("#feed", await j(`/api/feed?${p}`), { showCandidate: true });
+/* ---------- Publicaciones: Prensa / YouTube / Reddit comparten esta misma función, cada una
+   con su propio prefijo de filtros -- la sub-pestaña de Redes sociales usa social_posts() en
+   vez de feed(), con su propio alcance (likes/comentarios/vistas), así que no pasa por aquí. */
+async function loadFeedTab(prefix, sourceType) {
+  const feedSel = `#${prefix}-feed`;
+  if (!$(feedSel)) return;
+  const p = new URLSearchParams({ days: days(), limit: 80, source_type: sourceType });
+  if ($(`#${prefix}-f-candidate`)?.value) p.set("candidate_id", $(`#${prefix}-f-candidate`).value);
+  if ($(`#${prefix}-f-label`)?.value) p.set("label", $(`#${prefix}-f-label`).value);
+  if ($(`#${prefix}-f-emotion`)?.value) p.set("emotion", $(`#${prefix}-f-emotion`).value);
+  if ($(`#${prefix}-f-category`)?.value) p.set("category", $(`#${prefix}-f-category`).value);
+  renderFeedList(feedSel, await j(`/api/feed?${p}`), { showCandidate: true });
 }
+function loadFeed() { return loadFeedTab("f", "prensa"); }
+function loadFeedYoutube() { return loadFeedTab("yt", "youtube"); }
+function loadFeedReddit() { return loadFeedTab("rd", "reddit"); }
 
 /* ---------- Meta y redes: publicaciones de Instagram/Facebook/X por alcance ---------- */
 let metaCandidatesLoaded = false;
@@ -439,6 +449,46 @@ async function loadMeta() {
         <div class="hint" style="margin-top:6px">❤️ ${n(r.likes)} · 💬 ${n(r.comments)}${r.views ? ` · 👁 ${n(r.views)}` : ""}</div>
       </div>
     </article>`).join("") : `<div class="empty">Sin publicaciones con esos filtros en el período.</div>`;
+}
+
+/* ---------- Meta y redes: alcance, reacción y la estrategia del reporte diario (sin recalcular
+   nada -- reach/reaction usan las mismas queries.candidate_reach_comparison/comment_reaction que
+   el reporte, y el análisis se lee del último reporte ya generado, no se le pide de nuevo al LLM
+   cada vez que alguien abre esta pestaña). ---------- */
+async function loadMetaAnalytics() {
+  if (!$("#chart-meta-reach")) return;
+  const d = days();
+  const [reach, reaction, latest] = await Promise.all([
+    j(`/api/social/reach?days=${d}`), j(`/api/social/reaction?days=${d}`),
+    j("/api/reports/latest").catch(() => null),
+  ]);
+
+  hbar("#chart-meta-reach", reach.map((c) => c.candidate), reach.map((c) => c.avg_engagement),
+    reach.map((c) => c.candidate === CARLOS ? BLUE : CARLOS_GRAY));
+
+  const trendRows = reach.filter((c) => c.trend_pct !== null);
+  $("#meta-trend-panel").style.display = trendRows.length ? "" : "none";
+  if (trendRows.length) {
+    hbar("#chart-meta-trend", trendRows.map((c) => c.candidate), trendRows.map((c) => c.trend_pct),
+      trendRows.map((c) => c.trend_pct >= 0 ? GOOD : CRITICAL), { labelFmt: (v) => (v >= 0 ? "+" : "") + v + "%" });
+  }
+
+  const withReaction = reaction.filter((c) => c.comments > 0);
+  hbar100("#chart-meta-reaction", withReaction.map((c) => `${cap(c.candidate)} (${c.comments})`), [
+    { name: "Positivo", data: withReaction.map((c) => c.positive_pct) },
+    { name: "Neutral", data: withReaction.map((c) => c.neutral_pct) },
+    { name: "Negativo", data: withReaction.map((c) => c.negative_pct) }], [GOOD, NEUTRAL_TONE, CRITICAL]);
+
+  const n = latest?.narrative;
+  $("#meta-narrative-panel").style.display = n ? "" : "none";
+  if (n) {
+    $("#meta-narrative-date").textContent = `del análisis diario del ${latest.date} — ver el reporte completo en la pestaña Reporte`;
+    $("#meta-narrative").innerHTML = `
+      <p class="reading">${esc(n.resumen_ejecutivo)}</p>
+      <p>${esc(n.analisis)}</p>
+      <h3 style="margin:14px 0 6px">Estrategia recomendada</h3>
+      <div class="alerts"><ul>${n.estrategia.map((s) => `<li>${esc(s)}</li>`).join("") || `<li class="empty">Sin recomendaciones en este corte.</li>`}</ul></div>`;
+  }
 }
 
 /* ---------- Investigar un perfil cualquiera, en vivo (no queda guardado) ---------- */
@@ -601,7 +651,10 @@ async function loadAll() {
   const rows = await loadSummary();
   loadQuadrant(rows);
   loadCandidatesTab(rows);
-  await Promise.all([loadTimeline(rows), loadSources(), loadTopics(), loadAlerts(), loadSocialStrong(), loadFeed(), loadMeta(), loadStatus(), loadCity(), loadCityFeed(), loadHistorico(), loadInstitutionalHistory(), loadAgenda(), loadReporte(), (typeof loadCouncil === "function" ? loadCouncil() : null)]);
+  await Promise.all([loadTimeline(rows), loadSources(), loadTopics(), loadAlerts(), loadSocialStrong(),
+    loadFeed(), loadFeedYoutube(), loadFeedReddit(), loadMeta(), loadMetaAnalytics(), loadStatus(), loadCity(),
+    loadCityFeed(), loadHistorico(), loadInstitutionalHistory(), loadAgenda(), loadReporte(),
+    (typeof loadCouncil === "function" ? loadCouncil() : null)]);
 }
 
 /* ---------- Reporte diario ---------- */
@@ -749,7 +802,9 @@ document.addEventListener("click", (e) => {
   if (card) openProfile(Number(card.dataset.candidateId), card.dataset.name);
 });
 $("#days").addEventListener("change", loadAll);
-["#f-candidate", "#f-source", "#f-label", "#f-emotion", "#f-category"].forEach((id) => $(id).addEventListener("change", loadFeed));
+["#f-candidate", "#f-label", "#f-emotion", "#f-category"].forEach((id) => $(id).addEventListener("change", loadFeed));
+["#yt-f-candidate", "#yt-f-label", "#yt-f-emotion", "#yt-f-category"].forEach((id) => $(id).addEventListener("change", loadFeedYoutube));
+["#rd-f-candidate", "#rd-f-label", "#rd-f-emotion", "#rd-f-category"].forEach((id) => $(id).addEventListener("change", loadFeedReddit));
 ["#meta-f-candidate", "#meta-f-platform", "#meta-f-sort"].forEach((id) => $(id).addEventListener("change", loadMeta));
 ["#city-f-source", "#city-f-label", "#city-f-emotion", "#city-f-category"].forEach((id) => $(id).addEventListener("change", loadCityFeed));
 $("#refresh").addEventListener("click", async () => {
@@ -775,9 +830,11 @@ setInterval(loadAll, 120000);
 const CAT_COLOR = BLUE;
 function cap(s) { return s ? s[0].toUpperCase() + s.slice(1) : s; }
 
-const EMOTION_COLOR = { "alegría": GOOD, "confianza": AQUA, "miedo": VIOLET, "tristeza": BLUE,
-  "asco": ORANGE, "ira": CRITICAL, "orgullo": GREEN, "sin emoción marcada": NEUTRAL_TONE };
-const EMOTIONS_ORDER = ["alegría", "confianza", "miedo", "tristeza", "asco", "ira", "orgullo", "sin emoción marcada"];
+// Colores calcados de la rueda de emociones del cliente (ira=rojo, miedo=gris, asco=verde azulado,
+// tristeza=violeta, felicidad=naranja, sorpresa=amarillo), tomados de la paleta ya validada.
+const EMOTION_COLOR = { "ira": CRITICAL, "miedo": NEUTRAL_TONE, "asco": AQUA, "tristeza": VIOLET,
+  "felicidad": ORANGE, "sorpresa": YELLOW, "sin emoción marcada": MUTED };
+const EMOTIONS_ORDER = ["ira", "miedo", "asco", "tristeza", "felicidad", "sorpresa", "sin emoción marcada"];
 
 async function loadCity() {
   if (!$("#city-kpis")) return;

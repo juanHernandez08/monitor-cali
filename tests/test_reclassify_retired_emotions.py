@@ -33,17 +33,17 @@ def test_reclassifies_only_mentions_with_a_retired_emotion(db_session):
     src = Source(type=SourceType.GOOGLE_NEWS, name="Google News")
     db_session.add_all([carlos, src])
     db_session.commit()
-    sorpresa = _mention(db_session, carlos, src, "m1", "que giro inesperado", emotion="sorpresa")
+    alegria = _mention(db_session, carlos, src, "m1", "que buena noticia", emotion="alegría")
     anticipacion = _mention(db_session, carlos, src, "m2", "ya viene el anuncio", emotion="anticipación")
-    fine = _mention(db_session, carlos, src, "m3", "texto normal", emotion="orgullo")
+    fine = _mention(db_session, carlos, src, "m3", "texto normal", emotion="sorpresa")
 
     engine = FakeEngine(emotion="miedo")
     n = run(db_session, engine=engine)
 
     assert n == 2
-    assert sorpresa.sentiment.emotion == "miedo"
+    assert alegria.sentiment.emotion == "miedo"
     assert anticipacion.sentiment.emotion == "miedo"
-    assert fine.sentiment.emotion == "orgullo"  # no se toca lo que ya está bien
+    assert fine.sentiment.emotion == "sorpresa"  # no se toca lo que ya está bien
 
 
 def test_reclassify_does_not_change_other_fields(db_session):
@@ -52,7 +52,7 @@ def test_reclassify_does_not_change_other_fields(db_session):
     src = Source(type=SourceType.GOOGLE_NEWS, name="Google News")
     db_session.add_all([carlos, src])
     db_session.commit()
-    m = _mention(db_session, carlos, src, "m1", "texto", emotion="sorpresa")
+    m = _mention(db_session, carlos, src, "m1", "texto", emotion="alegría")
     run(db_session, engine=FakeEngine(emotion="ira"))
     assert m.sentiment.label == SentimentLabel.POSITIVE
     assert m.sentiment.score == 0.5

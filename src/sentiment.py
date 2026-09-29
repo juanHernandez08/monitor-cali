@@ -15,19 +15,47 @@ CATEGORIES = [
 ]
 _CATEGORY_LINE = 'Además, asigna una "category" tomada EXACTAMENTE de esta lista: ' + ", ".join(CATEGORIES) + ".\n"
 
-# Rueda de emociones de Plutchik + orgullo, frecuente en discurso político, + una salida neutra.
-# "asco" cubre también "repulsión"; "alegría" cubre "felicidad"/"emoción" positiva. "sorpresa" y
-# "anticipación" se retiraron (2026-09-28, pedido del cliente): casi nunca se usaban en la práctica
-# y "anticipación" en particular no se lee como una emoción propiamente dicha en este contexto.
+# Rueda de las 6 emociones núcleo (ira, miedo, asco, tristeza, felicidad, sorpresa) + una salida
+# neutra (2026-09-29, pedido del cliente: alinear con la rueda de emociones que nos compartió).
+# Reemplaza la lista anterior (alegría, confianza, miedo, tristeza, asco, ira, orgullo); "confianza"
+# y "orgullo" ya no son categorías propias -- "orgullo" pasa a ser un matiz dentro de "felicidad".
 EMOTIONS = [
-    "alegría", "confianza", "miedo", "tristeza", "asco", "ira", "orgullo",
+    "ira", "miedo", "asco", "tristeza", "felicidad", "sorpresa",
     "sin emoción marcada",
 ]
-_EMOTION_LINE = ('Además, asigna una "emotion" tomada EXACTAMENTE de esta lista, la que mejor describa lo que '
-                 'siente quien escribió el texto (no el tema): ' + ", ".join(EMOTIONS) + '. "asco" incluye '
-                 'repulsión/indignación visceral; "sin emoción marcada" es para texto puramente informativo.\n')
 
-CITY_PROMPT = """Eres un analista de opinión pública de Cali, Colombia.
+# Matiz específico dentro de cada emoción núcleo, tomado directamente de la rueda del cliente.
+EMOTION_NUANCES: dict[str, list[str]] = {
+    "ira": ["agresivo", "frustrado", "crítico", "hostil", "irritado", "celoso"],
+    "miedo": ["inseguro", "ansioso", "amenazado", "humillado", "rechazado", "agobiado"],
+    "asco": ["repugnante", "decepcionado", "escéptico", "reacio", "vacilante", "sarcástico"],
+    "tristeza": ["deprimido", "solo", "culpable", "abandonado", "melancólico", "vacío"],
+    "felicidad": ["orgulloso", "optimista", "entusiasta", "satisfecho", "esperanzado", "seguro"],
+    "sorpresa": ["sorprendido", "confundido", "conmocionado", "asombrado", "perplejo", "impresionado"],
+}
+
+_EMOTION_LINE = (
+    'Además, asigna una "emotion" tomada EXACTAMENTE de esta lista, la que mejor describa lo que '
+    'siente quien escribió el texto (no el tema): ' + ", ".join(EMOTIONS) + '. "asco" incluye '
+    'repulsión/indignación visceral; "sin emoción marcada" es para texto puramente informativo.\n'
+    'También asigna un "emotion_nuance": el matiz más específico dentro de esa "emotion", tomado '
+    'EXACTAMENTE de la lista correspondiente (deja "" si "emotion" es "sin emoción marcada"):\n'
+    + "\n".join(f'- {core}: {", ".join(words)}' for core, words in EMOTION_NUANCES.items()) + "\n"
+    + 'Por último, escribe un "apalancador": en pocas palabras, QUÉ concretamente disparó esa '
+    'emoción (p. ej. "promesa de vivienda incumplida", "video viral bailando", "insulto directo al '
+    'candidato"). Debe ser el hecho o elemento puntual, no una repetición del tema ni de la '
+    'emoción. Deja "" si "emotion" es "sin emoción marcada".\n'
+)
+
+# Las instrucciones (todo lo de abajo) son IDÉNTICAS en cada llamada -- solo cambian el texto y,
+# en SENTIMENT_PROMPT_STATIC, nada relacionado al candidato (su nombre se manda aparte, en el
+# bloque dinámico) para que el mismo bloque cacheado sirva para los ~19 candidatos y concejales,
+# no solo para llamadas seguidas del mismo. El texto de la mención va SIEMPRE al final, en un
+# bloque separado sin "cache_control", para que Claude pueda cachear todo lo de arriba (ver
+# SentimentEngine.score) -- ~1.200 de los ~1.600 tokens de entrada de cada clasificación son estas
+# instrucciones repetidas; cachearlas cuesta ~10× menos que pagarlas completas en cada una de las
+# cientos de clasificaciones diarias (2026-09-29, pedido del cliente: bajar el costo operativo).
+CITY_PROMPT_STATIC = """Eres un analista de opinión pública de Cali, Colombia.
 El siguiente texto (noticia, post o comentario) habla de la ciudad. Evalúa cómo lo percibe la ciudadanía:
 - "negative": queja, molestia, miedo, preocupación, denuncia, indignación.
 - "positive": orgullo, celebración, agradecimiento, buena noticia recibida con entusiasmo.
@@ -41,14 +69,14 @@ Además, escribe un "summary": un resumen de UNA sola frase (máx. 25 palabras) 
 en español neutro, sin opinar. Para una noticia o post: de qué trata. Para un comentario: qué dice
 la persona. Si el texto ya es muy corto (un par de palabras), repítelo tal cual como summary.
 
-Texto: {text}
-
 Responde SOLO con un JSON de la forma:
-{{"label": "positive" | "negative" | "neutral", "score": <float entre -1.0 y 1.0>, "topic": "<asunto o 'sin tema'>", "category": "<una de la lista>", "summary": "<resumen de una frase>", "emotion": "<una de la lista>"}}
-"""
+{"label": "positive" | "negative" | "neutral", "score": <float entre -1.0 y 1.0>, "topic": "<asunto o 'sin tema'>", "category": "<una de la lista>", "summary": "<resumen de una frase>", "emotion": "<una de la lista>", "emotion_nuance": "<matiz de la lista o ''>", "apalancador": "<qué disparó la emoción o ''>"}
 
-SENTIMENT_PROMPT = """Eres un analista de comunicación política de una campaña a la Alcaldía de Cali, Colombia.
-Evalúa cómo deja parado al candidato {candidate} el siguiente texto (noticia, post o comentario).
+A continuación, el texto a evaluar."""
+
+SENTIMENT_PROMPT_STATIC = """Eres un analista de comunicación política de una campaña a la Alcaldía de Cali, Colombia.
+Evalúa cómo deja parado al candidato el siguiente texto (noticia, post o comentario). El nombre del
+candidato y el texto vienen al final de este mensaje.
 
 Criterios:
 - "positive": lo muestra con logros, apoyo, liderazgo, propuestas bien recibidas, o el autor lo elogia/apoya.
@@ -60,19 +88,18 @@ Si el candidato aparece solo de paso en una noticia (una cita, una lista, un eve
 Si el texto es un COMENTARIO que no se refiere al candidato ni a algo que él hizo o dijo (habla del tema del video/post, de otra persona o de otra cosa), responde neutral con score 0 y topic "mención tangencial".
 SOLO si el texto claramente habla de OTRA persona con el mismo nombre (otra ciudad, otro cargo, otro país), responde neutral con score 0 y topic "homónimo".
 
-Texto: {text}
-
 El "topic" es el ASUNTO concreto del que trata el texto, en 2-4 palabras (p. ej. "seguridad", "agua en Terrón Colorado", "reconstrucción tras el terremoto", "empleo juvenil", "transporte público").
 NUNCA uses el tono como topic (no escribas "apoyo", "elogio", "crítica", "rechazo", "felicitación"). Si el texto es un insulto, burla, ataque personal o rechazo al candidato sin ningún asunto concreto, usa topic "rechazo e insultos". Si solo son aplausos, saludos o emojis de apoyo sin asunto, usa topic "sin tema".
 
 Además, escribe un "summary": un resumen de UNA sola frase (máx. 25 palabras) de QUÉ DICE el texto
-sobre {candidate}, en español neutro, sin opinar tú. Para una noticia o post: de qué trata en
+sobre el candidato, en español neutro, sin opinar tú. Para una noticia o post: de qué trata en
 relación a él. Para un comentario: qué dice la persona. Si el texto ya es muy corto, repítelo tal
 cual como summary.
 """ + _CATEGORY_LINE + _EMOTION_LINE + """
 Responde SOLO con un JSON de la forma:
-{{"label": "positive" | "negative" | "neutral", "score": <float entre -1.0 y 1.0>, "topic": "<asunto en 2-4 palabras, 'rechazo e insultos' o 'sin tema'>", "category": "<una de la lista>", "summary": "<resumen de una frase>", "emotion": "<una de la lista>"}}
-"""
+{"label": "positive" | "negative" | "neutral", "score": <float entre -1.0 y 1.0>, "topic": "<asunto en 2-4 palabras, 'rechazo e insultos' o 'sin tema'>", "category": "<una de la lista>", "summary": "<resumen de una frase>", "emotion": "<una de la lista>", "emotion_nuance": "<matiz de la lista o ''>", "apalancador": "<qué disparó la emoción o ''>"}
+
+A continuación, el candidato y el texto a evaluar."""
 _JSON_FENCE = re.compile(r"^```(?:json)?\s*|\s*```$", re.MULTILINE)
 
 
@@ -85,6 +112,8 @@ class SentimentResult:
     category: str = "otro"
     summary: str = ""
     emotion: str = "sin emoción marcada"
+    emotion_nuance: str = ""
+    apalancador: str = ""
 
 
 def _parse_payload(text: str, model: str) -> SentimentResult:
@@ -99,15 +128,28 @@ def _parse_payload(text: str, model: str) -> SentimentResult:
     emotion = str(payload.get("emotion", "")).strip().lower()
     if emotion not in EMOTIONS:
         emotion = "sin emoción marcada"
+    emotion_nuance = str(payload.get("emotion_nuance", "")).strip().lower()
+    if emotion_nuance not in EMOTION_NUANCES.get(emotion, ()):
+        emotion_nuance = ""
+    apalancador = str(payload.get("apalancador", "")).strip()[:120] if emotion != "sin emoción marcada" else ""
     return SentimentResult(label=SentimentLabel(label), score=score,
                            topic=str(payload.get("topic", ""))[:80], model=model, category=category,
-                           summary=str(payload.get("summary", "")).strip()[:220], emotion=emotion)
+                           summary=str(payload.get("summary", "")).strip()[:220], emotion=emotion,
+                           emotion_nuance=emotion_nuance, apalancador=apalancador)
+
+
+def _prompt_parts(text: str, candidate: str | None, city: bool = False) -> tuple[str, str]:
+    """(bloque estático cacheable, bloque dinámico) -- ver el comentario sobre caché arriba de
+    CITY_PROMPT_STATIC. El dinámico nunca lleva cache_control: cambia en cada llamada."""
+    if city:
+        return CITY_PROMPT_STATIC, f"Texto: {text[:3000]}"
+    return SENTIMENT_PROMPT_STATIC, f"Candidato: {candidate or 'mencionado'}\nTexto: {text[:3000]}"
 
 
 def _prompt(text: str, candidate: str | None, city: bool = False) -> str:
-    if city:
-        return CITY_PROMPT.format(text=text[:3000])
-    return SENTIMENT_PROMPT.format(text=text[:3000], candidate=candidate or "mencionado")
+    """Prompt completo como un solo string -- para Ollama, que no tiene caché de prompts."""
+    static, dynamic = _prompt_parts(text, candidate, city)
+    return f"{static}\n\n{dynamic}"
 
 
 class SentimentEngine:
@@ -121,9 +163,17 @@ class SentimentEngine:
         self.client = client
 
     def score(self, text: str, candidate: str | None = None, city: bool = False) -> SentimentResult:
+        # Clasificación de una sola etiqueta JSON: no necesita razonamiento extendido. Sin esto,
+        # el modelo piensa por defecto (facturado como tokens de salida) en CADA mención -- es
+        # el mayor costo real de la herramienta (cientos de menciones/día), y ese pensamiento
+        # invisible competía por el mismo tope de max_tokens que el JSON de la respuesta.
+        static, dynamic = _prompt_parts(text, candidate, city)
         response = self.client.messages.create(
-            model=self.model, max_tokens=256,
-            messages=[{"role": "user", "content": _prompt(text, candidate, city)}],
+            model=self.model, max_tokens=320, output_config={"effort": "low"},
+            messages=[{"role": "user", "content": [
+                {"type": "text", "text": static, "cache_control": {"type": "ephemeral"}},
+                {"type": "text", "text": dynamic},
+            ]}],
         )
         # Los modelos actuales pueden devolver bloques `thinking` antes del texto.
         for block in response.content:

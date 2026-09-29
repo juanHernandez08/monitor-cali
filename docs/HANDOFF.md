@@ -124,10 +124,12 @@ salvo Apify (presupuesto aprobado: hasta 200.000 COP/mes, 2026-09-28).
    el tema — ver `scripts/recompute_relevance.py`).
 5. **Temas**: nunca el tono. "rechazo e insultos" para ataques sin asunto; "sin tema" para
    aplausos/saludos.
-6. **Emoción** (nuevo 2026-09-26): además de positivo/negativo/neutral, cada mención clasificada
-   de ahora en adelante trae una emoción de la rueda de Plutchik + orgullo (`sentiment.EMOTIONS`).
-   Es **forward-only** como el resumen de una frase — lo histórico se rellena con
-   `scripts/backfill_emotions.py` (solo toca el campo `emotion`, no re-evalúa lo demás).
+6. **Emoción** (nuevo 2026-09-26, taxonomía alineada con la rueda del cliente 2026-09-29): además
+   de positivo/negativo/neutral, cada mención clasificada trae una emoción núcleo de 6
+   (`sentiment.EMOTIONS`: ira, miedo, asco, tristeza, felicidad, sorpresa) y un `emotion_nuance`
+   más específico dentro de esa emoción (`sentiment.EMOTION_NUANCES`, calcado de la rueda). Ambos
+   son **forward-only** como el resumen de una frase — lo histórico se rellena con
+   `scripts/backfill_emotions.py` (solo toca `emotion`/`emotion_nuance`, no re-evalúa lo demás).
 7. **Comentarios en publicación propia**: el sentimiento se mide hacia el candidato dueño de la
    cuenta, no hacia cualquiera que el comentario mencione. Bug real 2026-09-26 (reportado por el
    cliente): un insulto a un tercero nombrado en la propia publicación del candidato (p. ej.
@@ -225,8 +227,17 @@ candidato de esa pestaña ahora sale de `/api/social/candidates`, no de la lista
 - **Emociones "sorpresa" y "anticipación" retiradas (2026-09-28)**: pedido del cliente
   ("anticipación no es una emoción como tal") -- ambas casi nunca se usaban en la práctica.
   `sentiment.EMOTIONS` quedó en 7 + "sin emoción marcada". Las 12 menciones ya guardadas con esos
-  valores se reclasificaron con `scripts/reclassify_retired_emotions.py` (seguro de re-correr si
-  aparece algún caso suelto).
+  valores se reclasificaron con `scripts/reclassify_retired_emotions.py`.
+- **Taxonomía de emociones re-alineada con la rueda del cliente (2026-09-29)**: el cliente compartió
+  una imagen de rueda de emociones (6 núcleo: ira, miedo, asco, tristeza, felicidad, sorpresa, cada
+  una con matices específicos alrededor) y pidió alinear el análisis con ella. "sorpresa" vuelve a
+  ser válida; "alegría", "confianza" y "orgullo" se retiran como categorías propias ("orgullo" pasa
+  a ser un matiz de "felicidad"). Se agregó `sentiment.EMOTION_NUANCES` y la columna
+  `SentimentScore.emotion_nuance` (migración automática vía `db.init_db()`, no requirió tocar la
+  base a mano). Las ~1.724 menciones con una emoción retirada se reclasificaron con
+  `scripts/reclassify_retired_emotions.py` (RETIRED_EMOTIONS actualizado); `scripts/backfill_emotions.py`
+  ahora también rellena `emotion_nuance` cuando falta (útil para el resto de menciones históricas,
+  que quedan sin matiz hasta que alguien lo corra -- es opcional, no bloquea nada).
 - **Alerta de actividad fuerte en redes (2026-09-28)**: `queries.social_strong_posts()` compara
   cada publicación contra el promedio de alcance de esa MISMA cuenta (no un umbral fijo igual para
   todos) -- necesita al menos 2 publicaciones previas de esa cuenta para tener con qué comparar.
@@ -287,7 +298,66 @@ candidato de esa pestaña ahora sale de `/api/social/candidates`, no de la lista
     Carlos no ha tocado" y "estrategia recomendada". Verificado en vivo contra datos reales del
     2026-09-28 (navegador + PDF descargado), no solo con los tests.
 
-## Despliegue en la nube (prioridad del cliente desde 2026-09-28)
+- **Bug de homónimos de Carlos Arias corregido (2026-09-29)**: a diferencia de Mondragón/Márquez/
+  Vélez, Carlos Arias no tenía `context_terms` -- cualquier nota de prensa nacional sobre OTRO
+  "Carlos Arias" (auditoría encontró un futbolista, "Luis Carlos Arias") pasaba el filtro. Agregado
+  `context_terms: ["Cali", "Alcaldía", "Alcaldia", "Concejo"]` en `config.py` (solo afecta prensa,
+  no redes/comentarios -- ver `matching.has_required_context` y `enrich.py`). Aplicado con
+  `scripts/seed_sources.py` + `scripts/recompute_relevance.py`.
+- **Costo operativo de Claude reducido ~66% (2026-09-29)**, mismo modelo y misma calidad de
+  clasificación, verificado con llamadas reales (no estimadas) contra la API:
+  1. `SentimentEngine.score()` ahora pide `output_config: {"effort": "low"}` -- Sonnet 5 pensaba
+     por defecto en cada clasificación (facturado como tokens de salida) para una tarea que es solo
+     "devuélveme este JSON"; confirmado con `response.usage.output_tokens_details.thinking_tokens`
+     antes (59) y después (0) del cambio.
+  2. **Caché de prompts**: las instrucciones (categorías, emociones/matices, criterios) se separaron
+     del texto de la mención en `sentiment.SENTIMENT_PROMPT_STATIC`/`CITY_PROMPT_STATIC` +
+     `_prompt_parts()`, con el texto SIEMPRE al final en un bloque sin `cache_control` (los
+     bloques cacheados deben ser un prefijo estable). El nombre del candidato también se sacó del
+     bloque cacheado (va en el bloque dinámico) para que el mismo caché sirva para los ~19
+     candidatos/concejales, no solo llamadas seguidas del mismo. TTL por defecto (5 min) alcanza de
+     sobra: `job_score` corre cada 2 minutos. Medido en vivo: de ~1.568 tokens de entrada por
+     llamada, ~1.840 (con overhead de escritura la primera vez) se leen del caché a ~0,1× costo;
+     solo ~55 tokens (candidato + texto) se pagan completos. Costo real por clasificación pasó de
+     $0,00467 a ~$0,00158 (~$285.000 → ~$97.000 COP/mes con las 638 clasificaciones/día reales del
+     servidor). `_prompt()` (un solo string) se mantiene para Ollama, que no tiene caché de prompts.
+  3. Al mismo tiempo se detectó (verificado contra la API de Apify) que el proyecto ya estaba en el
+     plan Starter de pago (USD 19/mes), no en el gratis de USD 5 como decían `cotizacion.md`/
+     `presupuesto.md` -- esos documentos quedaron desactualizados, no reflejan el estado real.
+- **Emoción: "apalancador" agregado (2026-09-29)**: junto a `emotion`/`emotion_nuance`, el LLM
+  ahora escribe en pocas palabras QUÉ concretamente disparó esa emoción (p. ej. "promesa de
+  vivienda incumplida"), campo libre (no lista fija) -- `SentimentScore.apalancador`. Igual que
+  `emotion_nuance`, se guarda `""` (no `None`) cuando no aplica (emoción neutra), para que
+  `backfill_emotions.py` no reprocese sin parar las menciones neutras (siempre saldrían vacías).
+- **Rediseño de pestañas Publicaciones / Meta y redes (2026-09-29)**, pedido del cliente para que
+  cada pestaña tenga valor real sin duplicar contenido:
+  - **Publicaciones** ahora tiene sub-pestañas por tipo de fuente: Prensa (Google News + RSS
+    combinados vía el alias `source_type="prensa"` en `queries.feed()`) | Redes sociales | YouTube
+    | Reddit. La sub-pestaña Redes sociales es el feed+gráfico que antes vivía en Meta y redes
+    (`chart-meta-candidate`, `meta-feed`) -- se MOVIÓ, no se copió. `dashboard.js`:
+    `loadFeedTab(prefix, sourceType)` generaliza lo que antes era `loadFeed()` fijo a un prefijo de
+    filtros (`f-`/`yt-`/`rd-`), reutilizado para las 3 sub-pestañas genéricas.
+  - **Meta y redes** pasó de mezclar feed + KPIs a ser la pestaña de análisis: KPIs, "Alcance
+    promedio por publicación" y "Tendencia" (`queries.candidate_reach_comparison`, ya existía para
+    el reporte diario pero no se mostraba en el dashboard -- nuevo endpoint `/api/social/reach`),
+    "Reacción de la audiencia" (`candidate_comment_reaction`, nuevo endpoint `/api/social/reaction`),
+    y una tarjeta de "Análisis y estrategia" que **reutiliza** el análisis narrativo del reporte
+    diario (`/api/reports/latest`) en vez de volver a llamar al LLM -- cero costo adicional.
+    "Investigar un perfil" se queda aquí (herramienta puntual, no encaja en ninguna sub-pestaña de
+    redes guardadas).
+  - Pendiente, fuera de alcance por ahora: conectar la cuenta de Meta Business propia de Carlos
+    (requiere que él autorice acceso) para métricas privadas que el scraping público nunca expone
+    -- compartidos, guardados, visitas al perfil. Con el scraping actual (Apify) solo hay likes,
+    comentarios y vistas, para cualquier cuenta.
+
+## Despliegue en la nube -- YA DESPLEGADO (2026-09-29)
+
+Corriendo en producción real desde el 2026-09-29: Hostinger VPS + Docker + Cloudflare Tunnel,
+login por correo vía Cloudflare Access (cada miembro del equipo con el suyo), HTTPS,
+`monitordescucha.tech`. `deploy`/`juanzatoz`/`posadalnicolas` tienen acceso SSH propio para
+desplegar (`scripts/deploy.sh`: `git pull --ff-only` + rebuild + recreate del contenedor). El resto
+de esta sección quedó como quedó ANTES de desplegar -- útil como referencia de qué se decidió y
+por qué, pero ya no es "lo que falta hacer".
 
 `docs/cotizacion.md` tiene el plan ya costeado y aprobado: **Escenario B** (VPS + SQLite + Claude
 Haiku, ~USD 41/mes ≈ $132.000 COP, cabe cómodo en el presupuesto aprobado de 200.000 COP/mes).

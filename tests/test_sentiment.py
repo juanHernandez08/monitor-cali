@@ -87,10 +87,40 @@ def test_sentiment_engine_generate_text_returns_raw_text_not_json_parsed():
 
 
 def test_sentiment_engine_retired_emotions_fall_back_to_no_emotion():
-    # "sorpresa" y "anticipación" se retiraron de la lista (2026-09-28, pedido del cliente:
-    # "anticipación no es una emoción como tal", y ambas casi nunca se usaban en la práctica).
-    for retired in ("sorpresa", "anticipación"):
+    # "anticipación" se retiró el 2026-09-28 ("no es una emoción como tal"); "alegría", "confianza"
+    # y "orgullo" se retiraron el 2026-09-29 al alinear la taxonomía con la rueda de emociones del
+    # cliente (esta última sí trae "sorpresa", que por eso ya no está retirada).
+    for retired in ("anticipación", "alegría", "confianza", "orgullo"):
         fake_client = FakeAnthropicClient({"label": "neutral", "score": 0.0, "topic": "x", "emotion": retired})
         engine = SentimentEngine(client=fake_client)
         result = engine.score("texto")
         assert result.emotion == "sin emoción marcada"
+
+
+def test_sentiment_engine_parses_emotion_nuance_from_the_matching_list():
+    fake_client = FakeAnthropicClient({
+        "label": "negative", "score": -0.6, "topic": "seguridad",
+        "emotion": "miedo", "emotion_nuance": "ansioso",
+    })
+    engine = SentimentEngine(client=fake_client)
+    result = engine.score("texto")
+    assert result.emotion == "miedo"
+    assert result.emotion_nuance == "ansioso"
+
+
+def test_sentiment_engine_emotion_nuance_rejected_when_it_does_not_belong_to_the_emotion():
+    # "orgulloso" es un matiz de "felicidad", no de "miedo" -- no se acepta cruzado.
+    fake_client = FakeAnthropicClient({
+        "label": "negative", "score": -0.6, "topic": "x",
+        "emotion": "miedo", "emotion_nuance": "orgulloso",
+    })
+    engine = SentimentEngine(client=fake_client)
+    result = engine.score("texto")
+    assert result.emotion_nuance == ""
+
+
+def test_sentiment_engine_emotion_nuance_defaults_to_empty_when_absent():
+    fake_client = FakeAnthropicClient({"label": "neutral", "score": 0.0, "topic": "x"})
+    engine = SentimentEngine(client=fake_client)
+    result = engine.score("texto")
+    assert result.emotion_nuance == ""

@@ -44,13 +44,18 @@ def test_seed_creates_city_candidate_and_city_sources(db_session):
 
 
 def test_seed_sets_context_terms_for_candidates_that_declare_them(db_session):
-    """Francia Márquez e Irene Vélez son figuras nacionales (Vicepresidenta y exministra): sin
-    exigir "Cali"/"Alcaldía" en el texto, la prensa nacional sobre ellas se cuela como si fuera
-    de la contienda por la Alcaldía. Bug real: seed() solo aplicaba context_terms a concejales."""
+    """Francia Márquez e Irene Vélez son figuras nacionales (Vicepresidenta y exministra); Carlos
+    Arias es un nombre común (hay un futbolista "Luis Carlos Arias"): sin exigir "Cali"/"Alcaldía"
+    en el texto, la prensa nacional sobre ellos se cuela como si fuera de la contienda por la
+    Alcaldía. Bug real: seed() solo aplicaba context_terms a concejales; luego Carlos Arias se
+    quedó sin la regla que sí se le dio a los demás nombres comunes/figuras nacionales
+    (2026-09-29, auditoría encontró prensa de fútbol colándose)."""
     seed(db_session)
     fm = db_session.query(Candidate).filter_by(name="Francia Márquez").one()
     assert fm.context_terms and "Cali" in fm.context_terms
     iv = db_session.query(Candidate).filter_by(name="Irene Vélez").one()
     assert iv.context_terms and "Cali" in iv.context_terms
     carlos = db_session.query(Candidate).filter_by(name="Carlos Arias").one()
-    assert not carlos.context_terms  # no todos los candidatos necesitan esta regla
+    assert carlos.context_terms and "Cali" in carlos.context_terms
+    roberto = db_session.query(Candidate).filter_by(name="Roberto Ortiz").one()
+    assert not roberto.context_terms  # no todos los candidatos necesitan esta regla

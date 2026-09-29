@@ -1,7 +1,8 @@
-"""Reclasifica la emoción de menciones que quedaron con "sorpresa" o "anticipación",
-retiradas de sentiment.EMOTIONS el 2026-09-28 (pedido del cliente). No toca label, score,
-topic, category ni summary ya guardados -- solo pide al LLM una emoción nueva, que ahora
-saldrá forzosamente de la lista vigente.
+"""Reclasifica la emoción de menciones que quedaron con una emoción retirada de sentiment.EMOTIONS:
+"anticipación" (2026-09-28) y ahora también "alegría", "confianza" y "orgullo" (2026-09-29, al
+alinear la taxonomía con la rueda de emociones del cliente -- "sorpresa" vuelve a ser válida).
+No toca label, score, topic, category ni summary ya guardados -- solo pide al LLM una
+emoción y un matiz nuevos, que ahora saldrán forzosamente de la lista vigente.
 
     python -m scripts.reclassify_retired_emotions
 """
@@ -13,7 +14,7 @@ from src.pipeline import context_text
 from src.sentiment import build_sentiment_engine
 
 log = logging.getLogger(__name__)
-RETIRED_EMOTIONS = ("sorpresa", "anticipación")
+RETIRED_EMOTIONS = ("anticipación", "alegría", "confianza", "orgullo")
 
 
 def run(session, engine) -> int:
@@ -32,6 +33,8 @@ def run(session, engine) -> int:
             log.exception("reclasificación de emoción falló para mention %s", mention.id)
             continue
         mention.sentiment.emotion = getattr(result, "emotion", None) or "sin emoción marcada"
+        mention.sentiment.emotion_nuance = getattr(result, "emotion_nuance", "")
+        mention.sentiment.apalancador = getattr(result, "apalancador", "")
         done += 1
         session.commit()
     return done

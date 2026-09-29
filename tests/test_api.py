@@ -44,6 +44,8 @@ def test_json_routes(client):
     assert client.get("/api/social/kpis").json()["total_posts"] == 0
     assert client.get("/api/social/candidates").json() == [{"candidate_id": 1, "name": "Carlos Arias", "party": None, "is_councilor": False}]
     assert client.get("/api/social/strong").json() == []
+    assert client.get("/api/social/reach").json() == []
+    assert client.get("/api/social/reaction").json() == []
     hist = client.get("/api/institutional-history").json()
     assert len(hist["administrations"]) == 4
     assert len(hist["debt_timeline"]) == 2

@@ -5,44 +5,52 @@ from src.models import Candidate, Source, SourceType, Mention, SentimentScore, S
 
 class FakeEngine:
     """Devuelve una emoción fija sin llamar a ningún modelo real."""
-    def __init__(self, emotion="alegría"):
+    def __init__(self, emotion="felicidad", emotion_nuance="optimista", apalancador="una buena noticia"):
         self.emotion = emotion
+        self.emotion_nuance = emotion_nuance
+        self.apalancador = apalancador
         self.calls = []
 
     def score(self, text, candidate=None, city=False):
         from src.sentiment import SentimentResult
         self.calls.append(text)
         return SentimentResult(label=SentimentLabel.POSITIVE, score=0.5, topic="t", model="fake",
-                               category="otro", summary="s", emotion=self.emotion)
+                               category="otro", summary="s", emotion=self.emotion,
+                               emotion_nuance=self.emotion_nuance, apalancador=self.apalancador)
 
 
-def _mention(db_session, cand, src, ext, text, emotion=None, relevant=True, raw=None):
+def _mention(db_session, cand, src, ext, text, emotion=None, emotion_nuance=None, apalancador=None,
+            relevant=True, raw=None):
     now = dt.datetime.utcnow()
     m = Mention(candidate_id=cand.id, source_id=src.id, external_id=ext, text=text, url=f"https://x/{ext}",
                 raw=raw or {}, published_at=now, fetched_at=now, relevant=relevant)
     db_session.add(m)
     db_session.flush()
     db_session.add(SentimentScore(mention_id=m.id, label=SentimentLabel.POSITIVE, score=0.5, topic="t",
-                                  model="fake", category="otro", emotion=emotion))
+                                  model="fake", category="otro", emotion=emotion, emotion_nuance=emotion_nuance,
+                                  apalancador=apalancador))
     db_session.commit()
     return m
 
 
-def test_backfill_fills_only_mentions_missing_emotion(db_session):
+def test_backfill_fills_only_mentions_missing_emotion_or_nuance(db_session):
     from scripts.backfill_emotions import run
     carlos = Candidate(name="Carlos Arias", aliases=[])
     src = Source(type=SourceType.GOOGLE_NEWS, name="Google News")
     db_session.add_all([carlos, src])
     db_session.commit()
     without = _mention(db_session, carlos, src, "m1", "texto sin emoción")
-    already = _mention(db_session, carlos, src, "m2", "texto ya con emoción", emotion="orgullo")
+    already = _mention(db_session, carlos, src, "m2", "texto ya con emoción y matiz",
+                        emotion="orgullo", emotion_nuance="", apalancador="")
 
-    engine = FakeEngine(emotion="alegría")
+    engine = FakeEngine(emotion="felicidad", emotion_nuance="optimista", apalancador="una buena noticia")
     n = run(db_session, engine=engine)
 
     assert n == 1
-    assert without.sentiment.emotion == "alegría"
-    assert already.sentiment.emotion == "orgullo"  # no se toca lo que ya tiene
+    assert without.sentiment.emotion == "felicidad"
+    assert without.sentiment.emotion_nuance == "optimista"
+    assert without.sentiment.apalancador == "una buena noticia"
+    assert already.sentiment.emotion == "orgullo"  # no se toca lo que ya tiene emoción, matiz y apalancador
     assert engine.calls == ["texto sin emoción"]
 
 

@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Monitor Alcaldía Cali 2027</title>
+<link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v={{ v }}">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/dashboard.css?v={{ v }}">
@@ -140,63 +141,189 @@
   </div>
 
   <div id="tab-publicaciones" class="tabpane">
-    <section class="panel feed-panel">
-      <div class="feed-head">
-        <div><h2>Publicaciones y notas</h2><span class="hint">una fila por publicación; despliega sus comentarios</span></div>
-        <div class="filters">
-          <select id="f-candidate"><option value="">Todos los candidatos</option></select>
-          <select id="f-source">
-            <option value="">Todas las fuentes</option>
-            <option value="google_news">Prensa (Google News)</option>
-            <option value="rss">Prensa (RSS)</option>
-            <option value="reddit">Reddit</option>
-            <option value="youtube">YouTube</option>
-            <option value="social">Instagram / Facebook / X</option>
-          </select>
-          <select id="f-label">
-            <option value="">Todo sentimiento</option>
-            <option value="negative">Negativo</option>
-            <option value="neutral">Neutral</option>
-            <option value="positive">Positivo</option>
-          </select>
-          <select id="f-emotion">
-            <option value="">Toda emoción</option>
-            <option value="alegría">Alegría</option>
-            <option value="confianza">Confianza</option>
-            <option value="miedo">Miedo</option>
-            <option value="tristeza">Tristeza</option>
-            <option value="asco">Asco / repulsión</option>
-            <option value="ira">Ira</option>
-            <option value="orgullo">Orgullo</option>
-            <option value="sin emoción marcada">Sin emoción marcada</option>
-          </select>
-          <select id="f-category">
-            <option value="">Todos los temas</option>
-            <option value="seguridad">Seguridad</option>
-            <option value="movilidad y transporte">Movilidad y transporte</option>
-            <option value="terremoto y reconstrucción">Terremoto y reconstrucción</option>
-            <option value="servicios públicos">Servicios públicos</option>
-            <option value="salud">Salud</option>
-            <option value="educación">Educación</option>
-            <option value="empleo y economía">Empleo y economía</option>
-            <option value="vivienda">Vivienda</option>
-            <option value="medio ambiente y clima">Medio ambiente y clima</option>
-            <option value="cultura y eventos">Cultura y eventos</option>
-            <option value="deporte">Deporte</option>
-            <option value="corrupción y gobierno">Corrupción y gobierno</option>
-            <option value="política y elecciones">Política y elecciones</option>
-            <option value="orden público y protestas">Orden público y protestas</option>
-            <option value="infraestructura y obras">Infraestructura y obras</option>
-            <option value="animales">Animales</option>
-            <option value="otro">Otro</option>
-          </select>
+    <nav class="sub-nav">
+      <button class="subtab active" data-subtab="pub-prensa">Prensa</button>
+      <button class="subtab" data-subtab="pub-social">Redes sociales</button>
+      <button class="subtab" data-subtab="pub-youtube">YouTube</button>
+      <button class="subtab" data-subtab="pub-reddit">Reddit</button>
+    </nav>
+
+    <div id="subtab-pub-prensa" class="subtabpane active">
+      <section class="panel feed-panel">
+        <div class="feed-head">
+          <div><h2>Prensa</h2><span class="hint">Google News y RSS — una fila por nota; despliega sus comentarios si los tiene</span></div>
+          <div class="filters">
+            <select id="f-candidate"><option value="">Todos los candidatos</option></select>
+            <select id="f-label">
+              <option value="">Todo sentimiento</option>
+              <option value="negative">Negativo</option>
+              <option value="neutral">Neutral</option>
+              <option value="positive">Positivo</option>
+            </select>
+            <select id="f-emotion">
+              <option value="">Toda emoción</option>
+              <option value="ira">Ira</option>
+              <option value="miedo">Miedo</option>
+              <option value="asco">Asco / repulsión</option>
+              <option value="tristeza">Tristeza</option>
+              <option value="felicidad">Felicidad</option>
+              <option value="sorpresa">Sorpresa</option>
+              <option value="sin emoción marcada">Sin emoción marcada</option>
+            </select>
+            <select id="f-category">
+              <option value="">Todos los temas</option>
+              <option value="seguridad">Seguridad</option>
+              <option value="movilidad y transporte">Movilidad y transporte</option>
+              <option value="terremoto y reconstrucción">Terremoto y reconstrucción</option>
+              <option value="servicios públicos">Servicios públicos</option>
+              <option value="salud">Salud</option>
+              <option value="educación">Educación</option>
+              <option value="empleo y economía">Empleo y economía</option>
+              <option value="vivienda">Vivienda</option>
+              <option value="medio ambiente y clima">Medio ambiente y clima</option>
+              <option value="cultura y eventos">Cultura y eventos</option>
+              <option value="deporte">Deporte</option>
+              <option value="corrupción y gobierno">Corrupción y gobierno</option>
+              <option value="política y elecciones">Política y elecciones</option>
+              <option value="orden público y protestas">Orden público y protestas</option>
+              <option value="infraestructura y obras">Infraestructura y obras</option>
+              <option value="animales">Animales</option>
+              <option value="otro">Otro</option>
+            </select>
+          </div>
         </div>
-      </div>
-      <div id="feed" class="feed"></div>
-    </section>
+        <div id="feed" class="feed"></div>
+      </section>
+    </div>
+
+    <div id="subtab-pub-social" class="subtabpane">
+      <section class="panel">
+        <div class="panel-head"><h2>Publicaciones por candidato</h2><span class="hint">Instagram, Facebook y X — solo posts, no comentarios</span></div>
+        <div class="chart-box" id="chart-meta-candidate"></div>
+      </section>
+      <section class="panel feed-panel">
+        <div class="feed-head">
+          <div><h2>Publicaciones</h2><span class="hint">ordenadas por alcance (likes + comentarios); toca "ver original" para abrirla</span></div>
+          <div class="filters">
+            <select id="meta-f-candidate"><option value="">Todos los candidatos</option></select>
+            <select id="meta-f-platform">
+              <option value="">Todas las redes</option>
+              <option value="instagram">Instagram</option>
+              <option value="facebook">Facebook</option>
+              <option value="x">X</option>
+            </select>
+            <select id="meta-f-sort">
+              <option value="engagement">Más alcance</option>
+              <option value="views">Más vistas</option>
+              <option value="recent">Más recientes</option>
+            </select>
+          </div>
+        </div>
+        <div id="meta-feed" class="feed"></div>
+      </section>
+    </div>
+
+    <div id="subtab-pub-youtube" class="subtabpane">
+      <section class="panel feed-panel">
+        <div class="feed-head">
+          <div><h2>YouTube</h2><span class="hint">videos y comentarios</span></div>
+          <div class="filters">
+            <select id="yt-f-candidate"><option value="">Todos los candidatos</option></select>
+            <select id="yt-f-label">
+              <option value="">Todo sentimiento</option>
+              <option value="negative">Negativo</option>
+              <option value="neutral">Neutral</option>
+              <option value="positive">Positivo</option>
+            </select>
+            <select id="yt-f-emotion">
+              <option value="">Toda emoción</option>
+              <option value="ira">Ira</option>
+              <option value="miedo">Miedo</option>
+              <option value="asco">Asco / repulsión</option>
+              <option value="tristeza">Tristeza</option>
+              <option value="felicidad">Felicidad</option>
+              <option value="sorpresa">Sorpresa</option>
+              <option value="sin emoción marcada">Sin emoción marcada</option>
+            </select>
+            <select id="yt-f-category">
+              <option value="">Todos los temas</option>
+              <option value="seguridad">Seguridad</option>
+              <option value="movilidad y transporte">Movilidad y transporte</option>
+              <option value="terremoto y reconstrucción">Terremoto y reconstrucción</option>
+              <option value="servicios públicos">Servicios públicos</option>
+              <option value="salud">Salud</option>
+              <option value="educación">Educación</option>
+              <option value="empleo y economía">Empleo y economía</option>
+              <option value="vivienda">Vivienda</option>
+              <option value="medio ambiente y clima">Medio ambiente y clima</option>
+              <option value="cultura y eventos">Cultura y eventos</option>
+              <option value="deporte">Deporte</option>
+              <option value="corrupción y gobierno">Corrupción y gobierno</option>
+              <option value="política y elecciones">Política y elecciones</option>
+              <option value="orden público y protestas">Orden público y protestas</option>
+              <option value="infraestructura y obras">Infraestructura y obras</option>
+              <option value="animales">Animales</option>
+              <option value="otro">Otro</option>
+            </select>
+          </div>
+        </div>
+        <div id="yt-feed" class="feed"></div>
+      </section>
+    </div>
+
+    <div id="subtab-pub-reddit" class="subtabpane">
+      <section class="panel feed-panel">
+        <div class="feed-head">
+          <div><h2>Reddit</h2><span class="hint">posts y comentarios</span></div>
+          <div class="filters">
+            <select id="rd-f-candidate"><option value="">Todos los candidatos</option></select>
+            <select id="rd-f-label">
+              <option value="">Todo sentimiento</option>
+              <option value="negative">Negativo</option>
+              <option value="neutral">Neutral</option>
+              <option value="positive">Positivo</option>
+            </select>
+            <select id="rd-f-emotion">
+              <option value="">Toda emoción</option>
+              <option value="ira">Ira</option>
+              <option value="miedo">Miedo</option>
+              <option value="asco">Asco / repulsión</option>
+              <option value="tristeza">Tristeza</option>
+              <option value="felicidad">Felicidad</option>
+              <option value="sorpresa">Sorpresa</option>
+              <option value="sin emoción marcada">Sin emoción marcada</option>
+            </select>
+            <select id="rd-f-category">
+              <option value="">Todos los temas</option>
+              <option value="seguridad">Seguridad</option>
+              <option value="movilidad y transporte">Movilidad y transporte</option>
+              <option value="terremoto y reconstrucción">Terremoto y reconstrucción</option>
+              <option value="servicios públicos">Servicios públicos</option>
+              <option value="salud">Salud</option>
+              <option value="educación">Educación</option>
+              <option value="empleo y economía">Empleo y economía</option>
+              <option value="vivienda">Vivienda</option>
+              <option value="medio ambiente y clima">Medio ambiente y clima</option>
+              <option value="cultura y eventos">Cultura y eventos</option>
+              <option value="deporte">Deporte</option>
+              <option value="corrupción y gobierno">Corrupción y gobierno</option>
+              <option value="política y elecciones">Política y elecciones</option>
+              <option value="orden público y protestas">Orden público y protestas</option>
+              <option value="infraestructura y obras">Infraestructura y obras</option>
+              <option value="animales">Animales</option>
+              <option value="otro">Otro</option>
+            </select>
+          </div>
+        </div>
+        <div id="rd-feed" class="feed"></div>
+      </section>
+    </div>
   </div>
 
   <div id="tab-meta" class="tabpane">
+    <section class="panel">
+      <div class="panel-head"><div><h2>Meta y redes</h2><div class="hint">Análisis de desempeño en redes sociales de todos los candidatos y concejales — alcance, reacción de la audiencia y estrategia recomendada. Para ver las publicaciones una por una, ir a Publicaciones → Redes sociales.</div></div></div>
+    </section>
     <section class="panel">
       <div class="panel-head"><h2>Investigar un perfil</h2><span class="hint">trae publicaciones recientes de CUALQUIER cuenta pública de Instagram/Facebook al momento -- rivales, cuentas nuevas, lo que sea. Consulta puntual, no queda guardada.</span></div>
       <div class="filters" style="margin-bottom:10px">
@@ -211,28 +338,20 @@
     </section>
     <section class="kpis" id="meta-kpis"></section>
     <section class="panel">
-      <div class="panel-head"><h2>Publicaciones por candidato</h2><span class="hint">Instagram, Facebook y X — solo posts, no comentarios</span></div>
-      <div class="chart-box" id="chart-meta-candidate"></div>
+      <div class="panel-head"><div><h2>Alcance promedio por publicación</h2><div class="hint">likes + comentarios por publicación, candidatos y concejales con al menos 2 posts en el período. Carlos en azul.</div></div></div>
+      <div class="chart-box" id="chart-meta-reach"></div>
     </section>
-    <section class="panel feed-panel">
-      <div class="feed-head">
-        <div><h2>Publicaciones</h2><span class="hint">ordenadas por alcance (likes + comentarios); toca "ver original" para abrirla</span></div>
-        <div class="filters">
-          <select id="meta-f-candidate"><option value="">Todos los candidatos</option></select>
-          <select id="meta-f-platform">
-            <option value="">Todas las redes</option>
-            <option value="instagram">Instagram</option>
-            <option value="facebook">Facebook</option>
-            <option value="x">X</option>
-          </select>
-          <select id="meta-f-sort">
-            <option value="engagement">Más alcance</option>
-            <option value="views">Más vistas</option>
-            <option value="recent">Más recientes</option>
-          </select>
-        </div>
-      </div>
-      <div id="meta-feed" class="feed"></div>
+    <section class="panel" id="meta-trend-panel" style="display:none">
+      <div class="panel-head"><div><h2>Tendencia de alcance</h2><div class="hint">variación entre la primera y la segunda mitad del período -- verde sube, rojo baja</div></div></div>
+      <div class="chart-box" id="chart-meta-trend"></div>
+    </section>
+    <section class="panel">
+      <div class="panel-head"><div><h2>Reacción de la audiencia</h2><div class="hint">De los comentarios en las publicaciones PROPIAS de cada quien (no menciones de paso): cuántos son positivos, neutrales o negativos.</div></div></div>
+      <div class="chart-box" id="chart-meta-reaction"></div>
+    </section>
+    <section class="panel" id="meta-narrative-panel" style="display:none">
+      <div class="panel-head"><div><h2>Análisis y estrategia</h2><div class="hint" id="meta-narrative-date"></div></div></div>
+      <div id="meta-narrative"></div>
     </section>
   </div>
 
@@ -300,7 +419,7 @@
     </section>
 
     <section class="panel big">
-      <div class="panel-head"><div><h2>¿Qué emoción transmite la ciudad?</h2><div class="hint">Más allá de positivo/negativo: qué siente concretamente quien escribe — miedo, ira, alegría, orgullo y demás. Toca una barra para ver ejemplos.</div></div></div>
+      <div class="panel-head"><div><h2>¿Qué emoción transmite la ciudad?</h2><div class="hint">Más allá de positivo/negativo: qué siente concretamente quien escribe — miedo, ira, felicidad, sorpresa y demás. Toca una barra para ver ejemplos.</div></div></div>
       <div class="chart-box xl"><div id="chart-city-emotions"></div></div>
       <div id="city-emotion-detail" class="feed" style="margin-top:14px"></div>
     </section>
@@ -340,13 +459,12 @@
           </select>
           <select id="city-f-emotion">
             <option value="">Toda emoción</option>
-            <option value="alegría">Alegría</option>
-            <option value="confianza">Confianza</option>
-            <option value="miedo">Miedo</option>
-            <option value="tristeza">Tristeza</option>
-            <option value="asco">Asco / repulsión</option>
             <option value="ira">Ira</option>
-            <option value="orgullo">Orgullo</option>
+            <option value="miedo">Miedo</option>
+            <option value="asco">Asco / repulsión</option>
+            <option value="tristeza">Tristeza</option>
+            <option value="felicidad">Felicidad</option>
+            <option value="sorpresa">Sorpresa</option>
             <option value="sin emoción marcada">Sin emoción marcada</option>
           </select>
           <select id="city-f-category">

@@ -147,6 +147,16 @@ def create_app(session_factory=None, start_jobs: bool = True) -> FastAPI:
         with session() as s:
             return queries.social_strong_posts(s, days=days)
 
+    @app.get("/api/social/reach")
+    def api_social_reach(days: int = Query(30, ge=1, le=365)):
+        with session() as s:
+            return queries.candidate_reach_comparison(s, days=days)
+
+    @app.get("/api/social/reaction")
+    def api_social_reaction(days: int = Query(30, ge=1, le=365)):
+        with session() as s:
+            return queries.candidate_comment_reaction(s, days=days)
+
     @app.get("/api/investigate")
     def api_investigate(url: str, platform: str = "instagram"):
         from urllib.parse import urlparse

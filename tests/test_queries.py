@@ -143,7 +143,7 @@ def test_feed_emotion_filter_keeps_publication_with_matching_comments(db_session
     db_session.add_all([
         SentimentScore(mention_id=p.id, label=SentimentLabel.NEUTRAL, score=0.0, topic="t", model="f", emotion="sin emoción marcada"),
         SentimentScore(mention_id=c1.id, label=SentimentLabel.NEGATIVE, score=-0.6, topic="t", model="f", emotion="ira"),
-        SentimentScore(mention_id=c2.id, label=SentimentLabel.POSITIVE, score=0.6, topic="t", model="f", emotion="alegría")])
+        SentimentScore(mention_id=c2.id, label=SentimentLabel.POSITIVE, score=0.6, topic="t", model="f", emotion="felicidad")])
     db_session.commit()
 
     rows = feed(db_session, days=7, emotion="ira")
@@ -174,6 +174,30 @@ def test_feed_category_filter_keeps_publication_with_matching_comments(db_sessio
     rows = feed(db_session, days=7, category="seguridad")
     assert len(rows) == 1 and rows[0]["text"] == "post"
     assert [x["text"] for x in rows[0]["comments"]] == ["sobre seguridad"]
+
+
+def test_feed_source_type_prensa_combines_google_news_and_rss(db_session):
+    """La pestaña Publicaciones > Prensa junta Google News y RSS en una sola sub-pestaña
+    (2026-09-29, rediseño de pestañas) -- "prensa" no es un SourceType real, es un alias."""
+    from src.queries import feed
+    carlos = Candidate(name="Carlos Arias", aliases=[])
+    gn = Source(type=SourceType.GOOGLE_NEWS, name="Google News")
+    rss = Source(type=SourceType.RSS, name="El País")
+    yt = Source(type=SourceType.YOUTUBE, name="YT")
+    db_session.add_all([carlos, gn, rss, yt])
+    db_session.commit()
+    now = dt.datetime.utcnow()
+    m1 = Mention(candidate_id=carlos.id, source_id=gn.id, external_id="gn1", text="nota de Google News",
+                url="https://x/gn1", raw={}, published_at=now, fetched_at=now)
+    m2 = Mention(candidate_id=carlos.id, source_id=rss.id, external_id="rss1", text="nota de RSS",
+                url="https://x/rss1", raw={}, published_at=now, fetched_at=now)
+    m3 = Mention(candidate_id=carlos.id, source_id=yt.id, external_id="yt1", text="video de YouTube",
+                url="https://x/yt1", raw={}, published_at=now, fetched_at=now)
+    db_session.add_all([m1, m2, m3])
+    db_session.commit()
+
+    rows = feed(db_session, days=7, source_type="prensa")
+    assert {r["text"] for r in rows} == {"nota de Google News", "nota de RSS"}
 
 
 def test_feed_city_true_shows_only_city_mentions_not_candidates(db_session):
@@ -213,7 +237,7 @@ def test_city_emotion_by_topic_cross_tab(db_session):
     now = dt.datetime.utcnow()
     rows_data = [
         ("a", "servicios públicos", "ira"), ("b", "servicios públicos", "ira"),
-        ("c", "servicios públicos", "miedo"), ("d", "deporte", "alegría"),
+        ("c", "servicios públicos", "miedo"), ("d", "deporte", "felicidad"),
     ]
     for ext, cat, emo in rows_data:
         m = Mention(candidate_id=city.id, source_id=gn.id, external_id=ext, text=ext, url=f"https://x/{ext}",
@@ -229,7 +253,7 @@ def test_city_emotion_by_topic_cross_tab(db_session):
     assert sp["emotions"] == {"ira": 2, "miedo": 1}
     assert sp["total"] == 3
     deporte = next(r for r in rows if r["category"] == "deporte")
-    assert deporte["emotions"] == {"alegría": 1}
+    assert deporte["emotions"] == {"felicidad": 1}
 
 
 def test_summary_includes_avatar_from_instagram_posts(db_session, monkeypatch):

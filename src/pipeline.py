@@ -155,7 +155,13 @@ def score_pending(session, engine, limit: int = 20) -> int:
                                    topic=result.topic, model=result.model,
                                    category=getattr(result, "category", None),
                                    summary=getattr(result, "summary", None) or None,
-                                   emotion=getattr(result, "emotion", None) or None))
+                                   emotion=getattr(result, "emotion", None) or None,
+                                   # "" (no "" -> None) para nuance/apalancador: distingue "ya se
+                                   # clasificó y no aplica" (emoción neutra) de "aún sin clasificar"
+                                   # (None) -- si no, backfill_emotions.py reprocesaría sin parar
+                                   # cada mención neutra, que siempre vuelve a salir vacía.
+                                   emotion_nuance=getattr(result, "emotion_nuance", ""),
+                                   apalancador=getattr(result, "apalancador", "")))
         try:
             session.commit()
         except IntegrityError:  # otro proceso (el scheduler del servidor) ya la clasificó
