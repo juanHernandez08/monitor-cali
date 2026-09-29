@@ -181,11 +181,18 @@ class SentimentEngine:
                 return _parse_payload(block.text, self.model)
         raise ValueError("La respuesta de Claude no contiene un bloque de texto")
 
-    def generate_text(self, prompt: str, max_tokens: int = 1400) -> str:
+    def generate_text(self, prompt: str, max_tokens: int = 3000) -> str:
         """Texto libre (no la clasificación JSON de score()) -- para el análisis narrativo del
-        reporte diario, que necesita redactar, no clasificar."""
+        reporte diario, que necesita redactar, no clasificar.
+
+        Bug real en producción (2026-09-29): con max_tokens=1400 y pensamiento por defecto (sin
+        `effort`), el modelo a veces gastaba todo el presupuesto pensando y la respuesta llegaba
+        SIN ningún bloque de texto -- el reporte del día se generó sin análisis narrativo. effort
+        "medium" (no "low": esto redacta un análisis, no clasifica una etiqueta) más un tope más
+        alto dejan espacio de sobra para pensar y para el texto visible.
+        """
         response = self.client.messages.create(
-            model=self.model, max_tokens=max_tokens,
+            model=self.model, max_tokens=max_tokens, output_config={"effort": "medium"},
             messages=[{"role": "user", "content": prompt}],
         )
         for block in response.content:

@@ -33,9 +33,19 @@ function deepMerge(a, b) {
 }
 /* Barras horizontales, una sola serie (ranking o magnitud). `perBar` = array de colores o un color fijo.
    `onClick(categoryIndex)` es opcional: si se da, la barra se ve y se comporta como un botón. */
+/* Alto dinámico según cuántas barras hay -- una lista de 20+ candidatos/concejales en un cuadro
+   fijo queda ilegible (etiquetas cortadas, barras finísimas). Nunca más chico que el mínimo de
+   siempre (260px), solo más grande cuando hace falta. No lee el alto por CSS: la mayoría de las
+   pestañas están ocultas (display:none) al cargar todo de una, y ahí getComputedStyle da 0. */
+function barsHeight(id, n) {
+  const h = Math.max(260, 30 + n * 28);
+  $(id).style.height = `${h}px`;
+  return h;
+}
 function hbar(id, categories, data, perBar, { labelFmt, onClick } = {}) {
+  const h = barsHeight(id, categories.length);
   chart(id, {
-    chart: { type: "bar", height: "100%", events: onClick ? { dataPointSelection: (e, ctx, cfg) => onClick(cfg.dataPointIndex) } : {} },
+    chart: { type: "bar", height: h, events: onClick ? { dataPointSelection: (e, ctx, cfg) => onClick(cfg.dataPointIndex) } : {} },
     series: [{ data }], xaxis: { categories, labels: { style: { colors: MUTED } } },
     plotOptions: { bar: { horizontal: true, borderRadius: 4, distributed: Array.isArray(perBar), barHeight: "62%" } },
     colors: Array.isArray(perBar) ? perBar : [perBar],
@@ -47,8 +57,9 @@ function hbar(id, categories, data, perBar, { labelFmt, onClick } = {}) {
 /* Barras horizontales apiladas al 100% (ya como % 0-100). `colors` sigue el mismo orden que `series`
    -- nunca asumir positivo/neutral/negativo: cada llamada dice explícitamente su propio orden. */
 function hbar100(id, categories, series, colors) {
+  const h = barsHeight(id, categories.length);
   chart(id, {
-    chart: { type: "bar", stacked: true, height: "100%" },
+    chart: { type: "bar", stacked: true, height: h },
     series, xaxis: { categories, max: 100, labels: { formatter: (v) => Math.round(v) + "%" } },
     plotOptions: { bar: { horizontal: true, borderRadius: 3, barHeight: "62%" } },
     colors,
@@ -394,28 +405,44 @@ function toggleComments(sel, idx, btn) {
 /* ---------- Publicaciones: Prensa / YouTube / Reddit comparten esta misma función, cada una
    con su propio prefijo de filtros -- la sub-pestaña de Redes sociales usa social_posts() en
    vez de feed(), con su propio alcance (likes/comentarios/vistas), así que no pasa por aquí. */
-async function loadFeedTab(prefix, sourceType) {
-  const feedSel = `#${prefix}-feed`;
+async function loadFeedTab(feedSel, filterPrefix, sourceType) {
   if (!$(feedSel)) return;
   const p = new URLSearchParams({ days: days(), limit: 80, source_type: sourceType });
-  if ($(`#${prefix}-f-candidate`)?.value) p.set("candidate_id", $(`#${prefix}-f-candidate`).value);
-  if ($(`#${prefix}-f-label`)?.value) p.set("label", $(`#${prefix}-f-label`).value);
-  if ($(`#${prefix}-f-emotion`)?.value) p.set("emotion", $(`#${prefix}-f-emotion`).value);
-  if ($(`#${prefix}-f-category`)?.value) p.set("category", $(`#${prefix}-f-category`).value);
+  if ($(`#${filterPrefix}-candidate`)?.value) p.set("candidate_id", $(`#${filterPrefix}-candidate`).value);
+  if ($(`#${filterPrefix}-label`)?.value) p.set("label", $(`#${filterPrefix}-label`).value);
+  if ($(`#${filterPrefix}-emotion`)?.value) p.set("emotion", $(`#${filterPrefix}-emotion`).value);
+  if ($(`#${filterPrefix}-category`)?.value) p.set("category", $(`#${filterPrefix}-category`).value);
   renderFeedList(feedSel, await j(`/api/feed?${p}`), { showCandidate: true });
 }
-function loadFeed() { return loadFeedTab("f", "prensa"); }
-function loadFeedYoutube() { return loadFeedTab("yt", "youtube"); }
-function loadFeedReddit() { return loadFeedTab("rd", "reddit"); }
+function loadFeed() { return loadFeedTab("#feed", "f", "prensa"); }
+function loadFeedYoutube() { return loadFeedTab("#yt-feed", "yt-f", "youtube"); }
+function loadFeedReddit() { return loadFeedTab("#rd-feed", "rd-f", "reddit"); }
 
 /* ---------- Meta y redes: publicaciones de Instagram/Facebook/X por alcance ---------- */
+/* Candidatos a la Alcaldía vs. concejales, en TODAS las gráficas de Meta y redes -- un concejal
+   muy activo (p. ej. Clara Luz Roldán con 197 posts) aplastaba la escala y no se distinguía nada
+   entre los candidatos, que es la comparación que importa. Carlos Arias y Roberto Ortiz son
+   candidatos Y concejales a la vez, pero cuentan solo como candidatos (Candidate.kind =
+   "candidate"): ya están en esa sección, no se repiten en la de concejales. Promesa compartida
+   para que loadMeta() y loadMetaAnalytics() (corren en paralelo) no pidan la lista dos veces.*/
+let peoplePromise = null;
+function getPeople() { return peoplePromise ||= j("/api/social/candidates"); }
+async function getCouncilorNames() {
+  const people = await getPeople();
+  return new Set(people.filter((r) => r.is_councilor).map((r) => r.name));
+}
+function splitByCouncil(rows, councilorNames, nameKey = "candidate") {
+  return [rows.filter((r) => !councilorNames.has(r[nameKey])), rows.filter((r) => councilorNames.has(r[nameKey]))];
+}
+
 let metaCandidatesLoaded = false;
 async function loadMeta() {
   if (!$("#meta-kpis")) return;
+  const councilorNames = await getCouncilorNames();
   if (!metaCandidatesLoaded) {
     metaCandidatesLoaded = true;
     const metaSel = $("#meta-f-candidate");
-    const people = await j("/api/social/candidates");
+    const people = await getPeople();
     metaSel.innerHTML = `<option value="">Todos (candidatos y concejales)</option>` +
       people.map((r) => `<option value="${r.candidate_id}">${esc(r.name)}${r.is_councilor ? " (concejal)" : ""}</option>`).join("");
   }
@@ -433,9 +460,11 @@ async function loadMeta() {
     <div class="kpi"><div class="label">Comentarios</div><div class="value">${n(kpis.total_comments)}</div><div class="foot">suma de todas las publicaciones</div></div>
     <div class="kpi"><div class="label">Publicación con más alcance</div><div class="value" style="font-size:15px;line-height:1.3">${kpis.top_post ? esc(kpis.top_post.text.slice(0, 46)) + (kpis.top_post.text.length > 46 ? "…" : "") : "—"}</div><div class="foot">${kpis.top_post ? `${esc(kpis.top_post.candidate)} · ${n(kpis.top_post.engagement)} de alcance` : "sin publicaciones en el período"}</div></div>`;
 
-  const byCand = kpis.by_candidate;
+  const [byCand, byCouncil] = splitByCouncil(kpis.by_candidate, councilorNames);
   hbar("#chart-meta-candidate", byCand.map((c) => c.candidate), byCand.map((c) => c.count),
     byCand.map((c) => c.candidate === CARLOS ? BLUE : CARLOS_GRAY));
+  hbar("#chart-meta-councilor", byCouncil.map((c) => c.candidate), byCouncil.map((c) => c.count),
+    byCouncil.map(() => CARLOS_GRAY));
 
   $("#meta-feed").innerHTML = posts.length ? posts.map((r) => `<article class="item">
       ${thumb(r)}
@@ -455,29 +484,38 @@ async function loadMeta() {
    nada -- reach/reaction usan las mismas queries.candidate_reach_comparison/comment_reaction que
    el reporte, y el análisis se lee del último reporte ya generado, no se le pide de nuevo al LLM
    cada vez que alguien abre esta pestaña). ---------- */
-async function loadMetaAnalytics() {
-  if (!$("#chart-meta-reach")) return;
-  const d = days();
-  const [reach, reaction, latest] = await Promise.all([
-    j(`/api/social/reach?days=${d}`), j(`/api/social/reaction?days=${d}`),
-    j("/api/reports/latest").catch(() => null),
-  ]);
-
-  hbar("#chart-meta-reach", reach.map((c) => c.candidate), reach.map((c) => c.avg_engagement),
-    reach.map((c) => c.candidate === CARLOS ? BLUE : CARLOS_GRAY));
-
-  const trendRows = reach.filter((c) => c.trend_pct !== null);
-  $("#meta-trend-panel").style.display = trendRows.length ? "" : "none";
+function renderReach(suffix, rows) {
+  hbar(`#chart-meta-reach${suffix}`, rows.map((c) => c.candidate), rows.map((c) => c.avg_engagement),
+    rows.map((c) => c.candidate === CARLOS ? BLUE : CARLOS_GRAY));
+  const trendRows = rows.filter((c) => c.trend_pct !== null);
+  $(`#meta-trend${suffix}-panel`).style.display = trendRows.length ? "" : "none";
   if (trendRows.length) {
-    hbar("#chart-meta-trend", trendRows.map((c) => c.candidate), trendRows.map((c) => c.trend_pct),
+    hbar(`#chart-meta-trend${suffix}`, trendRows.map((c) => c.candidate), trendRows.map((c) => c.trend_pct),
       trendRows.map((c) => c.trend_pct >= 0 ? GOOD : CRITICAL), { labelFmt: (v) => (v >= 0 ? "+" : "") + v + "%" });
   }
-
-  const withReaction = reaction.filter((c) => c.comments > 0);
-  hbar100("#chart-meta-reaction", withReaction.map((c) => `${cap(c.candidate)} (${c.comments})`), [
+}
+function renderReaction(suffix, rows) {
+  const withReaction = rows.filter((c) => c.comments > 0);
+  hbar100(`#chart-meta-reaction${suffix}`, withReaction.map((c) => `${cap(c.candidate)} (${c.comments})`), [
     { name: "Positivo", data: withReaction.map((c) => c.positive_pct) },
     { name: "Neutral", data: withReaction.map((c) => c.neutral_pct) },
     { name: "Negativo", data: withReaction.map((c) => c.negative_pct) }], [GOOD, NEUTRAL_TONE, CRITICAL]);
+}
+async function loadMetaAnalytics() {
+  if (!$("#chart-meta-reach")) return;
+  const d = days();
+  const [reach, reaction, latest, councilorNames] = await Promise.all([
+    j(`/api/social/reach?days=${d}`), j(`/api/social/reaction?days=${d}`),
+    j("/api/reports/latest").catch(() => null), getCouncilorNames(),
+  ]);
+
+  const [reachCand, reachCouncil] = splitByCouncil(reach, councilorNames);
+  renderReach("", reachCand);
+  renderReach("-council", reachCouncil);
+
+  const [reactionCand, reactionCouncil] = splitByCouncil(reaction, councilorNames);
+  renderReaction("", reactionCand);
+  renderReaction("-council", reactionCouncil);
 
   const n = latest?.narrative;
   $("#meta-narrative-panel").style.display = n ? "" : "none";

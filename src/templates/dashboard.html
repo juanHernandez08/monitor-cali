@@ -198,8 +198,12 @@
 
     <div id="subtab-pub-social" class="subtabpane">
       <section class="panel">
-        <div class="panel-head"><h2>Publicaciones por candidato</h2><span class="hint">Instagram, Facebook y X — solo posts, no comentarios</span></div>
+        <div class="panel-head"><h2>Publicaciones por candidato a la Alcaldía</h2><span class="hint">Instagram, Facebook y X — solo posts, no comentarios</span></div>
         <div class="chart-box" id="chart-meta-candidate"></div>
+      </section>
+      <section class="panel">
+        <div class="panel-head"><h2>Publicaciones por concejal</h2><span class="hint">Instagram, Facebook y X — solo posts, no comentarios. No incluye a Carlos Arias ni a Roberto Ortiz, ya están en la gráfica de candidatos de arriba.</span></div>
+        <div class="chart-box" id="chart-meta-councilor"></div>
       </section>
       <section class="panel feed-panel">
         <div class="feed-head">
@@ -337,8 +341,10 @@
       <div id="inv-result"></div>
     </section>
     <section class="kpis" id="meta-kpis"></section>
+
+    <div class="intro panel"><h2>Candidatos a la Alcaldía</h2></div>
     <section class="panel">
-      <div class="panel-head"><div><h2>Alcance promedio por publicación</h2><div class="hint">likes + comentarios por publicación, candidatos y concejales con al menos 2 posts en el período. Carlos en azul.</div></div></div>
+      <div class="panel-head"><div><h2>Alcance promedio por publicación</h2><div class="hint">likes + comentarios por publicación, candidatos con al menos 2 posts en el período. Carlos en azul.</div></div></div>
       <div class="chart-box" id="chart-meta-reach"></div>
     </section>
     <section class="panel" id="meta-trend-panel" style="display:none">
@@ -348,6 +354,20 @@
     <section class="panel">
       <div class="panel-head"><div><h2>Reacción de la audiencia</h2><div class="hint">De los comentarios en las publicaciones PROPIAS de cada quien (no menciones de paso): cuántos son positivos, neutrales o negativos.</div></div></div>
       <div class="chart-box" id="chart-meta-reaction"></div>
+    </section>
+
+    <div class="intro panel"><h2>Concejales</h2><p>No incluye a Carlos Arias ni a Roberto Ortiz -- ya están en la sección de candidatos de arriba.</p></div>
+    <section class="panel">
+      <div class="panel-head"><div><h2>Alcance promedio por publicación</h2><div class="hint">likes + comentarios por publicación, concejales con al menos 2 posts en el período.</div></div></div>
+      <div class="chart-box" id="chart-meta-reach-council"></div>
+    </section>
+    <section class="panel" id="meta-trend-council-panel" style="display:none">
+      <div class="panel-head"><div><h2>Tendencia de alcance</h2><div class="hint">variación entre la primera y la segunda mitad del período -- verde sube, rojo baja</div></div></div>
+      <div class="chart-box" id="chart-meta-trend-council"></div>
+    </section>
+    <section class="panel">
+      <div class="panel-head"><div><h2>Reacción de la audiencia</h2><div class="hint">De los comentarios en las publicaciones PROPIAS de cada quien (no menciones de paso): cuántos son positivos, neutrales o negativos.</div></div></div>
+      <div class="chart-box" id="chart-meta-reaction-council"></div>
     </section>
     <section class="panel" id="meta-narrative-panel" style="display:none">
       <div class="panel-head"><div><h2>Análisis y estrategia</h2><div class="hint" id="meta-narrative-date"></div></div></div>

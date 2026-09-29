@@ -102,7 +102,7 @@ def generate_narrative(engine, reach: list[dict], reaction: list[dict], gaps: li
     prompt = ANALYST_PROMPT.format(days=days, city_days=city_days, reach=_fmt_reach(reach),
                                    reaction=_fmt_reaction(reaction), gaps=_fmt_gaps(gaps), strong=_fmt_strong(strong))
     try:
-        text = engine.generate_text(prompt, max_tokens=1400)
+        text = engine.generate_text(prompt, max_tokens=3000)
         payload = json.loads(_JSON_FENCE.sub("", text).strip())
         return {
             "resumen_ejecutivo": str(payload.get("resumen_ejecutivo", "")).strip(),
