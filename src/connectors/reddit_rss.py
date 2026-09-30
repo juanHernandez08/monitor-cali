@@ -1,7 +1,5 @@
 import datetime as dt
-import html
 import logging
-import re
 import time
 import urllib.error
 import urllib.request
@@ -9,12 +7,11 @@ from urllib.parse import quote
 
 import feedparser
 
-from src.connectors.base import RawItem
+from src.connectors.base import RawItem, strip_html
 
 # Reddit devuelve 403 a user-agents genéricos; uno de navegador funciona.
 log = logging.getLogger(__name__)
 _UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) monitor-cali/0.1"
-_TAG = re.compile(r"<[^>]+>")
 
 
 def build_search_url(terms: str | list[str], context: str = "Cali") -> str:
@@ -59,7 +56,7 @@ class RedditRSSConnector:
                 published = None
                 if getattr(entry, "updated_parsed", None):
                     published = dt.datetime(*entry.updated_parsed[:6])
-                body = html.unescape(_TAG.sub(" ", entry.get("summary", "") or "")).strip()
+                body = strip_html(entry.get("summary", ""))
                 items.append(RawItem(
                     external_id=ext_id,
                     text=f"{entry.get('title', '')} {body}".strip(),

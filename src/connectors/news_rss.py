@@ -1,7 +1,7 @@
 import datetime as dt
 import feedparser
 
-from src.connectors.base import RawItem
+from src.connectors.base import RawItem, strip_html
 
 
 class RSSConnector:
@@ -15,7 +15,7 @@ class RSSConnector:
         parsed = feedparser.parse(self.feed_url)
         items = []
         for entry in parsed.entries:
-            text = f"{entry.get('title', '')} {entry.get('summary', '')}"
+            text = f"{entry.get('title', '')} {strip_html(entry.get('summary', ''))}"
             if self.filter_terms and not any(term.lower() in text.lower() for term in search_terms):
                 continue
             published = None

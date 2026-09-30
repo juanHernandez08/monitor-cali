@@ -1,17 +1,13 @@
 import datetime as dt
-import html
 import logging
-import re
 import time
 from urllib.parse import quote
 
 import feedparser
 
-from src.connectors.base import RawItem
+from src.connectors.base import RawItem, strip_html
 
 log = logging.getLogger(__name__)
-
-_TAG = re.compile(r"<[^>]+>")
 
 
 def build_query_url(term: str, window: str | None = None, context: str = "Cali") -> str:
@@ -25,10 +21,6 @@ def build_query_url(term: str, window: str | None = None, context: str = "Cali")
         "https://news.google.com/rss/search?q=" + quote(query)
         + "&hl=es-419&gl=CO&ceid=" + quote("CO:es-419")
     )
-
-
-def _clean(text: str) -> str:
-    return html.unescape(_TAG.sub(" ", text or "")).strip()
 
 
 class GoogleNewsConnector:
@@ -69,8 +61,8 @@ class GoogleNewsConnector:
                 if getattr(entry, "published_parsed", None):
                     published = dt.datetime(*entry.published_parsed[:6])
                 source_title = getattr(getattr(entry, "source", None), "title", None)
-                title = _clean(entry.get("title", ""))
-                summary = _clean(entry.get("summary", ""))
+                title = strip_html(entry.get("title", ""))
+                summary = strip_html(entry.get("summary", ""))
                 if summary.startswith(title[:40]):  # Google News repite el titular en el resumen
                     summary = ""
                 items.append(RawItem(
