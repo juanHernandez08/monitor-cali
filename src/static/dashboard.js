@@ -64,7 +64,9 @@ function deepMerge(a, b) {
    pestañas están ocultas (display:none) al cargar todo de una, y ahí getComputedStyle da 0. */
 function barsHeight(id, n) {
   const h = Math.max(300, 40 + n * 32);
-  $(id).style.height = `${h}px`;
+  const el = $(id);
+  const box = el.classList.contains("chart-box") ? el : el.closest(".chart-box");
+  (box || el).style.height = `${h}px`;
   return h;
 }
 function hbar(id, categories, data, perBar, { labelFmt, onClick } = {}) {
