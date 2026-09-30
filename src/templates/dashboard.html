@@ -153,14 +153,14 @@
         <div class="feed-head">
           <div><h2>Prensa</h2><span class="hint">Google News y RSS — una fila por nota; despliega sus comentarios si los tiene</span></div>
           <div class="filters">
-            <select id="f-candidate"><option value="">Todos los candidatos</option></select>
-            <select id="f-label">
+            <select id="f-candidate" aria-label="Filtrar por candidato"><option value="">Todos los candidatos</option></select>
+            <select id="f-label" aria-label="Filtrar por sentimiento">
               <option value="">Todo sentimiento</option>
               <option value="negative">Negativo</option>
               <option value="neutral">Neutral</option>
               <option value="positive">Positivo</option>
             </select>
-            <select id="f-emotion">
+            <select id="f-emotion" aria-label="Filtrar por emoción">
               <option value="">Toda emoción</option>
               <option value="ira">Ira</option>
               <option value="miedo">Miedo</option>
@@ -170,7 +170,7 @@
               <option value="sorpresa">Sorpresa</option>
               <option value="sin emoción marcada">Sin emoción marcada</option>
             </select>
-            <select id="f-category">
+            <select id="f-category" aria-label="Filtrar por tema">
               <option value="">Todos los temas</option>
               <option value="seguridad">Seguridad</option>
               <option value="movilidad y transporte">Movilidad y transporte</option>
@@ -209,14 +209,14 @@
         <div class="feed-head">
           <div><h2>Publicaciones</h2><span class="hint">ordenadas por alcance (likes + comentarios); toca "ver original" para abrirla</span></div>
           <div class="filters">
-            <select id="meta-f-candidate"><option value="">Todos los candidatos</option></select>
-            <select id="meta-f-platform">
+            <select id="meta-f-candidate" aria-label="Filtrar por candidato o concejal"><option value="">Todos los candidatos</option></select>
+            <select id="meta-f-platform" aria-label="Filtrar por red social">
               <option value="">Todas las redes</option>
               <option value="instagram">Instagram</option>
               <option value="facebook">Facebook</option>
               <option value="x">X</option>
             </select>
-            <select id="meta-f-sort">
+            <select id="meta-f-sort" aria-label="Ordenar publicaciones">
               <option value="engagement">Más alcance</option>
               <option value="views">Más vistas</option>
               <option value="recent">Más recientes</option>
@@ -232,14 +232,14 @@
         <div class="feed-head">
           <div><h2>YouTube</h2><span class="hint">videos y comentarios</span></div>
           <div class="filters">
-            <select id="yt-f-candidate"><option value="">Todos los candidatos</option></select>
-            <select id="yt-f-label">
+            <select id="yt-f-candidate" aria-label="Filtrar por candidato"><option value="">Todos los candidatos</option></select>
+            <select id="yt-f-label" aria-label="Filtrar por sentimiento">
               <option value="">Todo sentimiento</option>
               <option value="negative">Negativo</option>
               <option value="neutral">Neutral</option>
               <option value="positive">Positivo</option>
             </select>
-            <select id="yt-f-emotion">
+            <select id="yt-f-emotion" aria-label="Filtrar por emoción">
               <option value="">Toda emoción</option>
               <option value="ira">Ira</option>
               <option value="miedo">Miedo</option>
@@ -249,7 +249,7 @@
               <option value="sorpresa">Sorpresa</option>
               <option value="sin emoción marcada">Sin emoción marcada</option>
             </select>
-            <select id="yt-f-category">
+            <select id="yt-f-category" aria-label="Filtrar por tema">
               <option value="">Todos los temas</option>
               <option value="seguridad">Seguridad</option>
               <option value="movilidad y transporte">Movilidad y transporte</option>
@@ -280,14 +280,14 @@
         <div class="feed-head">
           <div><h2>Reddit</h2><span class="hint">posts y comentarios</span></div>
           <div class="filters">
-            <select id="rd-f-candidate"><option value="">Todos los candidatos</option></select>
-            <select id="rd-f-label">
+            <select id="rd-f-candidate" aria-label="Filtrar por candidato"><option value="">Todos los candidatos</option></select>
+            <select id="rd-f-label" aria-label="Filtrar por sentimiento">
               <option value="">Todo sentimiento</option>
               <option value="negative">Negativo</option>
               <option value="neutral">Neutral</option>
               <option value="positive">Positivo</option>
             </select>
-            <select id="rd-f-emotion">
+            <select id="rd-f-emotion" aria-label="Filtrar por emoción">
               <option value="">Toda emoción</option>
               <option value="ira">Ira</option>
               <option value="miedo">Miedo</option>
@@ -297,7 +297,7 @@
               <option value="sorpresa">Sorpresa</option>
               <option value="sin emoción marcada">Sin emoción marcada</option>
             </select>
-            <select id="rd-f-category">
+            <select id="rd-f-category" aria-label="Filtrar por tema">
               <option value="">Todos los temas</option>
               <option value="seguridad">Seguridad</option>
               <option value="movilidad y transporte">Movilidad y transporte</option>
@@ -331,11 +331,11 @@
     <section class="panel">
       <div class="panel-head"><h2>Investigar un perfil</h2><span class="hint">trae publicaciones recientes de CUALQUIER cuenta pública de Instagram/Facebook al momento -- rivales, cuentas nuevas, lo que sea. Consulta puntual, no queda guardada.</span></div>
       <div class="filters" style="margin-bottom:10px">
-        <select id="inv-platform" style="max-width:130px">
+        <select id="inv-platform" aria-label="Elegir red social a investigar" style="max-width:130px">
           <option value="instagram">Instagram</option>
           <option value="facebook">Facebook</option>
         </select>
-        <input id="inv-url" type="text" placeholder="https://www.instagram.com/usuario/" style="flex:1;min-width:260px">
+        <input id="inv-url" type="text" placeholder="https://www.instagram.com/usuario/" aria-label="URL del perfil de Instagram o Facebook a investigar" style="flex:1;min-width:260px">
         <button id="inv-go">Investigar</button>
       </div>
       <div id="inv-result"></div>
@@ -463,7 +463,7 @@
       <div class="feed-head">
         <div><h2>Todo lo que pasa en Cali</h2><span class="hint">cada publicación de prensa, Instagram, Facebook y X que no nombra a ningún candidato — con su sentimiento, el de sus comentarios, el tema y la emoción</span></div>
         <div class="filters">
-          <select id="city-f-source">
+          <select id="city-f-source" aria-label="Filtrar por fuente">
             <option value="">Todas las fuentes</option>
             <option value="google_news">Prensa (Google News)</option>
             <option value="rss">Prensa (RSS)</option>
@@ -471,13 +471,13 @@
             <option value="youtube">YouTube</option>
             <option value="social">Instagram / Facebook / X</option>
           </select>
-          <select id="city-f-label">
+          <select id="city-f-label" aria-label="Filtrar por sentimiento">
             <option value="">Todo sentimiento</option>
             <option value="negative">Negativo</option>
             <option value="neutral">Neutral</option>
             <option value="positive">Positivo</option>
           </select>
-          <select id="city-f-emotion">
+          <select id="city-f-emotion" aria-label="Filtrar por emoción">
             <option value="">Toda emoción</option>
             <option value="ira">Ira</option>
             <option value="miedo">Miedo</option>
@@ -487,7 +487,7 @@
             <option value="sorpresa">Sorpresa</option>
             <option value="sin emoción marcada">Sin emoción marcada</option>
           </select>
-          <select id="city-f-category">
+          <select id="city-f-category" aria-label="Filtrar por tema">
             <option value="">Todos los temas</option>
             <option value="seguridad">Seguridad</option>
             <option value="movilidad y transporte">Movilidad y transporte</option>
@@ -571,7 +571,7 @@
     </div>
     <section class="panel">
       <div class="filters">
-        <select id="rep-date"></select>
+        <select id="rep-date" aria-label="Elegir fecha del reporte"></select>
         <button id="rep-generate">Generar el de hoy</button>
         <button id="rep-pdf">Descargar PDF</button>
       </div>

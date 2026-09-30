@@ -841,7 +841,7 @@ document.addEventListener("click", (e) => {
   const card = e.target.closest("[data-candidate-id]");
   if (card) openProfile(Number(card.dataset.candidateId), card.dataset.name);
 });
-$("#days").addEventListener("change", loadAll);
+$("#days").addEventListener("change", loadAllSafely);
 ["#f-candidate", "#f-label", "#f-emotion", "#f-category"].forEach((id) => $(id).addEventListener("change", loadFeed));
 ["#yt-f-candidate", "#yt-f-label", "#yt-f-emotion", "#yt-f-category"].forEach((id) => $(id).addEventListener("change", loadFeedYoutube));
 ["#rd-f-candidate", "#rd-f-label", "#rd-f-emotion", "#rd-f-category"].forEach((id) => $(id).addEventListener("change", loadFeedReddit));
@@ -850,21 +850,40 @@ $("#days").addEventListener("change", loadAll);
 $("#refresh").addEventListener("click", async () => {
   const b = $("#refresh"); b.disabled = true; b.textContent = "Actualizando…";
   const clickedAt = Date.now();
-  await fetch("/api/refresh", { method: "POST" });
-  // Antes esperaba 25s fijos sin importar cuánto tardara en realidad; ahora consulta /health
-  // hasta ver una corrida terminada después del clic (las fuentes ya corren en paralelo, así
-  // que normalmente termina mucho antes). 90s es solo un salvavidas por si algo se cuelga.
-  const deadline = Date.now() + 90000;
-  while (Date.now() < deadline) {
-    await new Promise((r) => setTimeout(r, 1500));
-    const s = await j("/health");
-    if (s.last_run && new Date(s.last_run + "Z").getTime() > clickedAt) break;
+  // try/finally: si algo de esto falla (red caída, refresh que tarda más de la cuenta), el botón
+  // NO debe quedar "Actualizando…" deshabilitado para siempre -- antes eso pasaba.
+  try {
+    await fetch("/api/refresh", { method: "POST" });
+    // Antes esperaba 25s fijos sin importar cuánto tardara en realidad; ahora consulta /health
+    // hasta ver una corrida terminada después del clic (las fuentes ya corren en paralelo, así
+    // que normalmente termina mucho antes). 90s es solo un salvavidas por si algo se cuelga.
+    const deadline = Date.now() + 90000;
+    while (Date.now() < deadline) {
+      await new Promise((r) => setTimeout(r, 1500));
+      const s = await j("/health");
+      if (s.last_run && new Date(s.last_run + "Z").getTime() > clickedAt) break;
+    }
+    await loadAll();
+  } catch (err) {
+    console.error("actualizar ahora falló:", err);
+  } finally {
+    b.disabled = false; b.textContent = "Actualizar ahora";
   }
-  await loadAll();
-  b.disabled = false; b.textContent = "Actualizar ahora";
 });
-loadAll();
-setInterval(loadAll, 120000);
+/* Si algo falla en loadAll() (red caída, sesión de Cloudflare Access vencida, un endpoint que
+   tira error), antes quedaba en silencio total -- Promise.all revienta con la primera falla y
+   nadie se entera. Ahora al menos se avisa en la cabecera en vez de dejar todo con datos viejos
+   sin ninguna señal. setInterval igual reintenta solo cada 2 minutos. */
+async function loadAllSafely() {
+  try {
+    await loadAll();
+  } catch (err) {
+    console.error("loadAll falló:", err);
+    if ($("#last-run")) $("#last-run").textContent = "No se pudo actualizar -- reintentando…";
+  }
+}
+loadAllSafely();
+setInterval(loadAllSafely, 120000);
 
 /* ---------- ciudad ---------- */
 const CAT_COLOR = BLUE;
