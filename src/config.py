@@ -158,6 +158,14 @@ SOCIAL_ACCOUNTS = [
     {"platform": "instagram", "url": "https://www.instagram.com/claraluzroldan/", "candidate": "Clara Luz Roldán"},
     {"platform": "facebook", "url": "https://www.facebook.com/ClaraLuzRoldanG/", "candidate": "Clara Luz Roldán"},
     {"platform": "instagram", "url": "https://www.instagram.com/noticalioficial/", "candidate": None},
+    # Medios locales sin candidato asociado -- pedido del cliente 2026-09-30: cuando el medio
+    # tiene nota de prensa Y publicación en redes sobre el mismo hecho, se prefiere la de redes
+    # (se puede evaluar la reacción en comentarios). Handles confirmados visitando el pie de
+    # página de cada sitio oficial, no adivinados por parecido de nombre.
+    {"platform": "instagram", "url": "https://www.instagram.com/elPaiscali/", "candidate": None},
+    {"platform": "instagram", "url": "https://www.instagram.com/Noti90Minutos/", "candidate": None},
+    {"platform": "instagram", "url": "https://www.instagram.com/caliescribe/", "candidate": None},
+    {"platform": "instagram", "url": "https://www.instagram.com/qhubocali/", "candidate": None},
     # X (Twitter): solo posts de la cuenta (Bright Data no trae las respuestas). Completar handles.
     {"platform": "x", "url": "https://x.com/claraluzroldan", "candidate": "Clara Luz Roldán"},
     # Concejales y candidatos restantes -- investigación 2026-09-28, cada cuenta confirmada
