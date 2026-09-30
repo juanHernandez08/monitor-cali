@@ -19,6 +19,10 @@ DASHBOARD_PASSWORD = os.environ.get("DASHBOARD_PASSWORD")
 CF_ACCESS_TEAM_DOMAIN = os.environ.get("CF_ACCESS_TEAM_DOMAIN")
 CF_ACCESS_AUD = os.environ.get("CF_ACCESS_AUD")
 
+# URL pública del dashboard (sin / al final) -- para que las notificaciones (src/notify.py)
+# puedan armar un link que abra el monitor directo en el candidato o la pestaña de la alerta.
+DASHBOARD_URL = os.environ.get("DASHBOARD_URL", "https://monitordescucha.tech").rstrip("/")
+
 # Notificaciones push por ntfy.sh (gratis, sin cuenta -- ver src/notify.py). NTFY_TOPIC_TEAM:
 # alertas de campaña (mención negativa fuerte, actividad inusual en redes, resumen diario) para
 # todo el equipo. NTFY_TOPIC_TECH: solo para Juan (túnel de Ollama caído, servidor). Los nombres

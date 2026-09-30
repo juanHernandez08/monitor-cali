@@ -172,10 +172,15 @@ def mentions(session, candidate_id: int | None = None, source_type: str | None =
 
 def alerts(session, candidate_name: str = CARLOS, threshold: float = -0.5,
            days: int = 30, limit: int = 20) -> list[dict]:
+    """Menciones muy negativas de `candidate_name`. Descarta 'mención tangencial'/'homónimo'
+    (META_TOPICS): el propio clasificador ya marcó ahí que el texto no es realmente sobre esa
+    persona -- sin este filtro, el conteo de "alertas activas" incluía negatividad ajena
+    (reporte 2026-09-30)."""
     rows = (
         session.query(Mention).join(SentimentScore).join(Candidate)
         .filter(Candidate.name == candidate_name, SentimentScore.score <= threshold,
-                WHEN >= _since(days), Mention.relevant.is_(True))
+                WHEN >= _since(days), Mention.relevant.is_(True),
+                func.lower(SentimentScore.topic).notin_(META_TOPICS))
         .order_by(WHEN.desc()).limit(limit).all()
     )
     return [_mention_dict(m) for m in rows]

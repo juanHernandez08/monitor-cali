@@ -1049,6 +1049,12 @@ activeTab = location.hash.slice(1) || "resumen";
 /* Tras DOMContentLoaded: así todo este archivo (y council.js) ya está evaluado. Arrancar antes
    rompía al abrir directo una pestaña como #historico (variables aún no inicializadas). */
 document.addEventListener("DOMContentLoaded", loadAll);
+/* Link directo desde una notificación (?perfil=<candidate_id>): abre de una vez el perfil de esa
+   persona en vez de dejar al usuario en el Resumen buscando a mano. */
+document.addEventListener("DOMContentLoaded", () => {
+  const id = new URLSearchParams(location.search).get("perfil");
+  if (id) openProfile(Number(id), "");
+});
 /* Auto-actualización: solo la pestaña visible, y solo si la ventana está a la vista. */
 setInterval(() => {
   if (document.visibilityState !== "visible") return;

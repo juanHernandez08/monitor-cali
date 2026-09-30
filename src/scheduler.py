@@ -311,6 +311,15 @@ def job_notify_social():
             log.info("notify: %d publicaciones fuertes avisadas", n)
 
 
+@exclusive("notify_city")
+def job_notify_city():
+    from src import notify
+    with get_session() as s:
+        n = notify.check_city_trends(s)
+        if n:
+            log.info("notify: %d temas de ciudad avisados", n)
+
+
 @exclusive("ollama_health")
 def job_ollama_health():
     from src import notify
@@ -374,6 +383,7 @@ def start_scheduler() -> BackgroundScheduler:
     # Ollama cada 10 min -- las menciones negativas se avisan dentro de job_score, justo al
     # clasificarlas.
     sched.add_job(job_notify_social, "interval", minutes=15, id="notify_social", max_instances=1, coalesce=True)
+    sched.add_job(job_notify_city, "interval", hours=1, id="notify_city", max_instances=1, coalesce=True)
     sched.add_job(job_ollama_health, "interval", minutes=10, id="ollama_health", max_instances=1, coalesce=True)
     sched.start()
     return sched
