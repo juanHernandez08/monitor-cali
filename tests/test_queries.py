@@ -256,6 +256,33 @@ def test_city_emotion_by_topic_cross_tab(db_session):
     assert deporte["emotions"] == {"felicidad": 1}
 
 
+def test_candidate_emotions_cross_tab(db_session):
+    """Pedido del cliente 2026-10-01: mapa de calor candidato x emoción en la pestaña Candidatos,
+    igual que ya existe para Ciudad."""
+    from src.queries import candidate_emotions
+    carlos = Candidate(name="Carlos Arias", aliases=[])
+    ana = Candidate(name="Ana Pérez", aliases=[])
+    src = Source(type=SourceType.GOOGLE_NEWS, name="Google News")
+    db_session.add_all([carlos, ana, src])
+    db_session.commit()
+    rows_data = [(carlos, "a", "felicidad"), (carlos, "b", "felicidad"), (carlos, "c", "ira"), (ana, "d", "miedo")]
+    for cand, ext, emo in rows_data:
+        m = Mention(candidate_id=cand.id, source_id=src.id, external_id=ext, text=ext, url=f"https://x/{ext}",
+                    raw={}, fetched_at=dt.datetime.utcnow())
+        db_session.add(m)
+        db_session.flush()
+        db_session.add(SentimentScore(mention_id=m.id, label=SentimentLabel.NEUTRAL, score=0.0, topic="t",
+                                      model="f", category="otro", emotion=emo))
+    db_session.commit()
+
+    rows = candidate_emotions(db_session, days=30)
+    carlos_row = next(r for r in rows if r["candidate"] == "Carlos Arias")
+    assert carlos_row["emotions"] == {"felicidad": 2, "ira": 1} and carlos_row["total"] == 3
+    ana_row = next(r for r in rows if r["candidate"] == "Ana Pérez")
+    assert ana_row["emotions"] == {"miedo": 1}
+    assert rows[0]["candidate"] == "Carlos Arias"  # Carlos siempre primero
+
+
 def test_summary_includes_avatar_from_instagram_posts(db_session, monkeypatch):
     from src import queries
     monkeypatch.setattr(queries.config, "SOCIAL_ACCOUNTS", [

@@ -678,6 +678,7 @@ function topicCard(t, i, prefix) {
       <div class="head"><h3>${esc(t.topic)}</h3><div>${t.count} menciones · <span class="tag ${t.positive_pct >= 60 ? "positive" : t.positive_pct <= 30 ? "negative" : ""}">${t.positive_pct}% a favor</span></div></div>
       <div class="subs"><span class="tag positive">${t.positive} positivas</span><span class="tag">${t.neutral} neutrales</span><span class="tag negative">${t.negative} negativas</span>
         ${Object.entries(mergedSources(t.sources)).map(([label, n]) => `<span class="tag">${esc(label)} · ${n}</span>`).join("")}</div>
+      ${t.dominant_emotion ? `<div class="topic">siente, sobre todo: ${esc(t.dominant_emotion)}</div>` : ""}
       ${subtopics.length ? `<div class="subs">${subtopics.map((s) => `<span class="tag">${esc(s.topic)} · ${s.count}</span>`).join("")}</div>` : ""}
       <button class="toggle" data-topic-idx="${i}" data-topic-prefix="${prefix}">▸ ver ${t.samples.length} comentario${t.samples.length === 1 ? "" : "s"} de ejemplo</button>
     </div>`;
@@ -789,6 +790,22 @@ function loadCandidatesTab(rows) {
     </button>`).join("");
 }
 
+/* Mapa de calor candidato x emoción -- misma idea que "¿qué emoción transmite cada tema?" de
+   Ciudad, pero por candidato (pedido del cliente 2026-10-01). */
+async function loadCandidateEmotions() {
+  if (!$("#chart-cand-emotions")) return;
+  const rows = (await j(`/api/candidate/emotions?days=${days()}`)).slice(0, 12);
+  chart("#chart-cand-emotions", {
+    chart: { type: "heatmap", height: Math.max(220, rows.length * 34) },
+    series: rows.map((r) => ({ name: cap(r.candidate), data: EMOTIONS_ORDER.map((e) => ({ x: cap(e), y: r.emotions[e] || 0 })) })),
+    colors: [BLUE],
+    plotOptions: { heatmap: { colorScale: { ranges: [{ from: 0, to: 0, color: GRID }] } } },
+    dataLabels: { enabled: true, style: { colors: [INK] } },
+    xaxis: { labels: { style: { colors: MUTED } } },
+    legend: { show: false },
+  });
+}
+
 /* ---------- carga por pestaña ----------
    Antes loadAll() pedía TODO (unas 25 rutas y 40 gráficas, incluidas las de pestañas ocultas) al
    abrir la página y otra vez cada 2 minutos, aunque nadie estuviera mirando. Ahora cada pestaña
@@ -802,7 +819,7 @@ function ensureSummary(force = false) {
 const TAB_LOADERS = {
   resumen: async () => { await ensureSummary(true); await Promise.all([loadAlerts(), loadSocialStrong()]); },
   candidatos: async () => { const rows = await ensureSummary(); loadCandidatesTab(rows);
-    await Promise.all([loadTopics(), loadPositivityCI(rows), (typeof loadCouncil === "function" ? loadCouncil() : null)]); },
+    await Promise.all([loadTopics(), loadPositivityCI(rows), loadCandidateEmotions(), (typeof loadCouncil === "function" ? loadCouncil() : null)]); },
   publicaciones: async () => { await ensureSummary(); await Promise.all([loadFeed(), loadFeedYoutube(), loadMeta()]); },
   meta: () => Promise.all([loadMeta(), loadMetaAnalytics(), loadMetaInsights()]),
   analisis: async () => { const rows = await ensureSummary(); loadQuadrant(rows);
@@ -1126,7 +1143,8 @@ async function loadCity() {
   renderCityOpps();
 
   const normalized = topics.map((t) => ({ topic: cap(t.category), count: t.count, positive: t.positive, neutral: t.neutral,
-    negative: t.negative, positive_pct: pct(t.positive, t.count), sources: t.sources, samples: t.samples, subtopics: t.subtopics }));
+    negative: t.negative, positive_pct: pct(t.positive, t.count), dominant_emotion: t.dominant_emotion,
+    sources: t.sources, samples: t.samples, subtopics: t.subtopics }));
   renderTopicCards("#city-detail", null, normalized, "city-t", 6);
 
   if ($("#chart-city-heatmap")) {

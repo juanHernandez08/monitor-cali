@@ -718,6 +718,16 @@ def _city_rows(session, since: dt.datetime, until: dt.datetime | None = None) ->
     return q.all()
 
 
+def _dominant_emotion(ms: list[Mention]) -> str:
+    """Emoción más frecuente de un grupo de menciones -- para mostrarla directo en la tarjeta del
+    tema sin tener que abrir los comentarios de ejemplo (pedido del cliente 2026-10-01). Prefiere
+    una emoción real sobre "sin emoción marcada" si hay alguna, aunque no sea la más frecuente en
+    términos absolutos: "sin emoción marcada" empataría casi siempre en temas mixtos y no dice nada."""
+    counts = Counter(m.sentiment.emotion or "sin emoción marcada" for m in ms)
+    real = {e: n for e, n in counts.items() if e != "sin emoción marcada"}
+    return max(real, key=real.get) if real else "sin emoción marcada"
+
+
 def city_topics(session, days: int = 7, samples_per: int = 3, subtopics_per: int = 5) -> list[dict]:
     """Por categoría: volumen, tendencia vs período anterior, percepción, subtemas y comentarios de muestra."""
     since = _since(days)
@@ -744,6 +754,7 @@ def city_topics(session, days: int = 7, samples_per: int = 3, subtopics_per: int
             "small_sample": change["small_sample"],
             "positive": labels.get(SentimentLabel.POSITIVE, 0), "neutral": labels.get(SentimentLabel.NEUTRAL, 0),
             "negative": labels.get(SentimentLabel.NEGATIVE, 0),
+            "dominant_emotion": _dominant_emotion(ms),
             "subtopics": [{"topic": t, "count": n} for t, n in sub.most_common(subtopics_per)],
             "samples": [_mention_dict(m) for m in samples],
             "sources": dict(Counter(((m.raw or {}).get("platform") or m.source.type.value) for m in ms)),
@@ -780,6 +791,23 @@ def city_emotion_by_topic(session, days: int = 7) -> list[dict]:
     rows = [{"category": cat, "emotions": dict(counter), "total": sum(counter.values())} for cat, counter in by_cat.items()]
     rows.sort(key=lambda r: -r["total"])
     return rows
+
+
+def candidate_emotions(session, days: int = 30) -> list[dict]:
+    """Cruce candidato x emoción: para cada candidato, cuántas menciones de cada emoción -- para
+    el mapa de calor "qué emoción transmite la cobertura de cada candidato" (pedido del cliente
+    2026-10-01, pestaña Candidatos)."""
+    since = _since(days)
+    rows = (session.query(Mention).join(SentimentScore).join(Candidate)
+            .filter(WHEN >= since, Mention.relevant.is_(True), Candidate.kind == "candidate").all())
+    by_cand: dict[str, Counter] = defaultdict(Counter)
+    for m in rows:
+        emo = m.sentiment.emotion or "sin emoción marcada"
+        by_cand[m.candidate.name][emo] += 1
+    out = [{"candidate": name, "emotions": dict(counter), "total": sum(counter.values())}
+           for name, counter in by_cand.items()]
+    out.sort(key=lambda r: (r["candidate"] != CARLOS, -r["total"]))
+    return out
 
 
 def _cluster_topics(by_topic: dict[str, list[Mention]], min_overlap: float = 0.4) -> dict[str, list[Mention]]:
@@ -1033,6 +1061,7 @@ def candidate_topic_map(session, candidate_name: str, days: int = 30, samples_pe
         out.append({
             "topic": topic, "count": len(ms),
             "positive": pos, "negative": neg, "neutral": neu, "positive_pct": pct(pos, len(ms)),
+            "dominant_emotion": _dominant_emotion(ms),
             "sources": dict(Counter(((m.raw or {}).get("platform") or m.source.type.value) for m in ms)),
             "samples": [_mention_dict(m) for m in sorted(pool, key=lambda m: -abs(m.sentiment.score))[:samples_per]],
         })

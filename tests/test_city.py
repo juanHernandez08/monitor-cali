@@ -144,6 +144,34 @@ def test_city_topics_prefers_social_samples_over_press_even_with_lower_score(db_
     assert samples[1]["text"] == "El País: terremoto golpea Cali"
 
 
+def test_city_topics_includes_dominant_emotion_visible_without_a_click(db_session):
+    """Pedido del cliente 2026-10-01: la emoción debe verse directo en la tarjeta del tema, sin
+    tener que abrir "ver comentarios de ejemplo". "Sin emoción marcada" no debe ganarle a una
+    emoción real aunque sea más frecuente en términos absolutos -- no dice nada en un tema mixto."""
+    from src.queries import city_topics
+    city = Candidate(name=CITY_NAME, kind="city", aliases=[])
+    feed = Source(type=SourceType.RSS, name="Q'hubo", config={"feed_url": "x", "city": True})
+    db_session.add_all([city, feed])
+    db_session.commit()
+    now = dt.datetime.utcnow()
+    rows = [
+        ("a", "felicidad"), ("b", "felicidad"), ("c", "ira"),
+        ("d", None), ("e", None), ("f", None),  # "sin emoción marcada" es mayoría, pero no debe ganar
+    ]
+    for ext, emo in rows:
+        m = Mention(candidate_id=city.id, source_id=feed.id, external_id=ext, text=ext, url=f"https://x/{ext}",
+                    raw={}, author="u", published_at=now, fetched_at=now)
+        db_session.add(m)
+        db_session.flush()
+        db_session.add(SentimentScore(mention_id=m.id, label=SentimentLabel.NEUTRAL, score=0.0,
+                                      topic="t", model="f", category="seguridad y convivencia", emotion=emo))
+    db_session.commit()
+
+    rows = city_topics(db_session, days=7)
+    sec = next(r for r in rows if r["category"] == "seguridad y convivencia")
+    assert sec["dominant_emotion"] == "felicidad"
+
+
 def test_city_opportunities_carlos_strong_topics(db_session):
     from src.queries import city_opportunities
     _seed_city(db_session)
