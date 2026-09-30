@@ -16,7 +16,7 @@ def test_parse_payload_reads_category_and_falls_back_to_otro():
     assert r.category == "servicios públicos"
     r2 = _parse_payload('{"label":"neutral","score":0,"topic":"x","category":"cosa rara"}', "m")
     assert r2.category == "otro"
-    assert "seguridad" in CATEGORIES and "otro" in CATEGORIES
+    assert "seguridad y convivencia" in CATEGORIES and "otro" in CATEGORIES
 
 
 def test_city_source_items_without_candidate_go_to_city_and_with_candidate_to_candidate(db_session):
@@ -110,6 +110,38 @@ def test_city_topics_with_trend_perception_subtopics_and_samples(db_session):
     sec = rows["seguridad"]
     assert sec["count"] == 1 and sec["previous"] == 2 and sec["trend_pct"] == -50
     assert "cultura y eventos" in rows and "Carlos Arias" not in str(rows)  # solo ciudad
+
+
+def test_city_topics_prefers_social_samples_over_press_even_with_lower_score(db_session):
+    """Pedido del cliente 2026-09-30: si el mismo hecho tiene nota de prensa Y publicación en
+    redes, prefiere la de redes como muestra -- ahí sí se puede evaluar la reacción de la gente en
+    los comentarios, cosa que una nota de prensa no trae. La prensa se sigue capturando y contando
+    igual, solo deja de ser la muestra elegida cuando hay una alternativa de redes."""
+    from src.queries import city_topics
+    city = Candidate(name=CITY_NAME, kind="city", aliases=[])
+    press = Source(type=SourceType.RSS, name="Q'hubo", config={"feed_url": "x", "city": True})
+    social = Source(type=SourceType.SOCIAL, name="Instagram / Facebook (cuentas)")
+    db_session.add_all([city, press, social])
+    db_session.commit()
+    now = dt.datetime.utcnow()
+    rows = [
+        # la nota de prensa tiene el score más intenso, pero debe quedar DESPUÉS de la de redes
+        (city, "press1", "El País: terremoto golpea Cali", press, -0.95),
+        (city, "soc1", "Instagram: así vivimos el terremoto", social, -0.4),
+    ]
+    for cand, ext, text, src, score in rows:
+        m = Mention(candidate_id=cand.id, source_id=src.id, external_id=ext, text=text, url=f"https://x/{ext}",
+                    raw={"kind": "post"}, author="u", published_at=now, fetched_at=now)
+        db_session.add(m)
+        db_session.flush()
+        db_session.add(SentimentScore(mention_id=m.id, label=SentimentLabel.NEGATIVE, score=score,
+                                      topic="terremoto", model="f", category="terremoto y reconstrucción"))
+    db_session.commit()
+
+    rows_by_cat = {r["category"]: r for r in city_topics(db_session, days=7)}
+    samples = rows_by_cat["terremoto y reconstrucción"]["samples"]
+    assert samples[0]["text"] == "Instagram: así vivimos el terremoto"
+    assert samples[1]["text"] == "El País: terremoto golpea Cali"
 
 
 def test_city_opportunities_carlos_strong_topics(db_session):
@@ -230,6 +262,54 @@ def test_city_opportunities_recognizes_carlos_presence_by_keywords_when_his_own_
     # hablado. Con carlos_max=0 debe quedar afuera, porque su presencia real ahora sí se cuenta.
     o = city_opportunities(db_session, days=7, carlos_max=0)
     assert "operación iron" not in {x["topic"] for x in o["novedades"]}
+
+
+def test_city_opportunities_merges_near_duplicate_topic_labels(db_session):
+    """Bug real (2026-09-30): "operación iron", "operación iron en cali", "operación iron contra
+    bandas" y "operación iron contra criminalidad" salían como 4 novedades separadas -- mismo
+    hecho, etiquetado distinto por el LLM en cada nota. Ahora se juntan en una sola bajo la
+    etiqueta más corta, con el conteo sumado."""
+    from src.queries import city_opportunities
+    city = Candidate(name=CITY_NAME, kind="city", aliases=[])
+    feed = Source(type=SourceType.RSS, name="Q'hubo", config={"feed_url": "x", "city": True})
+    db_session.add_all([city, feed])
+    db_session.commit()
+    now = dt.datetime.utcnow()
+    topics = ["operación iron", "operación iron en cali", "operación iron contra bandas",
+              "operación iron contra criminalidad"]
+    for i, topic in enumerate(topics):
+        when = now - dt.timedelta(hours=i)
+        m = Mention(candidate_id=city.id, source_id=feed.id, external_id=f"iron{i}",
+                    text=f"Nota sobre {topic}", url=f"https://x/iron{i}", raw={}, author="u",
+                    published_at=when, fetched_at=when)
+        db_session.add(m)
+        db_session.flush()
+        db_session.add(SentimentScore(mention_id=m.id, label=SentimentLabel.NEUTRAL, score=0.0,
+                                      topic=topic, model="f", category="seguridad"))
+    db_session.commit()
+
+    o = city_opportunities(db_session, days=7, min_count=3)
+    iron_novedades = [x for x in o["novedades"] if "iron" in x["topic"]]
+    assert len(iron_novedades) == 1, f"se esperaba un solo tema fusionado, salieron: {iron_novedades}"
+    assert iron_novedades[0]["topic"] == "operación iron"  # la etiqueta más corta del grupo
+    assert iron_novedades[0]["count"] == 4  # las 4 notas quedan sumadas bajo el mismo tema
+
+
+def test_city_opportunities_counts_carlos_presence_with_partial_topic_overlap(db_session):
+    """Bug real (2026-09-30): "operación iron contra criminalidad" no calzaba con un post de
+    Carlos que decía "La Operación IRON mejora la seguridad..." porque el post no repetía la
+    palabra "criminalidad" -- el emparejamiento exigía TODAS las palabras del topic. Con al menos
+    la mitad de solape alcanza."""
+    from src.queries import mentions_covering_topic, mention_keywords
+    carlos = Candidate(name="Carlos Arias", aliases=[])
+    src = Source(type=SourceType.SOCIAL, name="Instagram / Facebook (cuentas)")
+    m = Mention(candidate_id=1, source_id=1, external_id="d",
+                text="La Operación IRON mejora la seguridad en Cali con coordinación entre instituciones.",
+                url="https://x/d", raw={}, author="u",
+                published_at=dt.datetime.utcnow(), fetched_at=dt.datetime.utcnow())
+    m.sentiment = SentimentScore(label=SentimentLabel.POSITIVE, score=0.6, topic="seguridad", model="f", category="seguridad")
+    keywords = mention_keywords([m])
+    assert mentions_covering_topic("operación iron contra criminalidad", keywords) == 1
 
 
 def test_city_kpis(db_session):

@@ -53,7 +53,7 @@
 <header class="top">
   <div class="brand">
     <h1>Monitor de menciones</h1>
-    <div class="sub">Alcaldía de Cali 2027 · prensa, Reddit, YouTube, Instagram, Facebook y X</div>
+    <div class="sub">Alcaldía de Cali 2027 · prensa, YouTube, Instagram, Facebook y X</div>
   </div>
   <div class="controls">
     <span id="last-run" class="lastrun">—</span>
@@ -156,7 +156,6 @@
       <button class="subtab active" data-subtab="pub-prensa">Prensa</button>
       <button class="subtab" data-subtab="pub-social">Redes sociales</button>
       <button class="subtab" data-subtab="pub-youtube">YouTube</button>
-      <button class="subtab" data-subtab="pub-reddit">Reddit</button>
     </nav>
 
     <div id="subtab-pub-prensa" class="subtabpane active">
@@ -238,29 +237,6 @@
       </section>
     </div>
 
-    <div id="subtab-pub-reddit" class="subtabpane">
-      <section class="panel feed-panel">
-        <div class="feed-head">
-          <div><h2>Reddit</h2><span class="hint">posts y comentarios</span></div>
-          <div class="filters">
-            <select id="rd-f-candidate" aria-label="Filtrar por candidato"><option value="">Todos los candidatos</option></select>
-            <select id="rd-f-label" aria-label="Filtrar por sentimiento">
-              <option value="">Todo sentimiento</option>
-              <option value="negative">Negativo</option>
-              <option value="neutral">Neutral</option>
-              <option value="positive">Positivo</option>
-            </select>
-            <select id="rd-f-emotion" data-fill="emotions" aria-label="Filtrar por emoción">
-              <option value="">Toda emoción</option>
-            </select>
-            <select id="rd-f-category" data-fill="categories" aria-label="Filtrar por tema">
-              <option value="">Todos los temas</option>
-            </select>
-          </div>
-        </div>
-        <div id="rd-feed" class="feed"></div>
-      </section>
-    </div>
   </div>
 
   <div id="tab-meta" class="tabpane">
@@ -331,7 +307,7 @@
     <h3 class="section-title">Alcance — quién habla y por dónde</h3>
 
     <section class="panel big">
-      <div class="panel-head"><div><h2>¿De quién se habla más?</h2><div class="hint">Número de menciones por candidato en el período. Incluye prensa, Reddit, YouTube, Instagram y Facebook.</div></div></div>
+      <div class="panel-head"><div><h2>¿De quién se habla más?</h2><div class="hint">Número de menciones por candidato en el período. Incluye prensa, YouTube, Instagram y Facebook.</div></div></div>
       <p class="reading" id="read-volume"></p>
       <div class="chart-box xl"><div id="chart-volume"></div></div>
     </section>
@@ -343,7 +319,7 @@
     </section>
 
     <section class="panel big">
-      <div class="panel-head"><div><h2>¿En qué canales aparece cada candidato?</h2><div class="hint">Dónde se generan las menciones: prensa (medios de comunicación), YouTube (videos y comentarios), Instagram / Facebook (posts y comentarios) o Reddit.</div></div></div>
+      <div class="panel-head"><div><h2>¿En qué canales aparece cada candidato?</h2><div class="hint">Dónde se generan las menciones: prensa (medios de comunicación), YouTube (videos y comentarios) o Instagram / Facebook (posts y comentarios).</div></div></div>
       <p class="reading" id="read-sources"></p>
       <div class="chart-box xl"><div id="chart-sources"></div></div>
     </section>
@@ -384,7 +360,7 @@
     </section>
 
     <section class="panel big" id="week-detail-panel" style="display:none">
-      <div class="panel-head"><div><h2 id="week-detail-title">Publicaciones de esa semana</h2><div class="hint">Menciones de Carlos Arias en el período seleccionado (prensa, redes, YouTube, Reddit) que componen ese dato de la gráfica.</div></div></div>
+      <div class="panel-head"><div><h2 id="week-detail-title">Publicaciones de esa semana</h2><div class="hint">Menciones de Carlos Arias en el período seleccionado (prensa, redes, YouTube) que componen ese dato de la gráfica.</div></div></div>
       <div id="week-detail-feed" class="feed"></div>
     </section>
 
@@ -428,7 +404,9 @@
     </section>
 
     <section class="panel big">
-      <div class="panel-head"><div><h2>Oportunidades para Carlos Arias</h2><div class="hint">Temas nuevos o en fuerte alza en la ciudad (sea cual sea su tono) donde Carlos aún no tiene presencia, y temas donde ya suma.</div></div></div>
+      <div class="panel-head"><div><h2>Oportunidades para Carlos Arias</h2><div class="hint">Temas nuevos o en fuerte alza en la ciudad (sea cual sea su tono) donde Carlos aún no tiene presencia, y temas donde ya suma.</div></div>
+        <select id="city-opps-category" data-fill="categories" aria-label="Filtrar por categoría"><option value="">Todas las categorías</option></select>
+      </div>
       <div class="grid2" id="city-opps"></div>
     </section>
 
@@ -445,7 +423,6 @@
             <option value="">Todas las fuentes</option>
             <option value="google_news">Prensa (Google News)</option>
             <option value="rss">Prensa (RSS)</option>
-            <option value="reddit">Reddit</option>
             <option value="youtube">YouTube</option>
             <option value="social">Instagram / Facebook / X</option>
           </select>

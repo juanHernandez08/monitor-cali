@@ -27,9 +27,12 @@ def _seed(db_session):
 
 def test_enrich_resolves_url_fetches_body_and_dedups(db_session, monkeypatch):
     _, gn, rss = _seed(db_session)
-    ingest(db_session, rss, ListConnector([RawItem(external_id="r1", text="Carlos Arias nota", url="https://elpais.com.co/n/1")]))
+    # g1 y r1 tienen titulares distintos a propósito (aunque son la MISMA nota real, ver
+    # resolve_url abajo): si tuvieran el mismo titular, el dedup por título de ingest() los
+    # atraparía ahí mismo y esta prueba dejaría de ejercitar el dedup por URL de enrich_pending.
+    ingest(db_session, rss, ListConnector([RawItem(external_id="r1", text="Carlos Arias nota sobre seguridad", url="https://elpais.com.co/n/1")]))
     ingest(db_session, gn, ListConnector([
-        RawItem(external_id="g1", text="Carlos Arias nota", url="https://news.google.com/rss/articles/AAA"),
+        RawItem(external_id="g1", text="Carlos Arias habla de seguridad en Cali", url="https://news.google.com/rss/articles/AAA"),
         RawItem(external_id="g2", text="Carlos Arias otra", url="https://news.google.com/rss/articles/BBB"),
     ]))
     import src.enrich as m

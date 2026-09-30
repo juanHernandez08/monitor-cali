@@ -7,11 +7,15 @@ from dataclasses import dataclass
 from src.models import SentimentLabel
 from src import config
 
+# Nombres pedidos por el cliente 2026-09-30 (más claros para alguien que no vive revisando el
+# monitor): "seguridad y convivencia", "medioambiente y gestión de riesgo", "economía y empleo",
+# "salud pública" reemplazan a los nombres anteriores -- ver scripts/rename_categories.py para la
+# migración de los registros ya guardados con el nombre viejo.
 CATEGORIES = [
-    "seguridad", "movilidad y transporte", "terremoto y reconstrucción", "servicios públicos", "salud",
-    "educación", "empleo y economía", "vivienda", "medio ambiente y clima", "cultura y eventos", "deporte",
-    "corrupción y gobierno", "política y elecciones", "orden público y protestas", "infraestructura y obras",
-    "animales", "otro",
+    "seguridad y convivencia", "movilidad y transporte", "terremoto y reconstrucción", "servicios públicos",
+    "salud pública", "educación", "economía y empleo", "vivienda", "medioambiente y gestión de riesgo",
+    "cultura y eventos", "deporte", "corrupción y gobierno", "política y elecciones",
+    "orden público y protestas", "infraestructura y obras", "animales", "otro",
 ]
 _CATEGORY_LINE = 'Además, asigna una "category" tomada EXACTAMENTE de esta lista: ' + ", ".join(CATEGORIES) + ".\n"
 

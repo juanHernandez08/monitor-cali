@@ -239,7 +239,7 @@ async function loadSummary() {
       </div></button>`).join("");
 
   const candOptions = `<option value="">Todos los candidatos</option>` + rows.map((r) => `<option value="${r.candidate_id}">${esc(r.name)}</option>`).join("");
-  for (const id of ["#f-candidate", "#yt-f-candidate", "#rd-f-candidate"]) {
+  for (const id of ["#f-candidate", "#yt-f-candidate"]) {
     const s = $(id); if (!s) continue;
     const cur = s.value; s.innerHTML = candOptions; s.value = cur;
   }
@@ -474,6 +474,7 @@ function renderFeedList(sel, rows, { showCandidate = false } = {}) {
     ${thumb(r)}
     <div class="body">
       <div class="meta">${showCandidate ? `<span class="cand">${esc(r.candidate)}</span>` : ""}<span class="tag src">${srcName(r)} · ${KIND[r.kind] || ""}</span><span>${fmtDate(r.published_at)}</span>${r.url ? `<a href="${safeUrl(r.url)}" target="_blank" rel="noopener">ver original ↗</a>` : ""}</div>
+      ${r.fetched_at ? `<div class="hint">capturado ${fmtDate(r.fetched_at)}</div>` : ""}
       <div class="text">${esc(r.text)}</div>
       ${r.summary ? `<div class="summary">📝 ${esc(r.summary)}</div>` : ""}
       ${r.author ? `<div class="author">${esc(r.author)}</div>` : ""}
@@ -497,9 +498,11 @@ function toggleComments(sel, idx, btn) {
   item.appendChild(div);
   btn.textContent = btn.textContent.replace("▸", "▾");
 }
-/* ---------- Publicaciones: Prensa / YouTube / Reddit comparten esta misma función, cada una
-   con su propio prefijo de filtros -- la sub-pestaña de Redes sociales usa social_posts() en
-   vez de feed(), con su propio alcance (likes/comentarios/vistas), así que no pasa por aquí. */
+/* ---------- Publicaciones: Prensa / YouTube comparten esta misma función, cada una con su
+   propio prefijo de filtros -- la sub-pestaña de Redes sociales usa social_posts() en vez de
+   feed(), con su propio alcance (likes/comentarios/vistas), así que no pasa por aquí. Reddit
+   tuvo su propia sub-pestaña hasta 2026-09-30: se quitó de la vista porque casi no captura nada
+   en Cali (1 mención en 10 días) y mostrarla vacía daba a entender que sí se estaba vigilando. */
 async function loadFeedTab(feedSel, filterPrefix, sourceType) {
   if (!$(feedSel)) return;
   const p = new URLSearchParams({ days: days(), limit: 80, source_type: sourceType });
@@ -511,7 +514,6 @@ async function loadFeedTab(feedSel, filterPrefix, sourceType) {
 }
 function loadFeed() { return loadFeedTab("#feed", "f", "prensa"); }
 function loadFeedYoutube() { return loadFeedTab("#yt-feed", "yt-f", "youtube"); }
-function loadFeedReddit() { return loadFeedTab("#rd-feed", "rd-f", "reddit"); }
 
 /* ---------- Meta y redes: publicaciones de Instagram/Facebook/X por alcance ---------- */
 /* Candidatos a la Alcaldía vs. concejales, en TODAS las gráficas de Meta y redes -- un concejal
@@ -749,7 +751,8 @@ async function loadStatus() {
   const s = await j("/health");
   $("#last-run").textContent = `Actualizado ${ago(s.last_run)}`;
   $("#status").innerHTML = `${s.total_mentions} menciones capturadas · ${s.scored} clasificadas · ${s.pending} pendientes · ${s.discarded} descartadas (homónimos / ajenas)<br>` +
-    s.sources.map((x) => `${esc(x.name)}: ${x.total}${x.error ? ` <span style="color:var(--neg)" title="${esc(x.error)}">⚠</span>` : ""}`).join(" · ");
+    s.sources.filter((x) => x.type !== "REDDIT")  // casi no captura nada en Cali -- no se muestra como si fuera una fuente activa
+      .map((x) => `${esc(x.name)}: ${x.total}${x.error ? ` <span style="color:var(--neg)" title="${esc(x.error)}">⚠</span>` : ""}`).join(" · ");
 }
 
 /* ---------- pestaña Candidatos: roster + comparación compacta ---------- */
@@ -800,7 +803,7 @@ const TAB_LOADERS = {
   resumen: async () => { await ensureSummary(true); await Promise.all([loadAlerts(), loadSocialStrong()]); },
   candidatos: async () => { const rows = await ensureSummary(); loadCandidatesTab(rows);
     await Promise.all([loadTopics(), loadPositivityCI(rows), (typeof loadCouncil === "function" ? loadCouncil() : null)]); },
-  publicaciones: async () => { await ensureSummary(); await Promise.all([loadFeed(), loadFeedYoutube(), loadFeedReddit(), loadMeta()]); },
+  publicaciones: async () => { await ensureSummary(); await Promise.all([loadFeed(), loadFeedYoutube(), loadMeta()]); },
   meta: () => Promise.all([loadMeta(), loadMetaAnalytics(), loadMetaInsights()]),
   analisis: async () => { const rows = await ensureSummary(); loadQuadrant(rows);
     await Promise.all([loadTimeline(rows), loadSources(), loadTopics(), loadConversation()]); },
@@ -1006,10 +1009,10 @@ $("#days").addEventListener("change", () => {
   try { localStorage.setItem("monitor.days", $("#days").value); } catch (e) { /* sin almacenamiento */ }
   loadAll();
 });
-/* Las 4 listas de temas y emociones (Prensa, YouTube, Reddit, Ciudad) salen de una sola lista
-   aquí, en vez de repetir 17 + 7 <option> a mano en cada filtro del HTML. */
-const CATEGORY_OPTIONS = ["seguridad", "movilidad y transporte", "terremoto y reconstrucción", "servicios públicos", "salud",
-  "educación", "empleo y economía", "vivienda", "medio ambiente y clima", "cultura y eventos", "deporte",
+/* Las listas de temas y emociones (Prensa, YouTube, Ciudad) salen de una sola lista aquí, en vez
+   de repetir 17 + 7 <option> a mano en cada filtro del HTML. */
+const CATEGORY_OPTIONS = ["seguridad y convivencia", "movilidad y transporte", "terremoto y reconstrucción", "servicios públicos",
+  "salud pública", "educación", "economía y empleo", "vivienda", "medioambiente y gestión de riesgo", "cultura y eventos", "deporte",
   "corrupción y gobierno", "política y elecciones", "orden público y protestas", "infraestructura y obras", "animales", "otro"];
 const EMOTION_OPTIONS = [["ira", "Ira"], ["miedo", "Miedo"], ["asco", "Asco / repulsión"], ["tristeza", "Tristeza"],
   ["felicidad", "Felicidad"], ["sorpresa", "Sorpresa"], ["sin emoción marcada", "Sin emoción marcada"]];
@@ -1021,7 +1024,6 @@ document.querySelectorAll("select[data-fill='emotions']").forEach((sel) => {
 });
 ["#f-candidate", "#f-label", "#f-emotion", "#f-category"].forEach((id) => $(id).addEventListener("change", loadFeed));
 ["#yt-f-candidate", "#yt-f-label", "#yt-f-emotion", "#yt-f-category"].forEach((id) => $(id).addEventListener("change", loadFeedYoutube));
-["#rd-f-candidate", "#rd-f-label", "#rd-f-emotion", "#rd-f-category"].forEach((id) => $(id).addEventListener("change", loadFeedReddit));
 ["#meta-f-candidate", "#meta-f-platform", "#meta-f-sort"].forEach((id) => $(id).addEventListener("change", loadMeta));
 ["#city-f-source", "#city-f-label", "#city-f-emotion", "#city-f-category"].forEach((id) => $(id).addEventListener("change", loadCityFeed));
 $("#refresh").addEventListener("click", async () => {
@@ -1072,6 +1074,22 @@ const EMOTION_COLOR = { "ira": CRITICAL, "miedo": NEUTRAL_TONE, "asco": AQUA, "t
   "felicidad": ORANGE, "sorpresa": YELLOW, "sin emoción marcada": MUTED };
 const EMOTIONS_ORDER = ["ira", "miedo", "asco", "tristeza", "felicidad", "sorpresa", "sin emoción marcada"];
 
+/* Selector de categoría del panel "Oportunidades para Carlos Arias" -- filtra en el navegador,
+   sin volver a pedir los datos (ya se trajeron todas las categorías de una vez). */
+let cityOpportunities = null;
+function renderCityOpps() {
+  if (!cityOpportunities) return;
+  const cat = $("#city-opps-category")?.value || "";
+  const novedades = cityOpportunities.novedades.filter((t) => !cat || t.category === cat);
+  const strong = cityOpportunities.carlos_strong.filter((t) => !cat || t.category === cat);
+  $("#city-opps").innerHTML = `
+    <div class="opp hot"><h3>Novedades donde Carlos podría hablar</h3>
+      ${novedades.length ? `<ul>${novedades.map((t) => `<li><b>${esc(cap(t.topic))}</b> <span class="hint">(${esc(cap(t.category))})</span>: ${t.count} menciones${t.is_new ? " · tema nuevo" : ` · ${t.trend_pct}% más que el período anterior`} · ${pct(t.positive, t.count)}% a favor, ${pct(t.negative, t.count)}% molestia · Carlos: ${t.carlos_mentions === 0 ? "sin presencia" : `${t.carlos_mentions} menciones`}</li>`).join("")}</ul>` : `<div class="empty">No hay temas nuevos ni en alza sin presencia de Carlos en el período${cat ? " en esta categoría" : ""}.</div>`}</div>
+    <div class="opp strong"><h3>Temas donde Carlos ya suma</h3>
+      ${strong.length ? `<ul>${strong.map((t) => `<li><b>${esc(cap(t.category))}</b>: ${t.carlos_mentions} menciones de Carlos, ${t.carlos_positive_pct}% positivas · la ciudad habló ${t.city_count} veces del tema</li>`).join("")}</ul>` : `<div class="empty">Aún no hay temas con presencia positiva sostenida de Carlos en el período${cat ? " en esta categoría" : ""}.</div>`}</div>`;
+}
+$("#city-opps-category")?.addEventListener("change", renderCityOpps);
+
 async function loadCity() {
   if (!$("#city-kpis")) return;
   const d = days();
@@ -1104,12 +1122,8 @@ async function loadCity() {
       $("#city-emotion-detail").scrollIntoView({ behavior: "smooth", block: "nearest" });
     } });
 
-  const novedades = opps.novedades, strong = opps.carlos_strong;
-  $("#city-opps").innerHTML = `
-    <div class="opp hot"><h3>Novedades donde Carlos podría hablar</h3>
-      ${novedades.length ? `<ul>${novedades.map((t) => `<li><b>${esc(cap(t.topic))}</b> <span class="hint">(${esc(cap(t.category))})</span>: ${t.count} menciones${t.is_new ? " · tema nuevo" : ` · ${t.trend_pct}% más que el período anterior`} · ${pct(t.positive, t.count)}% a favor, ${pct(t.negative, t.count)}% molestia · Carlos: ${t.carlos_mentions === 0 ? "sin presencia" : `${t.carlos_mentions} menciones`}</li>`).join("")}</ul>` : `<div class="empty">No hay temas nuevos ni en alza sin presencia de Carlos en el período.</div>`}</div>
-    <div class="opp strong"><h3>Temas donde Carlos ya suma</h3>
-      ${strong.length ? `<ul>${strong.map((t) => `<li><b>${esc(cap(t.category))}</b>: ${t.carlos_mentions} menciones de Carlos, ${t.carlos_positive_pct}% positivas · la ciudad habló ${t.city_count} veces del tema</li>`).join("")}</ul>` : `<div class="empty">Aún no hay temas con presencia positiva sostenida de Carlos en el período.</div>`}</div>`;
+  cityOpportunities = opps;
+  renderCityOpps();
 
   const normalized = topics.map((t) => ({ topic: cap(t.category), count: t.count, positive: t.positive, neutral: t.neutral,
     negative: t.negative, positive_pct: pct(t.positive, t.count), sources: t.sources, samples: t.samples, subtopics: t.subtopics }));
@@ -1220,7 +1234,7 @@ async function loadInstitutionalHistory() {
 
 /* ---------- agenda ---------- */
 function quote(m) {
-  return `<div class="quote">“${clip(m.text, 220)}”<div class="who">${srcName(m)} · ${esc(m.author || "")} · ${fmtDate(m.published_at)}${(m.link || m.url) ? ` · <a href="${safeUrl(m.link || m.url)}" target="_blank" rel="noopener">ver ↗</a>` : ""}</div></div>`;
+  return `<div class="quote">“${clip(m.text, 220)}”<div class="who">${srcName(m)} · ${esc(m.author || "")} · ${fmtDate(m.published_at)}${m.fetched_at ? ` · capturado ${fmtDate(m.fetched_at)}` : ""}${(m.link || m.url) ? ` · <a href="${safeUrl(m.link || m.url)}" target="_blank" rel="noopener">ver ↗</a>` : ""}</div></div>`;
 }
 
 async function loadAgenda() {

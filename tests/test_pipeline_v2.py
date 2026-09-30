@@ -37,6 +37,53 @@ def test_ingest_dedups_across_sources_by_url(db_session):
     assert db_session.query(Mention).one().url_normalized == "elpais.com.co/n/1"
 
 
+def test_ingest_dedups_same_headline_with_different_google_news_redirect_urls(db_session):
+    """Bug real 2026-09-30: Google News no siempre da el mismo link para el mismo artículo -- el
+    que devuelve depende de qué término de búsqueda lo encontró, así que la misma nota (p. ej.
+    "Operación Cristo Rey en Cali...") quedaba guardada 2-3 veces con URLs de redirección
+    distintas, que el dedup por URL no detectaba. Ahora también se compara el titular."""
+    carlos, ana, s1, s2 = _seed(db_session)
+    a = RawItem(external_id="g1", text="Carlos Arias sobre la Operación Cristo Rey en Cali: así avanza la cruzada - El Tiempo",
+                url="https://news.google.com/rss/articles/AAAAAAA")
+    b = RawItem(external_id="g2", text="Carlos Arias sobre la Operación Cristo Rey en Cali: así avanza la cruzada - El Tiempo",
+                url="https://news.google.com/rss/articles/BBBBBBBBBBB")  # mismo articulo, link distinto
+    c = RawItem(external_id="r1", text="Carlos Arias sobre la Operación Cristo Rey en Cali: así avanza la cruzada",
+                url="https://eltiempo.com/cristo-rey")  # misma nota, vía RSS directo del medio
+
+    assert ingest(db_session, s1, ListConnector([a])) == 1
+    assert ingest(db_session, s1, ListConnector([b])) == 0  # mismo titular, ya la tenemos
+    assert ingest(db_session, s2, ListConnector([c])) == 0  # mismo titular, otra fuente
+    assert db_session.query(Mention).count() == 1
+
+
+def test_ingest_title_dedup_does_not_cross_candidates(db_session):
+    """El mismo titular (sin nombrar a nadie por su nombre, atribuido solo por search_term) SÍ
+    debe guardarse una vez por cada candidato distinto -- deduplicar por título nunca debe borrar
+    la atribución a un candidato distinto."""
+    carlos, ana, s1, _ = _seed(db_session)
+    a = RawItem(external_id="g1", text="El debate de anoche en el Concejo estuvo muy reñido",
+                url="https://news.google.com/rss/articles/AAAAAAA", search_term="Carlos Arias")
+    b = RawItem(external_id="g2", text="El debate de anoche en el Concejo estuvo muy reñido",
+                url="https://news.google.com/rss/articles/BBBBBBBBBBB", search_term="Ana Pérez")
+
+    assert ingest(db_session, s1, ListConnector([a])) == 1
+    assert ingest(db_session, s1, ListConnector([b])) == 1
+    assert {m.candidate_id for m in db_session.query(Mention).all()} == {carlos.id, ana.id}
+
+
+def test_ingest_title_dedup_only_applies_to_press_sources(db_session):
+    """Un comentario de YouTube/redes con el mismo texto que otro (p. ej. "jajaja" repetido por
+    gente distinta) no debe perderse -- el dedup por titular es solo para prensa."""
+    carlos, _, s1, _ = _seed(db_session)
+    yt = Source(type=SourceType.YOUTUBE, name="YouTube")
+    db_session.add(yt)
+    db_session.commit()
+    a = RawItem(external_id="c1", text="Carlos Arias gran candidato", url="https://youtube.com/watch?v=1&lc=a")
+    b = RawItem(external_id="c2", text="Carlos Arias gran candidato", url="https://youtube.com/watch?v=1&lc=b")
+    assert ingest(db_session, yt, ListConnector([a])) == 1
+    assert ingest(db_session, yt, ListConnector([b])) == 1
+
+
 def test_ingest_uses_search_term_when_text_has_no_name(db_session):
     carlos, _, s1, _ = _seed(db_session)
     item = RawItem(external_id="c1", text="este señor no me convence", url=None, search_term="Buenos Ciudadanos")

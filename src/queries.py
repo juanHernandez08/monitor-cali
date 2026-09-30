@@ -1,5 +1,6 @@
 """Consultas de lectura para el dashboard. Devuelven dicts listos para JSON."""
 import datetime as dt
+import math
 import pathlib
 import re
 import unicodedata
@@ -39,15 +40,21 @@ def mention_keywords(mentions: list[Mention]) -> list[set[str]]:
     return [_keywords((m.sentiment.topic or "") + " " + (m.text or "")) for m in mentions]
 
 
-def mentions_covering_topic(topic: str, keywords: list[set[str]]) -> int:
+def mentions_covering_topic(topic: str, keywords: list[set[str]], min_overlap: float = 0.5) -> int:
     """Cuántas menciones (ya reducidas a palabras con mention_keywords) hablan de `topic`. No
     exige el topic idéntico -- el LLM no siempre etiqueta igual el mismo asunto real en dos
     menciones distintas (p. ej. un post sobre la Operación Iron quedó con topic "seguridad", no
-    "Operación Iron"): alcanza con que las palabras distintivas del tema estén en la mención."""
+    "Operación Iron").
+
+    Tampoco exige TODAS las palabras del topic (bug real 2026-09-30): "operación iron contra
+    criminalidad" no calzaba con un post que decía "La Operación IRON mejora la seguridad..." --
+    mismo asunto, pero el post no repite "criminalidad". Alcanza con que la mitad (redondeado
+    hacia arriba) de las palabras distintivas del tema estén en la mención."""
     topic_words = _keywords(topic)
     if not topic_words:
         return 0
-    return sum(1 for kw in keywords if topic_words <= kw)
+    threshold = math.ceil(len(topic_words) * min_overlap)
+    return sum(1 for kw in keywords if len(topic_words & kw) >= threshold)
 
 
 def _since(days: int) -> dt.datetime:
@@ -148,6 +155,7 @@ def _mention_dict(m: Mention) -> dict:
         "text": m.text, "url": m.url, "author": m.author,
         "link": (m.raw or {}).get("reply_url") or m.url,  # para respuestas de X: el link de la respuesta, no del post
         "published_at": _when(m).isoformat(),
+        "fetched_at": m.fetched_at.isoformat() if m.fetched_at else None,
         "label": s.label.value if s else None, "score": s.score if s else None,
         "topic": s.topic if s else None, "model": s.model if s else None,
         "summary": (s.summary if s else None) or None,
@@ -488,8 +496,7 @@ def social_posts(session, days: int = 30, candidate_id: int | None = None, platf
         d["platform"] = (m.raw or {}).get("platform")
         d.update(_social_metrics(m))
         d["engagement"] = d["likes"] + d["comments"]
-        d["comments_preview"] = _raw_comment_preview(m.raw)
-        d["fetched_at"] = m.fetched_at.isoformat() if m.fetched_at else None
+        d["comments_preview"] = _raw_comment_preview(m.raw)  # fetched_at ya viene de _mention_dict
         result.append(d)
     if sort == "engagement":
         result.sort(key=lambda r: -r["engagement"])
@@ -709,9 +716,11 @@ def city_topics(session, days: int = 7, samples_per: int = 3, subtopics_per: int
         prev = previous.get(cat, 0)
         trend = None if prev == 0 else round((len(ms) - prev) / prev * 100)
         sub = Counter((m.sentiment.topic or "").lower() for m in ms if (m.sentiment.topic or "").lower() not in META_TOPICS and m.sentiment.topic)
-        comments = [m for m in ms if (m.raw or {}).get("kind") == "comment"]
-        pool = comments or ms
-        samples = sorted(pool, key=lambda m: -abs(m.sentiment.score))[:samples_per]
+        # Si el mismo medio tiene nota de prensa Y publicación en redes sobre el mismo hecho, se
+        # prefiere la de redes como muestra -- ahí sí se puede ver cómo reacciona la gente en los
+        # comentarios, cosa que una nota de prensa no trae (pedido del cliente 2026-09-30). La
+        # prensa se sigue capturando y contando igual, solo pasa a segunda opción como muestra.
+        samples = sorted(ms, key=lambda m: (m.source.type in (SourceType.GOOGLE_NEWS, SourceType.RSS), -abs(m.sentiment.score)))[:samples_per]
         change = stats.count_change_test(len(ms), prev)
         rows.append({
             "category": cat, "count": len(ms), "previous": prev, "trend_pct": trend,
@@ -757,6 +766,44 @@ def city_emotion_by_topic(session, days: int = 7) -> list[dict]:
     return rows
 
 
+def _cluster_topics(by_topic: dict[str, list[Mention]], min_overlap: float = 0.4) -> dict[str, list[Mention]]:
+    """Junta variantes del mismo asunto real bajo una sola etiqueta. El LLM no siempre pone el
+    mismo "topic" para el mismo hecho: "operación iron", "operación iron en cali" y "operación
+    iron contra bandas" terminaban como 3 novedades separadas en vez de una (reporte 2026-09-30).
+    Dos topics se juntan si comparten al menos el 40% de sus palabras distintivas (Jaccard); la
+    etiqueta final es la más corta del grupo, que suele ser la más limpia/genérica."""
+    topics = list(by_topic.keys())
+    kw = {t: _keywords(t) for t in topics}
+    parent = {t: t for t in topics}
+
+    def find(x: str) -> str:
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+
+    for i, a in enumerate(topics):
+        for b in topics[i + 1:]:
+            wa, wb = kw[a], kw[b]
+            if wa and wb and len(wa & wb) / len(wa | wb) >= min_overlap:
+                ra, rb = find(a), find(b)
+                if ra != rb:
+                    parent[ra] = rb
+
+    clusters: dict[str, list[str]] = defaultdict(list)
+    for t in topics:
+        clusters[find(t)].append(t)
+
+    merged: dict[str, list[Mention]] = {}
+    for members in clusters.values():
+        canonical = min(members, key=len)
+        rows: list[Mention] = []
+        for t in members:
+            rows.extend(by_topic[t])
+        merged[canonical] = rows
+    return merged
+
+
 def city_opportunities(session, days: int = 7, carlos_max: int = 2, min_count: int = 3,
                        min_trend_pct: int = 80, limit: int = 8, carlos_min: int = 3, carlos_pos_pct: int = 60) -> dict:
     """Novedades sobre las que Carlos podría hablar (temas nuevos o en fuerte alza, sea cual sea
@@ -775,8 +822,8 @@ def city_opportunities(session, days: int = 7, carlos_max: int = 2, min_count: i
                 by_topic[t].append(m)
         return by_topic
 
-    current_by_topic = _topic_rows(current)
-    previous_counts = Counter({t: len(ms) for t, ms in _topic_rows(previous).items()})
+    current_by_topic = _cluster_topics(_topic_rows(current))
+    previous_by_topic = _topic_rows(previous)  # sin clusterizar: se compara por palabras abajo
 
     carlos = session.query(Candidate).filter_by(name=CARLOS).first()
     carlos_mentions: list[Mention] = []
@@ -792,7 +839,10 @@ def city_opportunities(session, days: int = 7, carlos_max: int = 2, min_count: i
     novedades = []
     for topic, ms in current_by_topic.items():
         count = len(ms)
-        prev = previous_counts.get(topic, 0)
+        topic_kw = _keywords(topic)
+        prev = sum(len(prev_ms) for prev_t, prev_ms in previous_by_topic.items()
+                   if topic_kw and (topic_kw & _keywords(prev_t)) and
+                   len(topic_kw & _keywords(prev_t)) / len(topic_kw | _keywords(prev_t)) >= 0.4)
         trend = None if prev == 0 else round((count - prev) / prev * 100)
         is_new = prev == 0 and count >= min_count
         is_rising = trend is not None and trend >= min_trend_pct and count >= min_count
@@ -802,7 +852,7 @@ def city_opportunities(session, days: int = 7, carlos_max: int = 2, min_count: i
         carlos_n = mentions_covering_topic(topic, carlos_keywords)
         if (is_new or is_rising) and carlos_n <= carlos_max:
             labels = Counter(m.sentiment.label for m in ms)
-            samples = sorted(ms, key=lambda m: -abs(m.sentiment.score))[:2]
+            samples = sorted(ms, key=lambda m: (m.source.type in (SourceType.GOOGLE_NEWS, SourceType.RSS), -abs(m.sentiment.score)))[:2]
             novedades.append({
                 "topic": topic, "category": category, "count": count, "is_new": is_new, "trend_pct": trend,
                 "positive": labels.get(SentimentLabel.POSITIVE, 0), "neutral": labels.get(SentimentLabel.NEUTRAL, 0),

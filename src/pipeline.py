@@ -1,10 +1,11 @@
 import datetime as dt
 import logging
 import re
+import unicodedata
 
 from src.connectors.base import Connector
 from src.matching import all_search_terms_flat, find_matching_candidate, find_candidate_by_term, is_excluded
-from sqlalchemy import or_
+from sqlalchemy import func, or_
 from sqlalchemy.exc import IntegrityError
 
 from src.models import Candidate, Mention, Run, SentimentLabel, SentimentScore, Source, SourceType
@@ -15,14 +16,27 @@ log = logging.getLogger(__name__)
 
 MAX_AGE_DAYS = 60  # menciones más viejas no se guardan (el dashboard muestra hasta 30 días)
 CITY_NAME = "Cali (ciudad)"  # candidato especial (kind="city") que recibe la conversación de la ciudad
+TITLE_DEDUP_DAYS = 14  # ventana para detectar la misma nota repetida (un ciclo de noticias, no más)
 
 _HANDLE = re.compile(r"@[\w.]+")
+_TITLE_JUNK = re.compile(r"[^a-z0-9 ]")
+_PRESS_TYPES = (SourceType.GOOGLE_NEWS, SourceType.RSS)
 
 
 def is_bare_mention(text: str) -> bool:
     """True si el comentario es solo etiquetas a otras cuentas ("@a @b"), sin ningún otro texto."""
     stripped = _HANDLE.sub("", text or "").strip()
     return bool(_HANDLE.search(text or "")) and stripped == ""
+
+
+def _title_key(text: str) -> str:
+    """Encabezado normalizado para reconocer la MISMA nota de prensa capturada dos veces con URLs
+    distintas. Google News no siempre da el mismo link para el mismo artículo -- el que devuelve
+    depende de qué término de búsqueda lo encontró, así que el dedup por URL (ver ingest) no
+    bastaba y la misma nota podía quedar guardada 2 o 3 veces (reporte 2026-09-30)."""
+    t = (text or "").split(" - ")[0].strip().lower()  # Google News agrega " - Medio" al final
+    t = unicodedata.normalize("NFKD", t).encode("ascii", "ignore").decode()
+    return _TITLE_JUNK.sub("", t)[:90]
 
 
 def ingest(session, source, connector: Connector, max_age_days: int = MAX_AGE_DAYS) -> int:
@@ -39,6 +53,16 @@ def ingest(session, source, connector: Connector, max_age_days: int = MAX_AGE_DA
     city = next((c for c in all_active if c.kind == "city"), None) if (source.config or {}).get("city") else None
     cutoff = dt.datetime.utcnow() - dt.timedelta(days=max_age_days)
     new_mentions = 0
+    # Notas de prensa ya guardadas (cualquier fuente) por candidato en los últimos
+    # TITLE_DEDUP_DAYS -- para reconocer la misma nota repetida con una URL distinta (ver
+    # _title_key). Se arma una sola vez por corrida, no por cada item.
+    seen_titles: dict[int, set[str]] = {}
+    if source.type in _PRESS_TYPES:
+        title_since = dt.datetime.utcnow() - dt.timedelta(days=TITLE_DEDUP_DAYS)
+        when = func.coalesce(Mention.published_at, Mention.fetched_at)
+        for cand_id, text in (session.query(Mention.candidate_id, Mention.text).join(Source)
+                              .filter(Source.type.in_(_PRESS_TYPES), when >= title_since)):
+            seen_titles.setdefault(cand_id, set()).add(_title_key(text))
     try:
         items = connector.fetch(all_search_terms_flat(candidates))
         for item in items:
@@ -68,6 +92,11 @@ def ingest(session, source, connector: Connector, max_age_days: int = MAX_AGE_DA
                 candidate = city  # fuente de ciudad: lo que no nombra a nadie es conversación de Cali
             if candidate is None:
                 continue
+            if source.type in _PRESS_TYPES:
+                title_key = _title_key(item.text)
+                if len(title_key) > 15 and title_key in seen_titles.get(candidate.id, ()):
+                    continue
+                seen_titles.setdefault(candidate.id, set()).add(title_key)
             session.add(Mention(
                 candidate_id=candidate.id, source_id=source.id, external_id=item.external_id,
                 url=item.url, url_normalized=url_norm, author=item.author, text=item.text,
