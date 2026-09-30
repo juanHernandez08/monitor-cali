@@ -218,6 +218,12 @@ footer { color: var(--muted); font-size: 12px; line-height: 1.7; }
 .panel.big .hint { display: block; margin-top: 4px; font-size: 13px; max-width: 900px; }
 .reading { margin: 4px 0 12px; padding: 10px 14px; background: var(--brand-soft); border-left: 3px solid var(--brand); border-radius: 8px; font-size: 14px; line-height: 1.5; }
 .reading b { color: var(--brand-2); }
+/* Explicación fija de "cómo leer esta gráfica" (no cambia con los datos, a diferencia de .reading,
+   que sí) -- tono neutro/gris para no competir visualmente con el resumen en azul. */
+.explain { margin: 4px 0 12px; padding: 10px 14px; background: var(--panel-2, #f4f5f7); border-left: 3px solid var(--muted); border-radius: 8px; font-size: 13.5px; line-height: 1.6; color: var(--ink); }
+.explain ul { margin: 6px 0 0; padding-left: 20px; }
+.explain li { margin: 3px 0; }
+.explain b { color: var(--ink); }
 /* Límites honestos del análisis (qué NO se puede afirmar con estos datos) -- tono neutro, no de
    alerta: no es un problema, es alcance declarado. */
 .limitations { margin: 10px 0 12px; padding: 10px 14px; background: var(--soft); border-left: 3px solid var(--muted); border-radius: 8px; font-size: 13px; line-height: 1.5; color: var(--ink); }

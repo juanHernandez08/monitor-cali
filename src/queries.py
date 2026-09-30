@@ -253,18 +253,39 @@ def _day_bounds(day: str) -> tuple[dt.datetime, dt.datetime]:
     return start, start + dt.timedelta(days=1)
 
 
+def _week_bounds(week: str) -> tuple[dt.datetime, dt.datetime]:
+    """Inicio y fin (UTC, naive) de una semana ISO 'YYYY-Sww' en hora Bogotá -- mismo formato que
+    strftime('%G-S%V'), usado en el gráfico de participación semanal."""
+    year, wk = week.split("-S")
+    monday = dt.date.fromisocalendar(int(year), int(wk), 1)
+    start = dt.datetime.combine(monday, dt.time()).replace(tzinfo=BOGOTA).astimezone(dt.timezone.utc).replace(tzinfo=None)
+    return start, start + dt.timedelta(days=7)
+
+
 def feed(session, candidate_id: int | None = None, source_type: str | None = None,
          label: str | None = None, emotion: str | None = None, category: str | None = None,
-         city: bool = False, days: int = 30, limit: int = 100, offset: int = 0, day: str | None = None) -> list[dict]:
+         city: bool = False, days: int = 30, limit: int = 100, offset: int = 0,
+         day: str | None = None, week: str | None = None) -> list[dict]:
     """Filas = publicaciones (post, video, nota); los comentarios cuelgan de su publicación.
 
     Los filtros se aplican a las menciones; una publicación aparece si ella o alguno de sus
     comentarios pasa el filtro. Comentarios sin publicación guardada forman una fila sintética
     (kind="comments") con el título del video/post. `city=True` trae solo lo que no nombra a
     ningún candidato (la conversación general de Cali), igual que la pestaña Ciudad.
+
+    `day` (YYYY-MM-DD) o `week` (YYYY-Sww) acotan a esa fecha exacta EN VEZ del rango relativo
+    `days` (no además de él: si no, una semana fuera de los últimos `days` días no traería nada).
     """
     q = (session.query(Mention).outerjoin(SentimentScore).join(Source).join(Candidate)
-         .filter(WHEN >= _since(days), Mention.relevant.is_(True)))
+         .filter(Mention.relevant.is_(True)))
+    if week:
+        d0, d1 = _week_bounds(week)
+        q = q.filter(WHEN >= d0, WHEN < d1)
+    elif day:
+        d0, d1 = _day_bounds(day)
+        q = q.filter(WHEN >= d0, WHEN < d1)
+    else:
+        q = q.filter(WHEN >= _since(days))
     if city:
         q = q.filter(Candidate.kind == "city")
     elif candidate_id:
@@ -275,9 +296,6 @@ def feed(session, candidate_id: int | None = None, source_type: str | None = Non
         q = q.filter(Source.type.in_([SourceType.GOOGLE_NEWS, SourceType.RSS]))
     elif source_type:
         q = q.filter(Source.type == SourceType(source_type))
-    if day:
-        d0, d1 = _day_bounds(day)
-        q = q.filter(WHEN >= d0, WHEN < d1)
     filtered = q.order_by(WHEN.desc(), Mention.id.desc()).limit(3000).all()
 
     def passes_filters(m: Mention) -> bool:

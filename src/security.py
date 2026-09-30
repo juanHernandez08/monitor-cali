@@ -44,6 +44,7 @@ CSP = "; ".join([
 ])
 
 _DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+_WEEK = re.compile(r"^\d{4}-S\d{2}$")
 
 
 def valid_date(value: str) -> bool:
@@ -53,6 +54,19 @@ def valid_date(value: str) -> bool:
         return False
     try:
         dt.date.fromisoformat(value)
+    except ValueError:
+        return False
+    return True
+
+
+def valid_week(value: str) -> bool:
+    """YYYY-Sww real (mismo formato que strftime('%G-S%V')), para el clic en las gráficas
+    semanales de 'Análisis en gráficas'."""
+    if not _WEEK.match(value or ""):
+        return False
+    year, wk = value.split("-S")
+    try:
+        dt.date.fromisocalendar(int(year), int(wk), 1)
     except ValueError:
         return False
     return True

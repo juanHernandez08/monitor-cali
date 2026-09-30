@@ -1276,7 +1276,7 @@ async function loadConversation() {
   const d = await j(`/api/conversation/weekly?days=${Math.max(days(), 56)}`);
   const w = d.weeks.filter((x) => x.all_mentions > 0);
   chart("#chart-sov", {
-    chart: { type: "bar", height: "100%" },
+    chart: { type: "bar", height: "100%", events: { dataPointSelection: (e, ctx, cfg) => openWeekFeed(w[cfg.dataPointIndex]?.week) } },
     series: [{ name: "Carlos Arias (% de las menciones de candidatos)", data: w.map((x) => x.share_pct) }],
     xaxis: { categories: w.map((x) => x.week.replace("-S", " · sem ")) },
     colors: [BLUE], plotOptions: { bar: { borderRadius: 3, columnWidth: "55%" } },
@@ -1284,9 +1284,10 @@ async function loadConversation() {
     yaxis: { labels: { formatter: (v) => Math.round(v) + "%" } },
     tooltip: { y: { formatter: (v, { dataPointIndex }) => `${v}% · ${w[dataPointIndex].mentions} de ${w[dataPointIndex].all_mentions} menciones` } },
   });
+  $("#chart-sov").style.cursor = "pointer";
   const scored = w.filter((x) => x.scored > 0);
   chart("#chart-net", {
-    chart: { type: "rangeArea", height: "100%" },
+    chart: { type: "rangeArea", height: "100%", events: { dataPointSelection: (e, ctx, cfg) => openWeekFeed(scored[cfg.dataPointIndex]?.week) } },
     series: [
       { type: "rangeArea", name: "Rango plausible (95%)", data: scored.map((x) => ({ x: x.week.replace("-S", " · sem "), y: [x.net_low, x.net_high] })) },
       { type: "line", name: "Sentimiento neto", data: scored.map((x) => ({ x: x.week.replace("-S", " · sem "), y: x.net_sentiment })) },
@@ -1298,6 +1299,7 @@ async function loadConversation() {
       return `<div style="padding:6px 10px"><b>${esc(x.week)}</b><br>neto ${x.net_sentiment} (rango ${x.net_low} a ${x.net_high})<br>${x.scored} menciones clasificadas</div>`; } },
     legend: { position: "bottom" },
   });
+  $("#chart-net").style.cursor = "pointer";
   const last = scored[scored.length - 1];
   const avgShare = w.length ? (w.reduce((a, x) => a + x.share_pct, 0) / w.length).toFixed(1) : 0;
   $("#read-conversation").innerHTML = w.length
@@ -1305,6 +1307,23 @@ async function loadConversation() {
       (last ? `La última semana con datos (${esc(last.week)}) su sentimiento neto fue <b>${last.net_sentiment}</b> sobre ${last.scored} menciones` +
         (last.scored < 15 ? `: con tan pocas menciones el rango va de ${last.net_low} a ${last.net_high}, así que no permite concluir si mejoró o empeoró.` : ".") : "")
     : "Sin menciones de candidatos en el período.";
+}
+
+/* Clic en una barra/punto de "share of voice" o "sentimiento neto": muestra abajo las
+   publicaciones y comentarios de Carlos de esa semana exacta, para que el dato deje de ser
+   solo un número y se pueda ver de dónde sale. */
+async function openWeekFeed(week) {
+  if (!week) return;
+  const panel = $("#week-detail-panel");
+  panel.style.display = "block";
+  $("#week-detail-title").textContent = `Publicaciones de Carlos — semana ${week.replace("-S", " · sem ")}`;
+  $("#week-detail-feed").innerHTML = `<div class="empty">Cargando…</div>`;
+  panel.scrollIntoView({ behavior: "smooth", block: "start" });
+  const people = await getPeople();
+  const carlos = people.find((p) => p.name === CARLOS);
+  if (!carlos) { $("#week-detail-feed").innerHTML = `<div class="empty">No se encontró a Carlos Arias.</div>`; return; }
+  const rows = await j(`/api/feed?candidate_id=${carlos.candidate_id}&week=${week}&limit=80`);
+  renderFeedList("#week-detail-feed", rows, { showCandidate: false });
 }
 
 /* Qué le funciona a cada cuenta: alcance RELATIVO (1,0 = una publicación típica de esa cuenta). */

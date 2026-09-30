@@ -363,14 +363,29 @@
     </section>
 
     <section class="panel big">
-      <div class="panel-head"><div><h2>¿Qué parte de la conversación es de Carlos, semana a semana?</h2><div class="hint">Porcentaje de todas las menciones de candidatos que corresponden a Carlos Arias en cada semana (share of voice). Últimas 8 semanas como mínimo.</div></div></div>
+      <div class="panel-head"><div><h2>¿Qué parte de la conversación es de Carlos, semana a semana?</h2><div class="hint">Porcentaje de todas las menciones de candidatos que corresponden a Carlos Arias en cada semana (share of voice). Últimas 8 semanas como mínimo. Toca una barra para ver abajo las publicaciones de Carlos de esa semana.</div></div></div>
       <p class="reading" id="read-conversation"></p>
       <div class="chart-box xl"><div id="chart-sov"></div></div>
     </section>
 
     <section class="panel big">
-      <div class="panel-head"><div><h2>Sentimiento neto de Carlos, con su margen</h2><div class="hint">% positivas menos % negativas en cada semana (de −100 a +100). La franja es el rango plausible al 95%: cuanto más ancha, menos menciones hubo y menos se puede concluir.</div></div></div>
+      <div class="panel-head"><div><h2>Sentimiento neto de Carlos, con su margen</h2><div class="hint">% positivas menos % negativas en cada semana (de −100 a +100). La franja es el rango plausible al 95%: cuanto más ancha, menos menciones hubo y menos se puede concluir. Toca un punto para ver abajo las publicaciones de esa semana.</div></div></div>
+      <div class="explain">
+        <b>Cómo leer esta gráfica, paso a paso:</b>
+        <ul>
+          <li><b>La línea azul oscura ("Sentimiento neto")</b> es el dato real medido esa semana: de todas las menciones de Carlos que la IA clasificó, qué porcentaje fueron positivas menos qué porcentaje fueron negativas. Si una semana tuviera 70% positivas y 10% negativas, el neto sería +60. Si fueran 20% positivas y 50% negativas, el neto sería −30.</li>
+          <li><b>0 es el punto neutro</b> (línea punteada gris): ni buena ni mala semana. Por encima de 0, predominan las menciones positivas; por debajo, predominan las negativas.</li>
+          <li><b>La franja celeste ("Rango plausible 95%") es la parte más importante y la que más confunde.</b> No es un error de medición: es honestidad estadística. Con pocas menciones en una semana, el "% positivas" que salió esa semana pudo salir distinto por puro azar de qué comentarios llegaron justo esos días. La franja muestra entre qué valores podría estar realmente el sentimiento de esa semana si hubiera habido más menciones. <b>Cuanto más angosta la franja, más se puede confiar en el número; cuanto más ancha, menos.</b></li>
+          <li>Ejemplo real: si una semana el neto marca 0 pero la franja va de −56 a +56, eso NO significa "semana neutra" — significa "con tan pocas menciones, no se puede saber si esa semana fue buena o mala, el dato no alcanza para afirmarlo". En cambio, si el neto marca 92 con una franja angosta (de 63 a 98), ahí sí se puede confiar: esa semana fue claramente positiva.</li>
+          <li>Por eso conviene mirar varias semanas seguidas en vez de una sola: una racha de semanas por encima de 0 (aunque cada una individualmente tenga franja ancha) sí es una señal confiable; una sola semana suelta con franja ancha, no.</li>
+        </ul>
+      </div>
       <div class="chart-box xl"><div id="chart-net"></div></div>
+    </section>
+
+    <section class="panel big" id="week-detail-panel" style="display:none">
+      <div class="panel-head"><div><h2 id="week-detail-title">Publicaciones de esa semana</h2><div class="hint">Menciones de Carlos Arias en el período seleccionado (prensa, redes, YouTube, Reddit) que componen ese dato de la gráfica.</div></div></div>
+      <div id="week-detail-feed" class="feed"></div>
     </section>
 
     <h3 class="section-title">Temas — de qué se habla</h3>
