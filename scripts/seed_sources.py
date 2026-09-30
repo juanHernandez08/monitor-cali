@@ -10,7 +10,12 @@ EXTRA_SOURCES = [
     {"type": SourceType.GOOGLE_CSE, "name": "Instagram / Facebook / X (Google)", "config": {}},
     # YouTube cuesta 100 unidades por término (cuota 10.000/día): solo candidatos.
     {"type": SourceType.YOUTUBE, "name": "YouTube", "config": {"terms_for": "candidates"}},
-    {"type": SourceType.SOCIAL, "name": "Instagram / Facebook (cuentas)", "config": {}},
+    # city=True: cuentas de medios sin candidato asociado (p. ej. noticalioficial, candidate=None
+    # en config.SOCIAL_ACCOUNTS) deben caer en la conversación de ciudad, no perderse. Bug real
+    # 2026-09-30: sin esto, ingest() las descartaba en silencio (candidate=None y sin bandera
+    # "city" en la fuente = ninguna a dónde atribuirlas) y la pestaña Ciudad nunca mostraba
+    # publicaciones de Instagram/Facebook/X.
+    {"type": SourceType.SOCIAL, "name": "Instagram / Facebook (cuentas)", "config": {"city": True}},
 ]
 
 
@@ -56,8 +61,11 @@ def seed(session):
         if not session.query(Source).filter_by(type=SourceType(s["type"]), name=s["name"]).first():
             session.add(Source(type=SourceType(s["type"]), name=s["name"], config=s["config"]))
     for s in EXTRA_SOURCES:
-        if not session.query(Source).filter_by(type=s["type"], name=s["name"]).first():
+        exists = session.query(Source).filter_by(type=s["type"], name=s["name"]).first()
+        if not exists:
             session.add(Source(type=s["type"], name=s["name"], config=s["config"]))
+        elif exists.config != s["config"]:  # este archivo es la fuente de verdad del config
+            exists.config = s["config"]
     session.commit()
 
 

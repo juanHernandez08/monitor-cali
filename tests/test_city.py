@@ -199,6 +199,59 @@ def test_city_opportunities_surfaces_new_or_rising_topics_regardless_of_tone(db_
     assert "baches" not in novedades  # sin crecimiento, no es novedad
 
 
+def test_city_opportunities_excludes_routine_pico_y_placa_reminders(db_session):
+    """Pedido del cliente 2026-09-30: una nota de "pico y placa" que solo es el recordatorio
+    diario de siempre no debe salir como novedad -- solo cuando hay una restricción real (pico y
+    placa rotativo para pares/impares, día sin carro, etc.)."""
+    from src.queries import city_opportunities
+    city = Candidate(name=CITY_NAME, kind="city", aliases=[])
+    feed = Source(type=SourceType.RSS, name="Q'hubo", config={"feed_url": "x", "city": True})
+    db_session.add_all([city, feed])
+    db_session.commit()
+    now = dt.datetime.utcnow()
+    rows = [
+        (city, "a", "Recuerda hoy el pico y placa en Cali", "movilidad y transporte", "pico y placa", "neutral", 0.0, 1),
+        (city, "b", "Así va el pico y placa este lunes", "movilidad y transporte", "pico y placa", "neutral", 0.0, 1),
+        (city, "c", "Pico y placa de hoy: consulta tu placa", "movilidad y transporte", "pico y placa", "neutral", 0.0, 1),
+    ]
+    for cand, ext, text, cat, topic, label, score, ago in rows:
+        when = now - dt.timedelta(days=ago)
+        m = Mention(candidate_id=cand.id, source_id=feed.id, external_id=ext, text=text, url=f"https://x/{ext}",
+                    raw={}, author="u", published_at=when, fetched_at=when)
+        db_session.add(m)
+        db_session.flush()
+        db_session.add(SentimentScore(mention_id=m.id, label=SentimentLabel(label), score=score, topic=topic, model="f", category=cat))
+    db_session.commit()
+
+    o = city_opportunities(db_session, days=7)
+    assert "pico y placa" not in {x["topic"] for x in o["novedades"]}
+
+
+def test_city_opportunities_includes_pico_y_placa_when_there_is_a_real_restriction(db_session):
+    from src.queries import city_opportunities
+    city = Candidate(name=CITY_NAME, kind="city", aliases=[])
+    feed = Source(type=SourceType.RSS, name="Q'hubo", config={"feed_url": "x", "city": True})
+    db_session.add_all([city, feed])
+    db_session.commit()
+    now = dt.datetime.utcnow()
+    rows = [
+        (city, "a", "Anuncian pico y placa rotativo para números pares e impares", "movilidad y transporte", "pico y placa rotativo", "negative", -0.3, 1),
+        (city, "b", "Pico y placa rotativo empieza a regir mañana", "movilidad y transporte", "pico y placa rotativo", "negative", -0.2, 1),
+        (city, "c", "Dudas sobre el nuevo pico y placa rotativo", "movilidad y transporte", "pico y placa rotativo", "neutral", 0.0, 1),
+    ]
+    for cand, ext, text, cat, topic, label, score, ago in rows:
+        when = now - dt.timedelta(days=ago)
+        m = Mention(candidate_id=cand.id, source_id=feed.id, external_id=ext, text=text, url=f"https://x/{ext}",
+                    raw={}, author="u", published_at=when, fetched_at=when)
+        db_session.add(m)
+        db_session.flush()
+        db_session.add(SentimentScore(mention_id=m.id, label=SentimentLabel(label), score=score, topic=topic, model="f", category=cat))
+    db_session.commit()
+
+    o = city_opportunities(db_session, days=7)
+    assert "pico y placa rotativo" in {x["topic"] for x in o["novedades"]}
+
+
 def test_city_opportunities_excludes_sports_topics_from_novedades(db_session):
     """Feedback del cliente 2026-09-28: no sugerir que Carlos hable de partidos/equipos --
     fomenta rivalidad entre hinchas en vez de ayudarlo. "deporte" nunca debe salir en novedades,
@@ -261,6 +314,38 @@ def test_city_opportunities_recognizes_carlos_presence_by_keywords_when_his_own_
     # "seguridad", no "Operación Iron") y el tema entraba a novedades como si él no hubiera
     # hablado. Con carlos_max=0 debe quedar afuera, porque su presencia real ahora sí se cuenta.
     o = city_opportunities(db_session, days=7, carlos_max=0)
+    assert "operación iron" not in {x["topic"] for x in o["novedades"]}
+
+
+def test_city_opportunities_excludes_topic_carlos_already_spoke_about_even_once(db_session):
+    """Pedido del cliente 2026-09-30: si Carlos ya habló de un tema, así sea solo una vez,
+    táchalo de "novedades donde Carlos podría hablar" -- el sentido de la lista es detectar
+    huecos, no repetir lo que ya cubrió. Antes toleraba hasta 2 menciones suyas (carlos_max=2 por
+    defecto); ahora con una sola mención ya no es un hueco."""
+    from src.queries import city_opportunities
+    city = Candidate(name=CITY_NAME, kind="city", aliases=[])
+    carlos = Candidate(name="Carlos Arias", aliases=[])
+    feed = Source(type=SourceType.RSS, name="Q'hubo", config={"feed_url": "x", "city": True})
+    db_session.add_all([city, carlos, feed])
+    db_session.commit()
+    now = dt.datetime.utcnow()
+    rows = [
+        (city, "a", "Operación Iron avanza en Cali", "seguridad y convivencia", "operación iron", "positive", 0.3, 1),
+        (city, "b", "Operación Iron suma capturas", "seguridad y convivencia", "operación iron", "positive", 0.4, 1),
+        (city, "c", "Balance de Operación Iron", "seguridad y convivencia", "operación iron", "neutral", 0.0, 1),
+        (carlos, "d", "Carlos Arias celebra avances de la Operación Iron en Cali", "seguridad y convivencia",
+         "seguridad y convivencia", "positive", 0.6, 1),
+    ]
+    for cand, ext, text, cat, topic, label, score, ago in rows:
+        when = now - dt.timedelta(days=ago)
+        m = Mention(candidate_id=cand.id, source_id=feed.id, external_id=ext, text=text, url=f"https://x/{ext}",
+                    raw={}, author="u", published_at=when, fetched_at=when)
+        db_session.add(m)
+        db_session.flush()
+        db_session.add(SentimentScore(mention_id=m.id, label=SentimentLabel(label), score=score, topic=topic, model="f", category=cat))
+    db_session.commit()
+
+    o = city_opportunities(db_session, days=7)  # carlos_max por defecto
     assert "operación iron" not in {x["topic"] for x in o["novedades"]}
 
 

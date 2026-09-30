@@ -24,6 +24,22 @@ NOVEDADES_EXCLUDED_CATEGORIES = {"deporte"}
 _STOPWORDS = {"de", "la", "el", "en", "y", "del", "los", "las", "un", "una", "con", "para", "por",
               "que", "se", "su", "a", "al", "lo", "sus", "sobre", "tras"}
 
+# Pico y placa es casi siempre un recordatorio diario rutinario, no una novedad real -- solo
+# cuenta si hay un cambio de fondo en la medida (pedido del cliente 2026-09-30: "solo debe ser
+# mostrado cuando haya alguna restricción como el día sin carro o... pico y placa rotativo para
+# números pares e impares").
+_PICO_PLACA_CHANGE_SIGNALS = ("rotativo", "pares", "impares", "dia sin carro", "nueva medida",
+                              "amplia", "amplian", "modifica", "cambia", "suspende", "excepcion",
+                              "restriccion especial", "extiende")
+
+
+def _is_routine_pico_placa(topic: str, ms: list[Mention]) -> bool:
+    if "pico" not in topic or "placa" not in topic:
+        return False
+    blob = unicodedata.normalize("NFKD", topic + " " + " ".join(m.text or "" for m in ms))
+    blob = blob.encode("ascii", "ignore").decode().lower()
+    return not any(s in blob for s in _PICO_PLACA_CHANGE_SIGNALS)
+
 
 def _keywords(text: str) -> set[str]:
     """Palabras distintivas de un texto: sin tildes, en minúscula, sin conectores ni palabras muy
@@ -804,12 +820,16 @@ def _cluster_topics(by_topic: dict[str, list[Mention]], min_overlap: float = 0.4
     return merged
 
 
-def city_opportunities(session, days: int = 7, carlos_max: int = 2, min_count: int = 3,
+def city_opportunities(session, days: int = 7, carlos_max: int = 0, min_count: int = 3,
                        min_trend_pct: int = 80, limit: int = 8, carlos_min: int = 3, carlos_pos_pct: int = 60) -> dict:
     """Novedades sobre las que Carlos podría hablar (temas nuevos o en fuerte alza, sea cual sea
     su tono -- no solo molestia; un evento informativo o positivo, como la visita de una figura
     nacional, es tan buena oportunidad como una queja), y temas donde Carlos ya tiene presencia
-    positiva sostenida."""
+    positiva sostenida.
+
+    carlos_max=0 (pedido del cliente 2026-09-30): si ya habló del tema, aunque sea una sola vez,
+    deja de ser una "novedad" -- el sentido de esta lista es detectar huecos, no repetir lo que ya
+    cubrió."""
     since = _since(days)
     current = _city_rows(session, since)
     previous = _city_rows(session, since - dt.timedelta(days=days), since)
@@ -847,7 +867,7 @@ def city_opportunities(session, days: int = 7, carlos_max: int = 2, min_count: i
         is_new = prev == 0 and count >= min_count
         is_rising = trend is not None and trend >= min_trend_pct and count >= min_count
         category = Counter(m.sentiment.category or "otro" for m in ms).most_common(1)[0][0]
-        if category in NOVEDADES_EXCLUDED_CATEGORIES:
+        if category in NOVEDADES_EXCLUDED_CATEGORIES or _is_routine_pico_placa(topic, ms):
             continue
         carlos_n = mentions_covering_topic(topic, carlos_keywords)
         if (is_new or is_rising) and carlos_n <= carlos_max:

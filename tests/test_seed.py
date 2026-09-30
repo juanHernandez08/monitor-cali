@@ -32,6 +32,25 @@ def test_seed_updates_aliases_and_party_of_existing_candidates(db_session):
     assert carlos.party == "Partido de la U"
 
 
+def test_seed_marks_the_social_source_as_a_city_source(db_session):
+    """Bug real 2026-09-30: sin 'city' en el config de la fuente SOCIAL, las cuentas de medios sin
+    candidato asociado (candidate=None en config.SOCIAL_ACCOUNTS) se descartaban en silencio en
+    ingest() -- la pestaña Ciudad nunca mostraba publicaciones de Instagram/Facebook/X."""
+    seed(db_session)
+    social = db_session.query(Source).filter_by(type=SourceType.SOCIAL).one()
+    assert social.config.get("city") is True
+
+
+def test_seed_updates_config_of_an_extra_source_already_in_the_db(db_session):
+    """Si el config.py de un EXTRA_SOURCES cambia (como pasó con SOCIAL), una fuente ya guardada
+    con el config viejo debe actualizarse al re-sembrar, no quedarse pegada para siempre."""
+    db_session.add(Source(type=SourceType.SOCIAL, name="Instagram / Facebook (cuentas)", config={}))
+    db_session.commit()
+    seed(db_session)
+    social = db_session.query(Source).filter_by(type=SourceType.SOCIAL).one()
+    assert social.config.get("city") is True
+
+
 def test_seed_creates_city_candidate_and_city_sources(db_session):
     from src.pipeline import CITY_NAME
     seed(db_session)
