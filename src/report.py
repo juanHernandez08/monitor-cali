@@ -38,13 +38,15 @@ ANALYST_PROMPT = """Eres un analista de datos y estratega de comunicación de la
 
 Con las cifras REALES de abajo (ventana de {days} días en redes), escribe un análisis para el equipo de campaña. Básate ÚNICAMENTE en estos datos -- no inventes publicaciones, eventos, cifras ni causas que no estén aquí. Si algo no se puede explicar con los datos disponibles, dilo explícitamente ("no se puede determinar con los datos actuales") en vez de especular como si fuera un hecho comprobado. Nunca sugieras que Carlos participe de rivalidades entre hinchadas de equipos deportivos.
 
+REGLA IMPORTANTE sobre la sección "temas sin cubrir" de abajo: mide solo los últimos {city_days} días. NUNCA la redactes como si fuera una ausencia total o permanente ("Carlos no habla de X", "nunca ha tocado Y") -- el candidato puede haber cubierto ese tema semanas antes, fuera de esta ventana. Escribe siempre "en los últimos {city_days} días" o "en este corte" al mencionar un tema sin cubrir.
+
 ## Alcance por candidato o concejal (likes+comentarios promedio por publicación, ritmo de publicación, tendencia entre la primera y la segunda mitad del período)
 {reach}
 
 ## Cómo reacciona la gente en los comentarios de las publicaciones de cada quien (solo comentarios en su propia publicación)
 {reaction}
 
-## Categorías de temas de ciudad de las que Carlos NO ha hablado en los últimos {city_days} días
+## Categorías de temas de ciudad que Carlos NO cubrió en los últimos {city_days} días (puede haberlas cubierto antes; esto es SOLO de esta ventana)
 {gaps}
 
 ## Publicaciones que se dispararon muy por encima de lo habitual de esa misma cuenta
@@ -52,7 +54,8 @@ Con las cifras REALES de abajo (ventana de {days} días en redes), escribe un an
 
 Responde SOLO con un JSON de la forma:
 {{"resumen_ejecutivo": "<2-4 frases: el hallazgo más importante de este corte>",
-  "analisis": "<4-7 frases explicando, con los números de arriba, POR QUÉ el alcance de Carlos es el que es frente a sus rivales -- ritmo de publicación, respuesta de la audiencia, temas cubiertos o no cubiertos; si los datos no alcanzan para explicar algo, dilo en vez de adivinar>",
+  "analisis": "<4-7 frases explicando, con los números de arriba, POR QUÉ el alcance de Carlos es el que es frente a sus rivales -- ritmo de publicación, respuesta de la audiencia, temas cubiertos o no cubiertos EN ESTA VENTANA; si los datos no alcanzan para explicar algo, dilo en vez de adivinar>",
+  "limitaciones": "<2-4 frases: qué preguntas relevantes NO se pueden responder con estos datos -- p. ej. si el alcance depende de pauta paga, del tamaño de audiencia de cada cuenta, o de causas específicas detrás de una subida/bajada, cuando esa información no está en las cifras de arriba. Sé específico sobre qué falta, no genérico.>",
   "estrategia": ["<acción concreta 1, ligada a un hallazgo de arriba>", "<acción 2>", "... entre 3 y 5 acciones>"]}}
 """
 
@@ -79,11 +82,12 @@ def _fmt_reaction(rows: list[dict]) -> str:
     )
 
 
-def _fmt_gaps(rows: list[dict]) -> str:
+def _fmt_gaps(rows: list[dict], city_days: int = CITY_WINDOW_DAYS) -> str:
     if not rows:
-        return "No se detectaron categorías sin cubrir en este período."
+        return f"No se detectaron categorías sin cubrir por Carlos en los últimos {city_days} días."
     return "\n".join(f"- {g['category']}: {g['count']} menciones en la conversación de la ciudad, "
-                     f"ninguna publicación de Carlos sobre el tema." for g in rows)
+                     f"ninguna publicación de Carlos sobre el tema EN LOS ÚLTIMOS {city_days} DÍAS "
+                     f"(puede haberlo cubierto antes de esta ventana)." for g in rows)
 
 
 def _fmt_strong(rows: list[dict]) -> str:
@@ -100,13 +104,14 @@ def generate_narrative(engine, reach: list[dict], reaction: list[dict], gaps: li
     Si el LLM falla o responde algo no parseable, el reporte igual se genera sin esta sección --
     nunca debe tumbar el resto del reporte."""
     prompt = ANALYST_PROMPT.format(days=days, city_days=city_days, reach=_fmt_reach(reach),
-                                   reaction=_fmt_reaction(reaction), gaps=_fmt_gaps(gaps), strong=_fmt_strong(strong))
+                                   reaction=_fmt_reaction(reaction), gaps=_fmt_gaps(gaps, city_days), strong=_fmt_strong(strong))
     try:
         text = engine.generate_text(prompt, max_tokens=3000)
         payload = json.loads(_JSON_FENCE.sub("", text).strip())
         return {
             "resumen_ejecutivo": str(payload.get("resumen_ejecutivo", "")).strip(),
             "analisis": str(payload.get("analisis", "")).strip(),
+            "limitaciones": str(payload.get("limitaciones", "")).strip(),
             "estrategia": [str(x).strip() for x in payload.get("estrategia", []) if str(x).strip()][:6],
         }
     except Exception:
@@ -217,6 +222,9 @@ def report_to_pdf(report: dict) -> bytes:
         p(narrative["resumen_ejecutivo"] or "Sin resumen disponible.")
         h("Por qué el alcance de Carlos es el que es")
         p(narrative["analisis"] or "Sin análisis disponible.")
+        if narrative.get("limitaciones"):
+            h("Qué NO se puede determinar con estos datos")
+            p(narrative["limitaciones"])
         h("Estrategia recomendada")
         bullets(narrative["estrategia"])
     else:

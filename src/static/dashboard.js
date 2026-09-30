@@ -524,6 +524,7 @@ async function loadMetaAnalytics() {
     $("#meta-narrative").innerHTML = `
       <p class="reading">${esc(n.resumen_ejecutivo)}</p>
       <p>${esc(n.analisis)}</p>
+      ${n.limitaciones ? `<div class="limitations"><span class="label">Qué NO se puede determinar con estos datos</span>${esc(n.limitaciones)}</div>` : ""}
       <h3 style="margin:14px 0 6px">Estrategia recomendada</h3>
       <div class="alerts"><ul>${n.estrategia.map((s) => `<li>${esc(s)}</li>`).join("") || `<li class="empty">Sin recomendaciones en este corte.</li>`}</ul></div>`;
   }
@@ -734,6 +735,7 @@ async function showReport(date) {
     <section class="panel">
       <div class="panel-head"><h2>Por qué el alcance de Carlos es el que es</h2><span class="hint">análisis basado en las cifras de este corte, últimos ${r.comparison_window_days} días</span></div>
       <p class="reading">${esc(n.analisis)}</p>
+      ${n.limitaciones ? `<div class="limitations"><span class="label">Qué NO se puede determinar con estos datos</span>${esc(n.limitaciones)}</div>` : ""}
     </section>` : `
     <section class="intro panel">
       <h2>Análisis narrativo no disponible en este corte</h2>

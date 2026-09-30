@@ -217,6 +217,10 @@ footer { color: var(--muted); font-size: 12px; line-height: 1.7; }
 .panel.big .hint { display: block; margin-top: 4px; font-size: 13px; max-width: 900px; }
 .reading { margin: 4px 0 12px; padding: 10px 14px; background: var(--brand-soft); border-left: 3px solid var(--brand); border-radius: 8px; font-size: 14px; line-height: 1.5; }
 .reading b { color: var(--brand-2); }
+/* Límites honestos del análisis (qué NO se puede afirmar con estos datos) -- tono neutro, no de
+   alerta: no es un problema, es alcance declarado. */
+.limitations { margin: 10px 0 12px; padding: 10px 14px; background: var(--soft); border-left: 3px solid var(--muted); border-radius: 8px; font-size: 13px; line-height: 1.5; color: var(--ink); }
+.limitations .label { display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin-bottom: 3px; }
 .chart-box.xl { height: 380px; }
 @media (max-width: 860px) { .chart-box.xl { height: 320px; } }
 @media (max-width: 560px) { .chart-box.xl { height: 300px; } }

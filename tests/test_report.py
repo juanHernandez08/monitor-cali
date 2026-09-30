@@ -87,12 +87,39 @@ def test_build_report_with_engine_includes_narrative_grounded_in_real_numbers(db
     assert report["narrative"] == {
         "resumen_ejecutivo": "Resumen de prueba.",
         "analisis": "Análisis de prueba.",
+        "limitaciones": "",
         "estrategia": ["Acción 1", "Acción 2"],
     }
     # el prompt real que se le mandó al LLM debe tener las cifras calculadas, no solo pedirle que opine
     assert "Clara Luz Roldán" in engine.prompts[0]
     assert "Carlos Arias" in engine.prompts[0]
     assert "alcance promedio" in engine.prompts[0]
+
+
+def test_narrative_includes_limitaciones_when_the_llm_returns_it(db_session):
+    """Pedido del cliente (2026-09-29): la estrategia debe decir explícitamente qué NO se puede
+    determinar con los datos actuales (pauta paga, tamaño de audiencia, causas de una subida/bajada
+    puntual), no solo lo que sí se puede afirmar."""
+    from src.report import build_report
+    carlos = Candidate(name="Carlos Arias", aliases=[])
+    db_session.add(carlos)
+    db_session.commit()
+    engine = FakeNarrativeEngine(payload={
+        "resumen_ejecutivo": "Resumen.", "analisis": "Análisis.",
+        "limitaciones": "No se puede determinar si el alcance depende de pauta paga o del tamaño de audiencia.",
+        "estrategia": ["Acción 1"],
+    })
+    report = build_report(db_session, date="2026-09-28", engine=engine)
+    assert "pauta paga" in report["narrative"]["limitaciones"]
+
+
+def test_fmt_gaps_never_implies_a_permanent_absence(db_session):
+    """Bug real (2026-09-29): el reporte decía "Carlos no ha hablado de la reconstrucción" cuando
+    sí lo había cubierto, semanas antes de la ventana de 7 días que mide esta sección -- el texto
+    que se le manda al LLM debe dejar el plazo explícito para que su redacción no lo pierda."""
+    from src.report import _fmt_gaps
+    text = _fmt_gaps([{"category": "terremoto y reconstrucción", "count": 12}], city_days=7)
+    assert "últimos 7 días" in text.lower()
 
 
 def test_narrative_generation_fails_gracefully_without_breaking_the_report(db_session):
