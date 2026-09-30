@@ -18,9 +18,14 @@ docker rm monitor-cali 2>/dev/null || true
 # suya para que SQLite pueda escribir. Contenedor desechable para no depender de sudo.
 docker run --rm -v /opt/monitor-cali/data:/data busybox chown -R 10001:10001 /data
 
+# --add-host: si SENTIMENT_BACKEND=ollama (2026-09-30, saldo de Claude casi agotado -- clasifica
+# la PC del cliente por un túnel SSH inverso, ver scripts/ollama_tunnel.ps1), OLLAMA_URL usa
+# host.docker.internal -- 127.0.0.1 DENTRO del contenedor es su propio loopback, no el del host,
+# así que sin esto nunca alcanzaría el túnel que escucha en el 127.0.0.1 del servidor.
 docker run -d --name monitor-cali \
   --restart unless-stopped \
   -p 127.0.0.1:8000:8000 \
+  --add-host=host.docker.internal:host-gateway \
   --env-file .env \
   -v /opt/monitor-cali/data:/app/data \
   monitor-cali:latest
@@ -44,6 +49,7 @@ if [[ "$BINDING" != 127.0.0.1:* ]]; then
   docker run -d --name monitor-cali \
     --restart unless-stopped \
     -p 127.0.0.1:8000:8000 \
+    --add-host=host.docker.internal:host-gateway \
     --env-file .env \
     -v /opt/monitor-cali/data:/app/data \
     monitor-cali:latest
