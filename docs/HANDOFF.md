@@ -359,6 +359,17 @@ desplegar (`scripts/deploy.sh`: `git pull --ff-only` + rebuild + recreate del co
 de esta sección quedó como quedó ANTES de desplegar -- útil como referencia de qué se decidió y
 por qué, pero ya no es "lo que falta hacer".
 
+**CRÍTICO, corregido 2026-09-30: bypass de Cloudflare Access por la IP pública.** `docker run`
+publicaba el puerto con `-p 8000:8000` (0.0.0.0) -- Docker mete sus propias reglas de iptables por
+delante de las de `ufw`, así que el "deny incoming" de ufw para ese puerto nunca aplicaba de
+verdad. Cualquiera en internet podía entrar por `http://<IP-del-VPS>:8000` sin ningún login,
+saltándose Cloudflare Access por completo. Confirmado en vivo con una petición externa sin
+credenciales (200 OK). Arreglado en `scripts/deploy.sh` (`-p 127.0.0.1:8000:8000`, el puerto solo
+se publica en loopback; `cloudflared` corre en el mismo host y lo sigue alcanzando normal) y
+aplicado ya en el contenedor de producción. **Si alguna vez se cambia cómo se publica el puerto
+del contenedor, verificar de nuevo con `curl http://<IP>:8000/health` desde AFUERA del servidor
+-- debe fallar/colgarse, nunca responder 200.**
+
 `docs/cotizacion.md` tiene el plan ya costeado y aprobado: **Escenario B** (VPS + SQLite + Claude
 Haiku, ~USD 41/mes ≈ $132.000 COP, cabe cómodo en el presupuesto aprobado de 200.000 COP/mes).
 `docs/despliegue.md` quedó desactualizado (recomienda Railway + Postgres, un plan anterior) --
