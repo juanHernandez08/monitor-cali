@@ -16,7 +16,7 @@ docker stop monitor-cali 2>/dev/null || true
 docker rm monitor-cali 2>/dev/null || true
 docker run -d --name monitor-cali \
   --restart unless-stopped \
-  -p 8000:8000 \
+  -p 127.0.0.1:8000:8000 \
   --env-file .env \
   -v /opt/monitor-cali/data:/app/data \
   monitor-cali:latest
