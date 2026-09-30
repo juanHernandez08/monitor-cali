@@ -13,7 +13,11 @@
 # Si la conexión se corta (la PC se suspende, se pierde el wifi), este script reintenta solo cada
 # 10 segundos -- sin quedar pegado, sin intervención manual.
 #
-# Instalado como Tarea Programada ("MonitorCaliOllamaTunnel") que arranca sola al iniciar sesión.
+# Instalado como Tarea Programada ("MonitorCaliOllamaTunnel") con DOS disparadores: al iniciar
+# sesión, y un vigilante cada 5 minutos que la vuelve a lanzar si no está corriendo (un corte de
+# luz real el 2026-09-30 mató el proceso y el disparador de "inicio de sesión" no se reactivó
+# solo -- quedó 7 menciones sin clasificar hasta que alguien lo notó a mano; con el vigilante ya
+# no hace falta notarlo).
 # Para verla/quitarla: Get-ScheduledTask MonitorCaliOllamaTunnel / Unregister-ScheduledTask.
 # Para ver si está conectado ahora: Get-Process ssh -ErrorAction SilentlyContinue
 
