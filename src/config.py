@@ -166,6 +166,27 @@ SOCIAL_ACCOUNTS = [
     {"platform": "instagram", "url": "https://www.instagram.com/Noti90Minutos/", "candidate": None},
     {"platform": "instagram", "url": "https://www.instagram.com/caliescribe/", "candidate": None},
     {"platform": "instagram", "url": "https://www.instagram.com/qhubocali/", "candidate": None},
+    # Lista de medios pedida por el cliente 2026-09-30. Mismo criterio: confirmado en el pie de
+    # página del sitio oficial cuando el medio tiene sitio propio; si no, por coincidencia fuerte
+    # entre nombre/dominio/seguidores en varias fuentes (marcado abajo cuál es cuál).
+    {"platform": "instagram", "url": "https://www.instagram.com/cwmasnoticias/", "candidate": None},  # CW+
+    {"platform": "instagram", "url": "https://www.instagram.com/tubarco/", "candidate": None},  # Tu Barco
+    {"platform": "instagram", "url": "https://www.instagram.com/caliescalioficial/", "candidate": None},  # Cali es Cali
+    {"platform": "instagram", "url": "https://www.instagram.com/enteratecali/", "candidate": None},  # Entérate Cali
+    {"platform": "instagram", "url": "https://www.instagram.com/radiorelojcali/", "candidate": None},  # Radio Reloj
+    {"platform": "instagram", "url": "https://www.instagram.com/tpnoticias_/", "candidate": None},  # Telepacífico Noticias
+    {"platform": "instagram", "url": "https://www.instagram.com/cali_informa/", "candidate": None},  # Cali Informa
+    {"platform": "instagram", "url": "https://www.instagram.com/diariooccidente/", "candidate": None},  # Diario Occidente
+    {"platform": "instagram", "url": "https://www.instagram.com/caracolradio/", "candidate": None},  # Caracol Radio (nacional, sin desk propio de Cali)
+    {"platform": "instagram", "url": "https://www.instagram.com/bluradio/", "candidate": None},  # Blu Radio (nacional)
+    {"platform": "instagram", "url": "https://www.instagram.com/noticiasrcn/", "candidate": None},  # Noticias RCN (nacional)
+    {"platform": "instagram", "url": "https://www.instagram.com/noticiascaracol/", "candidate": None},  # Noticias Caracol TV (nacional)
+    {"platform": "instagram", "url": "https://www.instagram.com/elvallunomedios/", "candidate": None},  # El Valluno Medios
+    {"platform": "instagram", "url": "https://www.instagram.com/lafmoficial/", "candidate": None},  # La FM (nacional)
+    # Confianza media (no se pudo verificar en el sitio propio, solo por búsqueda cruzada) --
+    # confirmar con el cliente si el contenido que traen no encaja.
+    {"platform": "instagram", "url": "https://www.instagram.com/alertacalidad/", "candidate": None},  # Alerta (Calidad, RCN)
+    {"platform": "facebook", "url": "https://www.facebook.com/Supernoticiasdelvalle/", "candidate": None},  # Súper Noticias (Radio Super Cali) -- sin Instagram confirmado
     # X (Twitter): solo posts de la cuenta (Bright Data no trae las respuestas). Completar handles.
     {"platform": "x", "url": "https://x.com/claraluzroldan", "candidate": "Clara Luz Roldán"},
     # Concejales y candidatos restantes -- investigación 2026-09-28, cada cuenta confirmada
