@@ -8,9 +8,11 @@ from src.models import SentimentLabel
 class FakeAnthropicClient:
     def __init__(self, reply):
         self._reply = reply
+        self.calls = []
         self.messages = SimpleNamespace(create=self._create)
 
     def _create(self, **kwargs):
+        self.calls.append(kwargs)
         return SimpleNamespace(content=[SimpleNamespace(text=json.dumps(self._reply))])
 
 
@@ -124,3 +126,45 @@ def test_sentiment_engine_emotion_nuance_defaults_to_empty_when_absent():
     engine = SentimentEngine(client=fake_client)
     result = engine.score("texto")
     assert result.emotion_nuance == ""
+
+
+def test_score_uses_the_cheap_classify_model_not_the_narrative_model():
+    # 2026-09-30: la clasificación es el volumen real (cientos/día) -- debe ir por el modelo barato
+    # cotizado y aprobado con el cliente (Haiku), no por el que usa generate_text() para redactar.
+    fake_client = FakeAnthropicClient({"label": "neutral", "score": 0.0, "topic": "x"})
+    engine = SentimentEngine(model="claude-sonnet-5", classify_model="claude-haiku-4-5", client=fake_client)
+    result = engine.score("texto")
+    assert fake_client.calls[0]["model"] == "claude-haiku-4-5"
+    assert result.model == "claude-haiku-4-5"
+
+
+def test_score_omits_effort_for_haiku_which_does_not_support_it():
+    # Haiku 4.5 devuelve 400 si se le manda output_config/effort -- a diferencia de Sonnet, no hace
+    # falta: sin pedirle "thinking" explícitamente, Haiku ya no piensa por defecto.
+    fake_client = FakeAnthropicClient({"label": "neutral", "score": 0.0, "topic": "x"})
+    engine = SentimentEngine(classify_model="claude-haiku-4-5", client=fake_client)
+    engine.score("texto")
+    assert "output_config" not in fake_client.calls[0]
+
+
+def test_score_still_sends_low_effort_for_non_haiku_classify_models():
+    fake_client = FakeAnthropicClient({"label": "neutral", "score": 0.0, "topic": "x"})
+    engine = SentimentEngine(classify_model="claude-sonnet-5", client=fake_client)
+    engine.score("texto")
+    assert fake_client.calls[0]["output_config"] == {"effort": "low"}
+
+
+def test_generate_text_uses_the_narrative_model_not_the_classify_model():
+    class FakeTextClient:
+        def __init__(self):
+            self.calls = []
+            self.messages = SimpleNamespace(create=self._create)
+
+        def _create(self, **kwargs):
+            self.calls.append(kwargs)
+            return SimpleNamespace(content=[SimpleNamespace(type="text", text="análisis libre")])
+
+    fake_client = FakeTextClient()
+    engine = SentimentEngine(model="claude-sonnet-5", classify_model="claude-haiku-4-5", client=fake_client)
+    engine.generate_text("prompt")
+    assert fake_client.calls[0]["model"] == "claude-sonnet-5"

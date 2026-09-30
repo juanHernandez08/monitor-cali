@@ -39,7 +39,12 @@ OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "qwen2.5:14b")
 # fuerza CPU (más lento, pero no toca la GPU) mientras se actualiza el driver. None = decide Ollama.
 OLLAMA_NUM_GPU = int(os.environ["OLLAMA_NUM_GPU"]) if os.environ.get("OLLAMA_NUM_GPU") is not None else None
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
-CLAUDE_MODEL = os.environ.get("CLAUDE_MODEL", "claude-sonnet-5")
+CLAUDE_MODEL = os.environ.get("CLAUDE_MODEL", "claude-sonnet-5")  # solo el análisis narrativo del reporte (poco volumen, 1/día)
+# Clasificación (label/tema/categoría/emoción por mención): esto es el volumen real -- cientos por
+# día -- así que es lo que de verdad pesa en la factura. Haiku es lo que se cotizó y aprobó con el
+# cliente (docs/cotizacion.md); Sonnet quedó puesto por error y costaba ~2× lo presupuestado
+# (2026-09-30, cliente avisó que quedaban USD 5 de saldo -- viabilidad del proyecto en juego).
+CLAUDE_CLASSIFY_MODEL = os.environ.get("CLAUDE_CLASSIFY_MODEL", "claude-haiku-4-5")
 
 # Google Cloud (gratis): Custom Search JSON API + YouTube Data API v3
 GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")

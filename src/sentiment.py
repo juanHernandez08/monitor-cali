@@ -166,10 +166,12 @@ def _prompt(text: str, candidate: str | None, city: bool = False) -> str:
 
 
 class SentimentEngine:
-    """Backend Claude (Anthropic API)."""
+    """Backend Claude (Anthropic API). Dos modelos: uno barato para clasificar (el volumen real,
+    cientos de menciones/día) y uno más capaz solo para el análisis narrativo (1 vez/día)."""
 
-    def __init__(self, model: str | None = None, client=None):
+    def __init__(self, model: str | None = None, classify_model: str | None = None, client=None):
         self.model = model or config.CLAUDE_MODEL
+        self.classify_model = classify_model or config.CLAUDE_CLASSIFY_MODEL
         if client is None:
             from anthropic import Anthropic
             client = Anthropic(api_key=config.ANTHROPIC_API_KEY)
@@ -180,9 +182,12 @@ class SentimentEngine:
         # el modelo piensa por defecto (facturado como tokens de salida) en CADA mención -- es
         # el mayor costo real de la herramienta (cientos de menciones/día), y ese pensamiento
         # invisible competía por el mismo tope de max_tokens que el JSON de la respuesta.
+        # Haiku 4.5 NO acepta "effort" (da 400) -- pero tampoco piensa si no se le pide, así que
+        # sencillamente se omite en vez de forzar "low" como con Sonnet.
         static, dynamic = _prompt_parts(text, candidate, city)
+        kwargs = {} if "haiku" in self.classify_model else {"output_config": {"effort": "low"}}
         response = self.client.messages.create(
-            model=self.model, max_tokens=320, output_config={"effort": "low"},
+            model=self.classify_model, max_tokens=320, **kwargs,
             messages=[{"role": "user", "content": [
                 {"type": "text", "text": static, "cache_control": {"type": "ephemeral"}},
                 {"type": "text", "text": dynamic},
@@ -191,7 +196,7 @@ class SentimentEngine:
         # Los modelos actuales pueden devolver bloques `thinking` antes del texto.
         for block in response.content:
             if getattr(block, "type", "text") == "text":
-                return _parse_payload(block.text, self.model)
+                return _parse_payload(block.text, self.classify_model)
         raise ValueError("La respuesta de Claude no contiene un bloque de texto")
 
     def generate_text(self, prompt: str, max_tokens: int = 3000) -> str:
