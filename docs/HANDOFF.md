@@ -370,6 +370,13 @@ aplicado ya en el contenedor de producción. **Si alguna vez se cambia cómo se 
 del contenedor, verificar de nuevo con `curl http://<IP>:8000/health` desde AFUERA del servidor
 -- debe fallar/colgarse, nunca responder 200.**
 
+**Ojo, pasó una sola vez:** el primer redeploy después de este arreglo, con el mismo comando y la
+misma bandera `-p 127.0.0.1:8000:8000`, publicó igual en `0.0.0.0` (falla puntual de Docker, no
+reproducible al reintentar). Por eso `deploy.sh` ahora verifica el binding real con
+`docker port monitor-cali 8000/tcp` después de levantar el contenedor, y si no empieza con
+`127.0.0.1:`, lo recrea solo y aborta el script con error si sigue mal -- nunca vuelve a quedar
+expuesto en silencio, cada despliegue se autoverifica.
+
 `docs/cotizacion.md` tiene el plan ya costeado y aprobado: **Escenario B** (VPS + SQLite + Claude
 Haiku, ~USD 41/mes ≈ $132.000 COP, cabe cómodo en el presupuesto aprobado de 200.000 COP/mes).
 `docs/despliegue.md` quedó desactualizado (recomienda Railway + Postgres, un plan anterior) --
