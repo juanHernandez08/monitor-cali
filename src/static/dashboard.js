@@ -63,7 +63,7 @@ function deepMerge(a, b) {
    siempre (260px), solo más grande cuando hace falta. No lee el alto por CSS: la mayoría de las
    pestañas están ocultas (display:none) al cargar todo de una, y ahí getComputedStyle da 0. */
 function barsHeight(id, n) {
-  const h = Math.max(260, 30 + n * 28);
+  const h = Math.max(300, 40 + n * 32);
   $(id).style.height = `${h}px`;
   return h;
 }

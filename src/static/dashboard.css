@@ -125,11 +125,11 @@ main { padding: 20px 28px 40px; max-width: 1360px; display: grid; gap: 16px; }
 @media (max-width: 560px) { .roster { grid-template-columns: 1fr; } }
 
 /* ---------- gráficas ---------- */
-.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; box-shadow: var(--shadow); }
-.panel-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
-.chart-box { position: relative; height: 260px; }
-.chart-box.tall { height: 300px; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 22px; box-shadow: var(--shadow); overflow: hidden; }
+.panel-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+.chart-box { position: relative; height: 300px; margin-top: 4px; }
+.chart-box.tall { height: 340px; }
 .alerts ul { list-style: none; margin: 0; padding: 0; max-height: 300px; overflow: auto; }
 .alerts li { padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
 .alerts li:last-child { border-bottom: none; }
@@ -203,12 +203,12 @@ footer { color: var(--muted); font-size: 12px; line-height: 1.7; }
   .thumb { width: 100%; height: 160px; }
   .item .side { justify-items: start; }
   .cbar { width: 100%; }
-  .chart-box, .chart-box.tall { height: 240px; }
+  .chart-box, .chart-box.tall { height: 280px; }
 }
 
 /* ---------- pestañas (contenido) y análisis ---------- */
 .tabpane { display: none; }
-.tabpane.active { display: grid; gap: 16px; }
+.tabpane.active { display: grid; gap: 22px; }
 .intro p { margin: 6px 0 0; color: var(--ink); font-size: 14px; line-height: 1.6; }
 .section-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted);
   margin: 10px 2px -2px; padding-top: 10px; border-top: 1px solid var(--line); }
@@ -222,9 +222,9 @@ footer { color: var(--muted); font-size: 12px; line-height: 1.7; }
    alerta: no es un problema, es alcance declarado. */
 .limitations { margin: 10px 0 12px; padding: 10px 14px; background: var(--soft); border-left: 3px solid var(--muted); border-radius: 8px; font-size: 13px; line-height: 1.5; color: var(--ink); }
 .limitations .label { display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin-bottom: 3px; }
-.chart-box.xl { height: 380px; }
-@media (max-width: 860px) { .chart-box.xl { height: 320px; } }
-@media (max-width: 560px) { .chart-box.xl { height: 300px; } }
+.chart-box.xl { height: 420px; }
+@media (max-width: 860px) { .chart-box.xl { height: 350px; } }
+@media (max-width: 560px) { .chart-box.xl { height: 320px; } }
 
 /* ---------- ciudad ---------- */
 .opp { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
