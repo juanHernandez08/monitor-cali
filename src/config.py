@@ -19,6 +19,15 @@ DASHBOARD_PASSWORD = os.environ.get("DASHBOARD_PASSWORD")
 CF_ACCESS_TEAM_DOMAIN = os.environ.get("CF_ACCESS_TEAM_DOMAIN")
 CF_ACCESS_AUD = os.environ.get("CF_ACCESS_AUD")
 
+# Notificaciones push por ntfy.sh (gratis, sin cuenta -- ver src/notify.py). NTFY_TOPIC_TEAM:
+# alertas de campaña (mención negativa fuerte, actividad inusual en redes, resumen diario) para
+# todo el equipo. NTFY_TOPIC_TECH: solo para Juan (túnel de Ollama caído, servidor). Los nombres
+# de los topics deben ser largos y difíciles de adivinar -- ntfy.sh es público, cualquiera que
+# sepa el nombre del topic puede suscribirse. Vacío = esa notificación no se envía.
+NTFY_SERVER = os.environ.get("NTFY_SERVER", "https://ntfy.sh")
+NTFY_TOPIC_TEAM = os.environ.get("NTFY_TOPIC_TEAM")
+NTFY_TOPIC_TECH = os.environ.get("NTFY_TOPIC_TECH")
+
 # /docs y /openapi.json describen toda la API; apagados salvo que se pidan explícitamente.
 ENABLE_API_DOCS = os.environ.get("ENABLE_API_DOCS", "").lower() in ("1", "true", "yes")
 

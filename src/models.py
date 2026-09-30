@@ -128,6 +128,16 @@ class ApiUsage(Base):
     __table_args__ = (UniqueConstraint("service", "day", name="uq_api_usage_service_day"),)
 
 
+class NotifyState(Base):
+    """Memoria mínima del sistema de notificaciones (src/notify.py): hasta dónde ya se avisó de
+    cada tipo de evento, para no reenviar lo mismo cada vez que corre el job. P. ej.
+    'last_negative_id' guarda el id de mención más alto ya notificado."""
+    __tablename__ = "notify_state"
+
+    key = Column(String, primary_key=True)
+    value = Column(String, nullable=False)
+
+
 class Report(Base):
     """Reporte diario (lunes a viernes): actividad en redes, temas de ciudad y pendientes de
     análisis. Se guarda como JSON en vez de recalcularse cada vez -- así un reporte de un día ya

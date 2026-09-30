@@ -279,13 +279,16 @@ def job_social():
 @exclusive("daily_report")
 def job_daily_report():
     from src.report import generate_and_store
+    from src import notify
     with get_session() as s:
         r = generate_and_store(s)
         log.info("reporte diario generado: %s", r.date)
+        notify.notify_daily_summary(r.data)
 
 
 @exclusive("score")
 def job_score():
+    from src import notify
     engine = build_sentiment_engine()
     with get_session() as s:
         e = enrich_pending(s, limit=20)
@@ -294,6 +297,25 @@ def job_score():
         n = score_pending(s, engine, limit=20)
         if n:
             log.info("score: %d clasificadas", n)
+        alerted = notify.check_negative_mentions(s)
+        if alerted:
+            log.info("notify: %d menciones negativas avisadas", alerted)
+
+
+@exclusive("notify_social")
+def job_notify_social():
+    from src import notify
+    with get_session() as s:
+        n = notify.check_strong_posts(s)
+        if n:
+            log.info("notify: %d publicaciones fuertes avisadas", n)
+
+
+@exclusive("ollama_health")
+def job_ollama_health():
+    from src import notify
+    with get_session() as s:
+        notify.check_ollama_tunnel(s)
 
 
 def run_everything():
@@ -348,5 +370,10 @@ def start_scheduler() -> BackgroundScheduler:
     # Reporte diario, lunes a viernes -- el cliente lo revisa al llegar en la mañana.
     sched.add_job(job_daily_report, "cron", day_of_week="mon-fri", hour=7, minute=0,
                   id="daily_report", max_instances=1, coalesce=True)
+    # Notificaciones (src/notify.py): actividad fuerte en redes cada 15 min, salud del túnel de
+    # Ollama cada 10 min -- las menciones negativas se avisan dentro de job_score, justo al
+    # clasificarlas.
+    sched.add_job(job_notify_social, "interval", minutes=15, id="notify_social", max_instances=1, coalesce=True)
+    sched.add_job(job_ollama_health, "interval", minutes=10, id="ollama_health", max_instances=1, coalesce=True)
     sched.start()
     return sched

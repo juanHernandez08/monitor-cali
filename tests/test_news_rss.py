@@ -45,3 +45,28 @@ def test_rss_connector_can_return_whole_feed_for_city_sources(monkeypatch):
     monkeypatch.setattr(feedparser, "parse", lambda url: real_parse(SAMPLE_FEED))
     items = RSSConnector(feed_url="https://example.com/feed.xml", filter_terms=False).fetch(search_terms=["Ana Pérez"])
     assert {i.external_id for i in items} == {"nota-1", "nota-2", "nota-3"}
+
+
+HTML_FEED = """<?xml version="1.0"?>
+<rss version="2.0">
+<channel>
+<title>Feed de prueba</title>
+<item>
+<title>Ana Pérez presenta plan de seguridad</title>
+<summary>&lt;p&gt;La candidata Ana P&amp;eacute;rez anunci&amp;oacute; medidas. &lt;a href="https://example.com"&gt;Ver más&lt;/a&gt;&lt;/p&gt;</summary>
+<link>https://example.com/nota-1</link>
+<guid>nota-1</guid>
+</item>
+</channel>
+</rss>"""
+
+
+def test_rss_connector_strips_html_from_summary(monkeypatch):
+    import feedparser
+    real_parse = feedparser.parse
+    monkeypatch.setattr(feedparser, "parse", lambda url: real_parse(HTML_FEED))
+    items = RSSConnector(feed_url="https://example.com/feed.xml").fetch(search_terms=["Ana Pérez"])
+    assert len(items) == 1
+    assert "<p>" not in items[0].text
+    assert "<a href" not in items[0].text
+    assert "Ver más" in items[0].text
