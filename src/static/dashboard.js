@@ -1234,7 +1234,10 @@ async function loadInstitutionalHistory() {
 
 /* ---------- agenda ---------- */
 function quote(m) {
-  return `<div class="quote">“${clip(m.text, 220)}”<div class="who">${srcName(m)} · ${esc(m.author || "")} · ${fmtDate(m.published_at)}${m.fetched_at ? ` · capturado ${fmtDate(m.fetched_at)}` : ""}${(m.link || m.url) ? ` · <a href="${safeUrl(m.link || m.url)}" target="_blank" rel="noopener">ver ↗</a>` : ""}</div></div>`;
+  const marked = m.emotion && m.emotion !== "sin emoción marcada";
+  const emotionText = marked ? (m.emotion_nuance ? `${m.emotion} (${m.emotion_nuance})` : m.emotion) : "sin emoción marcada (texto neutro o informativo)";
+  const emotion = m.emotion ? `<div class="topic">siente: ${esc(emotionText)}${marked && m.apalancador ? ` — por: ${esc(m.apalancador)}` : ""}</div>` : "";
+  return `<div class="quote">“${clip(m.text, 220)}”<div class="who">${srcName(m)} · ${esc(m.author || "")} · ${fmtDate(m.published_at)}${m.fetched_at ? ` · capturado ${fmtDate(m.fetched_at)}` : ""}${(m.link || m.url) ? ` · <a href="${safeUrl(m.link || m.url)}" target="_blank" rel="noopener">ver ↗</a>` : ""}</div>${emotion}</div>`;
 }
 
 async function loadAgenda() {
