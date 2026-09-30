@@ -1,5 +1,6 @@
 """Consultas de lectura para el dashboard. Devuelven dicts listos para JSON."""
 import datetime as dt
+import pathlib
 import re
 import unicodedata
 from collections import Counter, defaultdict
@@ -65,8 +66,26 @@ def _local_day(ts: dt.datetime) -> str:
     return ts.replace(tzinfo=dt.timezone.utc).astimezone(BOGOTA).strftime("%Y-%m-%d")
 
 
+_AVATAR_DIR = pathlib.Path(__file__).resolve().parent / "static" / "avatars"
+_AVATAR_EXTS = (".jpg", ".jpeg", ".png", ".webp")
+
+
+def _manual_avatar(candidate_id: int) -> str | None:
+    """Foto subida a mano (src/static/avatars/<id>.jpg) -- se prefiere SIEMPRE sobre la foto de
+    perfil scrapeada de Instagram, porque esa URL viene firmada y caduca en horas: funciona en el
+    momento de la captura pero un rato después Instagram la bloquea (403), así que mostrarla
+    directo en el dashboard casi nunca sirve (verificado 2026-09-30)."""
+    for ext in _AVATAR_EXTS:
+        if (_AVATAR_DIR / f"{candidate_id}{ext}").exists():
+            return f"/static/avatars/{candidate_id}{ext}"
+    return None
+
+
 def _avatars(session) -> dict[str, str]:
-    """Foto de perfil por candidato, tomada del último post de su cuenta de Instagram/Facebook."""
+    """Foto de perfil por candidato, tomada del último post de su cuenta de Instagram/Facebook.
+
+    Solo sirve como respaldo: la URL de Instagram caduca rápido (ver _manual_avatar). El llamador
+    debe preferir _manual_avatar(candidate_id) cuando exista."""
     accounts = {a["url"]: a["candidate"] for a in config.SOCIAL_ACCOUNTS if a.get("candidate")}
     avatars: dict[str, str] = {}
     posts = (session.query(Mention).join(Source).filter(Source.type == SourceType.SOCIAL)
@@ -91,7 +110,8 @@ def summary(session, days: int = 7) -> list[dict]:
         previous = q.filter(WHEN >= prev_since, WHEN < since).count()
         counts = Counter(m.sentiment.label for m in current if m.sentiment)
         rows.append({
-            "candidate_id": c.id, "name": c.name, "party": c.party, "avatar": avatars.get(c.name),
+            "candidate_id": c.id, "name": c.name, "party": c.party,
+            "avatar": _manual_avatar(c.id) or avatars.get(c.name),
             "mentions": len(current), "previous": previous,
             "positive": counts.get(SentimentLabel.POSITIVE, 0),
             "negative": counts.get(SentimentLabel.NEGATIVE, 0),
@@ -381,6 +401,26 @@ _FORMAT = {"clips": "reel", "reel": "reel", "igtv": "reel", "video": "video", "c
            "post": "imagen"}
 
 
+def _raw_comment_preview(raw: dict, limit: int = 5) -> list[dict]:
+    """Primeros comentarios que Bright Data ya trae GRATIS dentro del registro de la publicación
+    (sin costo adicional, a diferencia de los comentarios completos que sí se pagan aparte y son
+    los únicos que pasan por el clasificador de sentimiento). No están clasificados -- son solo
+    una vista previa del texto real, para que 'Meta y redes' deje de mostrar publicaciones sin
+    ningún comentario visible cuando en realidad sí los hay."""
+    rec = (raw or {}).get("record") or {}
+    platform = (raw or {}).get("platform")
+    items: list[dict] = []
+    if platform == "instagram":
+        for c in (rec.get("latestComments") or [])[:limit]:
+            if c.get("text"):
+                items.append({"text": c["text"], "author": c.get("ownerUsername"), "date": c.get("timestamp")})
+    elif platform == "facebook":
+        for c in (rec.get("topComments") or [])[:limit]:
+            if c.get("text"):
+                items.append({"text": c["text"], "author": (c.get("author") or {}).get("name"), "date": c.get("date")})
+    return items
+
+
 def _social_metrics(m: Mention) -> dict:
     """Likes/comentarios/vistas/compartidos desde el registro crudo del scraper.
 
@@ -443,6 +483,8 @@ def social_posts(session, days: int = 30, candidate_id: int | None = None, platf
         d["platform"] = (m.raw or {}).get("platform")
         d.update(_social_metrics(m))
         d["engagement"] = d["likes"] + d["comments"]
+        d["comments_preview"] = _raw_comment_preview(m.raw)
+        d["fetched_at"] = m.fetched_at.isoformat() if m.fetched_at else None
         result.append(d)
     if sort == "engagement":
         result.sort(key=lambda r: -r["engagement"])

@@ -422,9 +422,12 @@ function mergedSources(sources) {
 }
 function sentTag(m) {
   if (!m.label) return `<span class="tag pending">pendiente</span>`;
-  const emotionText = m.emotion && m.emotion !== "sin emoción marcada"
-    ? (m.emotion_nuance ? `${m.emotion} (${m.emotion_nuance})` : m.emotion) : "";
-  const emotion = emotionText ? `<div class="topic">siente: ${esc(emotionText)}${m.apalancador ? ` — por: ${esc(m.apalancador)}` : ""}</div>` : "";
+  const marked = m.emotion && m.emotion !== "sin emoción marcada";
+  /* Antes esta línea desaparecía por completo cuando la IA no detectó una emoción dominante --
+     parecía un dato faltante o roto. Ahora se dice explícitamente: "sin emoción marcada" es una
+     clasificación real (texto neutro/informativo), no un hueco en los datos. */
+  const emotionText = marked ? (m.emotion_nuance ? `${m.emotion} (${m.emotion_nuance})` : m.emotion) : "sin emoción marcada (texto neutro o informativo)";
+  const emotion = m.emotion ? `<div class="topic">siente: ${esc(emotionText)}${marked && m.apalancador ? ` — por: ${esc(m.apalancador)}` : ""}</div>` : "";
   return `<span class="tag ${esc(m.label)}">${LABEL[m.label] || ""} ${esc(m.score)}</span>${m.topic ? `<div class="topic">${esc(m.topic)}</div>` : ""}${emotion}`;
 }
 function thumb(r) {
@@ -443,6 +446,26 @@ function commentsBlock(r, idx) {
   return `<button class="toggle" data-idx="${idx}">▸ ${t} comentario${t === 1 ? "" : "s"}</button>
     <div class="cbar"><i class="p" style="width:${s.positive / t * 100}%"></i><i class="u" style="width:${s.neutral / t * 100}%"></i><i class="g" style="width:${s.negative / t * 100}%"></i></div>
     <div class="counts">${s.positive} positivos · ${s.neutral} neutrales · ${s.negative} negativos</div>`;
+}
+/* Vista previa de comentarios SIN clasificar (Bright Data la incluye gratis con la publicación --
+   ver _raw_comment_preview en queries.py). Distinto de commentsBlock()/toggleComments(), que
+   muestra comentarios COMPLETOS ya clasificados (positivo/neutral/negativo) pero que solo existen
+   para un puñado de publicaciones por corrida (esos sí cuestan créditos aparte). */
+const metaFeedStore = [];
+function rawCommentsToggle(r, idx) {
+  const c = r.comments_preview;
+  if (!c || !c.length) return "";
+  return `<button class="toggle toggle-raw" data-idx="${idx}">▸ ${c.length} comentario${c.length === 1 ? "" : "s"} recientes (vista previa, sin clasificar)</button>`;
+}
+function toggleRawComments(idx, btn) {
+  const open = btn.nextElementSibling?.classList.contains("thread") ? btn.nextElementSibling : null;
+  if (open) { open.remove(); btn.textContent = btn.textContent.replace("▾", "▸"); return; }
+  const r = metaFeedStore[idx];
+  const div = document.createElement("div"); div.className = "thread";
+  div.innerHTML = r.comments_preview.map((c) => `<div class="comment">
+      <div>${esc(c.text)}<div class="who">${esc(c.author || "")}${c.date ? ` · ${fmtDate(c.date.replace("Z", ""))}` : ""}</div></div></div>`).join("");
+  btn.after(div);
+  btn.textContent = btn.textContent.replace("▸", "▾");
 }
 const feedStore = {}; // selector de contenedor -> filas, para el despliegue de comentarios
 function renderFeedList(sel, rows, { showCandidate = false } = {}) {
@@ -538,18 +561,22 @@ async function loadMeta() {
   hbar("#chart-meta-councilor", byCouncil.map((c) => c.candidate), byCouncil.map((c) => c.count),
     byCouncil.map(() => CARLOS_GRAY));
 
-  $("#meta-feed").innerHTML = posts.length ? posts.map((r) => `<article class="item">
+  metaFeedStore.length = 0; metaFeedStore.push(...posts);
+  $("#meta-feed").innerHTML = posts.length ? posts.map((r, i) => `<article class="item">
       ${thumb(r)}
       <div class="body">
         <div class="meta"><span class="cand">${esc(r.candidate)}</span><span class="tag src">${esc(SRC_LABEL[r.platform] || r.platform)}</span><span>${fmtDate(r.published_at)}</span>${r.url ? `<a href="${safeUrl(r.url)}" target="_blank" rel="noopener">ver original ↗</a>` : ""}</div>
         <div class="text">${esc(r.text)}</div>
         ${r.summary ? `<div class="summary">📝 ${esc(r.summary)}</div>` : ""}
+        ${rawCommentsToggle(r, i)}
       </div>
       <div class="side">
         ${sentTag(r)}
         <div class="hint" style="margin-top:6px">❤️ ${n(r.likes)} · 💬 ${n(r.comments)}${r.views ? ` · 👁 ${n(r.views)}` : ""}</div>
+        <div class="hint" style="margin-top:2px">medido ${ago(r.fetched_at)} -- puede haber crecido desde entonces</div>
       </div>
     </article>`).join("") : `<div class="empty">Sin publicaciones con esos filtros en el período.</div>`;
+  $("#meta-feed").querySelectorAll(".toggle-raw[data-idx]").forEach((b) => b.addEventListener("click", () => toggleRawComments(Number(b.dataset.idx), b)));
 }
 
 /* ---------- Meta y redes: alcance, reacción y la estrategia del reporte diario (sin recalcular
