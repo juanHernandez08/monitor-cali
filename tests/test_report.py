@@ -93,7 +93,7 @@ def test_build_report_with_engine_includes_narrative_grounded_in_real_numbers(db
     # el prompt real que se le mandó al LLM debe tener las cifras calculadas, no solo pedirle que opine
     assert "Clara Luz Roldán" in engine.prompts[0]
     assert "Carlos Arias" in engine.prompts[0]
-    assert "alcance promedio" in engine.prompts[0]
+    assert "alcance típico (mediana)" in engine.prompts[0]
 
 
 def test_narrative_includes_limitaciones_when_the_llm_returns_it(db_session):

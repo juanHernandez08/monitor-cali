@@ -16,7 +16,7 @@ salvo Apify (presupuesto aprobado: hasta 200.000 COP/mes, 2026-09-28).
 - Windows: `.\scripts\demo.ps1` · macOS: `bash scripts/demo.sh` → Ollama + servidor en :8000 +
   túnel público de cloudflared (la URL cambia en cada arranque).
 - Solo servidor: `python -m uvicorn src.api:app --host 0.0.0.0 --port 8000`.
-- Tests: `python -m pytest -q` (189 al escribir esto). El proyecto se construye con TDD: test
+- Tests: `python -m pytest -q` (233 al 2026-09-29). El proyecto se construye con TDD: test
   antes que el cambio de comportamiento.
 - **Login obligatorio en la nube (2026-09-28)**: `DASHBOARD_USER`/`DASHBOARD_PASSWORD` en `.env`
   activan HTTP Basic delante de TODO (API y estáticos) -- sin ellas el sitio queda abierto, como
@@ -349,6 +349,24 @@ candidato de esa pestaña ahora sale de `/api/social/candidates`, no de la lista
     (requiere que él autorice acceso) para métricas privadas que el scraping público nunca expone
     -- compartidos, guardados, visitas al perfil. Con el scraping actual (Apify) solo hay likes,
     comentarios y vistas, para cualquier cuenta.
+
+- **Auditoría integral (2026-09-29, noche)**: seguridad, front-end, arquitectura, estadística e
+  histórico 2008 a 2026. Todo documentado en `docs/auditoria/` (empezar por su README, que lista las
+  acciones pendientes en el servidor). Lo más importante:
+  - El bypass por la IP pública (puerto 8000 en 0.0.0.0) lo detectó también esta auditoría; ya estaba
+    corregido en producción (ver la sección de despliegue). La auditoría suma: validación del token de
+    Cloudflare Access en el propio servidor (`CF_ACCESS_*`), imagen sin root y sin `.env`/base dentro,
+    y `/healthz` público para `deploy.sh`.
+  - Módulos nuevos: `src/security.py` (auth con Cloudflare Access opcional, CSRF, límite de gasto),
+    `src/netsafe.py` (descargas sin SSRF), `src/stats.py` (Wilson, prueba binomial, mediana robusta),
+    `src/city_history.py` (histórico 2008 a hoy con fuentes).
+  - Todo POST del front debe llevar `X-Requested-With: monitor` (usar `post()` de dashboard.js);
+    `/api/investigate` ahora es POST.
+  - `_social_metrics()` leía mal likes de Bright Data, likes ocultos (-1) y X: las cifras de alcance
+    anteriores a este cambio están sesgadas (ver `docs/auditoria/04-...`).
+  - El front carga por pestaña (`TAB_LOADERS` en dashboard.js) y las gráficas en contenedores ocultos
+    se dibujan al mostrarse (`pendingCharts`). Una pestaña nueva debe registrarse en `TAB_LOADERS`.
+  - `Mention` carga sentimiento/candidato/fuente con `selectin` (antes N+1) e `init_db()` crea índices.
 
 ## Despliegue en la nube -- YA DESPLEGADO (2026-09-29)
 

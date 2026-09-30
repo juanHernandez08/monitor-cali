@@ -12,6 +12,24 @@ DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///monitor.db")
 DASHBOARD_USER = os.environ.get("DASHBOARD_USER")
 DASHBOARD_PASSWORD = os.environ.get("DASHBOARD_PASSWORD")
 
+# Cloudflare Access (opcional, recomendado en producción): con ambas variables, el servidor valida
+# el token firmado que Access agrega a cada petición. Así nadie entra llegando directo a la IP del
+# VPS saltándose el login por correo. TEAM_DOMAIN = "<equipo>.cloudflareaccess.com"; AUD = el
+# "Application Audience (AUD) Tag" de la aplicación en Zero Trust.
+CF_ACCESS_TEAM_DOMAIN = os.environ.get("CF_ACCESS_TEAM_DOMAIN")
+CF_ACCESS_AUD = os.environ.get("CF_ACCESS_AUD")
+
+# /docs y /openapi.json describen toda la API; apagados salvo que se pidan explícitamente.
+ENABLE_API_DOCS = os.environ.get("ENABLE_API_DOCS", "").lower() in ("1", "true", "yes")
+
+# Un solo proceso debe correr el scheduler (captura + clasificación). 0 = solo web.
+RUN_SCHEDULER = os.environ.get("RUN_SCHEDULER", "1").lower() not in ("0", "false", "no")
+
+# Espera mínima entre acciones que gastan dinero (segundos).
+REFRESH_MIN_INTERVAL = int(os.environ.get("REFRESH_MIN_INTERVAL", "120"))
+INVESTIGATE_MIN_INTERVAL = int(os.environ.get("INVESTIGATE_MIN_INTERVAL", "30"))
+REPORT_MIN_INTERVAL = int(os.environ.get("REPORT_MIN_INTERVAL", "60"))
+
 # Sentimiento: "ollama" (local, gratis) o "claude" (requiere ANTHROPIC_API_KEY)
 SENTIMENT_BACKEND = os.environ.get("SENTIMENT_BACKEND", "ollama")
 OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")

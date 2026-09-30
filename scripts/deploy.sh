@@ -14,6 +14,10 @@ docker build -t monitor-cali:latest .
 echo "== reiniciar contenedor =="
 docker stop monitor-cali 2>/dev/null || true
 docker rm monitor-cali 2>/dev/null || true
+# La imagen ya no corre como root (usuario 10001, ver Dockerfile): la carpeta de datos debe ser
+# suya para que SQLite pueda escribir. Contenedor desechable para no depender de sudo.
+docker run --rm -v /opt/monitor-cali/data:/data busybox chown -R 10001:10001 /data
+
 docker run -d --name monitor-cali \
   --restart unless-stopped \
   -p 127.0.0.1:8000:8000 \
@@ -21,9 +25,9 @@ docker run -d --name monitor-cali \
   -v /opt/monitor-cali/data:/app/data \
   monitor-cali:latest
 
-echo "== listo, verificando /health =="
+echo "== listo, verificando /healthz =="
 sleep 3
-curl -sf http://localhost:8000/health && echo || echo "OJO: /health no respondió, revisar 'docker logs monitor-cali'"
+curl -sf http://127.0.0.1:8000/healthz && echo || echo "OJO: /healthz no respondió, revisar 'docker logs monitor-cali'"
 
 # Verificación de seguridad: el puerto SOLO debe estar publicado en loopback (127.0.0.1), nunca
 # en 0.0.0.0 -- si quedara abierto ahí, cualquiera en internet entra sin pasar por Cloudflare

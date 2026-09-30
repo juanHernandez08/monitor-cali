@@ -1,6 +1,8 @@
 import datetime as dt
+import functools
 import logging
 import os
+import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from contextlib import contextmanager
 
@@ -226,26 +228,55 @@ def run_group(session, types: list[SourceType]) -> dict[str, int]:
     return results
 
 
+_JOB_LOCKS: dict[str, threading.Lock] = {}
+
+
+def exclusive(name: str):
+    """Un mismo grupo nunca corre dos veces a la vez en este proceso. APScheduler ya evita que un
+    job se solape consigo mismo (max_instances=1), pero "Actualizar ahora" (run_everything) corre
+    por fuera del scheduler: sin este candado, un clic justo cuando arranca job_social duplicaba la
+    consulta a Apify (y su costo) y podía guardar el mismo post dos veces en paralelo."""
+    lock = _JOB_LOCKS.setdefault(name, threading.Lock())
+
+    def deco(fn):
+        @functools.wraps(fn)
+        def wrapper(*args, **kwargs):
+            if not lock.acquire(blocking=False):
+                log.info("job %s ya está corriendo; se omite esta ejecución", name)
+                return None
+            try:
+                return fn(*args, **kwargs)
+            finally:
+                lock.release()
+        return wrapper
+    return deco
+
+
+@exclusive("fast")
 def job_fast():
     with get_session() as s:
         log.info("fast: %s", run_group(s, FAST_GROUP))
 
 
+@exclusive("cse")
 def job_cse():
     with get_session() as s:
         log.info("cse: %s", run_group(s, CSE_GROUP))
 
 
+@exclusive("youtube")
 def job_youtube():
     with get_session() as s:
         log.info("youtube: %s", run_group(s, YT_GROUP))
 
 
+@exclusive("social")
 def job_social():
     with get_session() as s:
         log.info("social: %s", run_group(s, SOCIAL_GROUP))
 
 
+@exclusive("daily_report")
 def job_daily_report():
     from src.report import generate_and_store
     with get_session() as s:
@@ -253,6 +284,7 @@ def job_daily_report():
         log.info("reporte diario generado: %s", r.date)
 
 
+@exclusive("score")
 def job_score():
     engine = build_sentiment_engine()
     with get_session() as s:

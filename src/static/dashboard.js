@@ -21,10 +21,35 @@ let summaryRows = [];
 /* ---------- ApexCharts: helper genérico + estilo base compartido ---------- */
 function chart(id, opts) {
   if (charts[id]) charts[id].destroy();
+  const el = $(id);
+  if (!el) return;
+  /* Lectores de pantalla: cada gráfica se anuncia como imagen con el título de su panel. */
+  const title = el.closest(".panel")?.querySelector("h2")?.textContent;
+  el.setAttribute("role", "img");
+  if (title) el.setAttribute("aria-label", `Gráfica: ${title}`);
   const base = { chart: { fontFamily: "Inter, system-ui, sans-serif", foreColor: MUTED, toolbar: { show: false }, animations: { speed: 300 } },
     grid: { borderColor: GRID, strokeDashArray: 0 }, tooltip: { theme: "light" } };
-  charts[id] = new ApexCharts($(id), deepMerge(base, opts));
+  const merged = deepMerge(base, opts);
+  /* En un contenedor oculto (otra pestaña o sub-pestaña) ApexCharts mide 0 y dibuja NaN. Se deja
+     pendiente y se dibuja cuando el contenedor se muestra (ver remeasureCharts). */
+  if (!el.offsetParent) { pendingCharts[id] = merged; delete charts[id]; return; }
+  delete pendingCharts[id];
+  charts[id] = new ApexCharts(el, merged);
   charts[id].render();
+}
+const pendingCharts = {};
+/* Gráficas cuyo contenedor ya no está en la página (se reemplazó el HTML): se destruyen para que
+   dejen de escuchar el resize y de dibujar NaN sobre un nodo suelto. */
+function pruneCharts() {
+  for (const [id, c] of Object.entries(charts)) {
+    if (!c.el || !document.body.contains(c.el)) { try { c.destroy(); } catch (e) { /* ya destruida */ } delete charts[id]; }
+  }
+}
+function flushPendingCharts() {
+  for (const [id, opts] of Object.entries(pendingCharts)) {
+    const el = $(id);
+    if (el && el.offsetParent) { delete pendingCharts[id]; charts[id] = new ApexCharts(el, opts); charts[id].render(); }
+  }
 }
 function deepMerge(a, b) {
   const out = { ...a };
@@ -68,12 +93,27 @@ function hbar100(id, categories, series, colors) {
   });
 }
 
-function initials(name) { return name.split(" ").filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toUpperCase(); }
+function initials(name) { return esc(String(name || "").split(" ").filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toUpperCase()); }
+/* Sin atributos onerror en línea: la CSP (src/security.py) bloquea todo JS en línea para que un
+   texto scrapeado nunca pueda ejecutarse. Las imágenes rotas se resuelven en un solo listener. */
 function avatar(r, cls = "") {
-  return r.avatar
-    ? `<img class="avatar ${cls}" src="${r.avatar}" alt="" referrerpolicy="no-referrer" onerror="this.outerHTML='<div class=&quot;avatar ${cls}&quot;>${initials(r.name)}</div>'">`
-    : `<div class="avatar ${cls}">${initials(r.name)}</div>`;
+  const src = safeUrl(r.avatar);
+  return src
+    ? `<img class="avatar ${cls}" src="${src}" alt="" referrerpolicy="no-referrer" data-fallback="initials" data-initials="${initials(r.name)}">`
+    : `<div class="avatar ${cls}" aria-hidden="true">${initials(r.name)}</div>`;
 }
+document.addEventListener("error", (e) => {
+  const img = e.target;
+  if (!(img instanceof HTMLImageElement) || !img.dataset.fallback) return;
+  if (img.dataset.fallback === "initials") {
+    const div = document.createElement("div");
+    div.className = img.className; div.textContent = img.dataset.initials || ""; div.setAttribute("aria-hidden", "true");
+    img.replaceWith(div);
+  } else if (img.dataset.fallback === "favicon") {
+    img.dataset.fallback = ""; img.parentNode?.classList.add("logo");
+    if (img.dataset.favicon) img.src = img.dataset.favicon; else img.remove();
+  }
+}, true);
 function pct(n, t) { return t ? Math.round(n / t * 100) : 0; }
 function bar(r) {
   const t = r.positive + r.negative + r.neutral || 1;
@@ -81,11 +121,40 @@ function bar(r) {
 }
 const share = (r, k) => pct(r[k], r.positive + r.negative + r.neutral);
 
-async function j(url) { const r = await fetch(url); return r.json(); }
+/* fetch con manejo de errores: antes un 401/500 terminaba en "Unexpected token" en consola y la
+   pestaña quedaba a medio pintar sin aviso. */
+async function j(url) {
+  const r = await fetch(url, { credentials: "same-origin" });
+  if (r.status === 401) { notify("La sesión expiró: recarga la página para volver a entrar.", "error"); throw new Error("401"); }
+  if (!r.ok) { notify(`No se pudo cargar ${url.split("?")[0]} (${r.status}).`, "error"); throw new Error(String(r.status)); }
+  return r.json();
+}
+/* Todo POST lleva X-Requested-With: el servidor rechaza sin ella (protección CSRF). */
+async function post(url, body) {
+  const opts = { method: "POST", credentials: "same-origin", headers: { "X-Requested-With": "monitor" } };
+  if (body !== undefined) { opts.headers["Content-Type"] = "application/json"; opts.body = JSON.stringify(body); }
+  return fetch(url, opts);
+}
+let notifyTimer = null;
+function notify(msg, kind = "info") {
+  const box = $("#toast");
+  if (!box) return;
+  box.textContent = msg; box.className = `toast show ${kind}`;
+  clearTimeout(notifyTimer); notifyTimer = setTimeout(() => { box.className = "toast"; }, 6000);
+}
 function days() { return Number($("#days").value); }
 function periodLabel() { const d = days(); return d === 1 ? "las últimas 24 horas" : `los últimos ${d} días`; }
 function ordinal(i) { return `${i + 1}.º`; }
-function esc(s) { return (s || "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+/* Todo texto que viene de la base (menciones scrapeadas, temas que escribe el LLM) pasa por esc()
+   antes de ir a innerHTML; toda URL, por safeUrl() (solo http/https: nunca javascript:). */
+function esc(s) { return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+function safeUrl(u) {
+  if (!u) return "";
+  try { const url = new URL(String(u), location.origin); return /^https?:$/.test(url.protocol) ? esc(url.href) : ""; }
+  catch (e) { return ""; }
+}
+/* Recorta ANTES de escapar (recortar después podía partir una entidad como "&amp;" a la mitad). */
+function clip(s, n) { const t = String(s ?? ""); return esc(t.length > n ? t.slice(0, n) + "…" : t); }
 function ago(iso) {
   if (!iso) return "sin datos";
   const m = Math.round((Date.now() - new Date(iso + "Z")) / 60000);
@@ -237,7 +306,7 @@ async function showPeak(name, day) {
     <article class="item">
       ${thumb(p)}
       <div class="body">
-        <div class="meta"><span class="tag src">${srcName(p)} · ${KIND[p.kind] || ""}</span>${p.url ? `<a href="${p.url}" target="_blank" rel="noopener">ver original ↗</a>` : ""}</div>
+        <div class="meta"><span class="tag src">${srcName(p)} · ${KIND[p.kind] || ""}</span>${p.url ? `<a href="${safeUrl(p.url)}" target="_blank" rel="noopener">ver original ↗</a>` : ""}</div>
         <div class="text">${esc(p.text)}</div>
       </div>
     </article>`;
@@ -303,9 +372,9 @@ async function loadSources() {
   const totalsByChannel = labels.map((l) => [l, groups[l].reduce((a, b) => a + b, 0)]).sort((a, b) => b[1] - a[1]);
   const carlosByChannel = labels.map((l) => [l, groups[l][ci] || 0]).sort((a, b) => b[1] - a[1]);
   const cTotal = carlosByChannel.reduce((a, x) => a + x[1], 0);
-  $("#read-sources").innerHTML = totalsByChannel.length ? `El canal con más conversación es <b>${totalsByChannel[0][0]}</b> (${totalsByChannel[0][1]} menciones en total). ` +
-    (cTotal ? `Las menciones de <b>Carlos Arias</b> vienen sobre todo de <b>${carlosByChannel[0][0]}</b> (${pct(carlosByChannel[0][1], cTotal)}% de sus ${cTotal})` +
-      (carlosByChannel[1] && carlosByChannel[1][1] ? `, seguido de ${carlosByChannel[1][0]} (${pct(carlosByChannel[1][1], cTotal)}%).` : ".") : "")
+  $("#read-sources").innerHTML = totalsByChannel.length ? `El canal con más conversación es <b>${esc(totalsByChannel[0][0])}</b> (${totalsByChannel[0][1]} menciones en total). ` +
+    (cTotal ? `Las menciones de <b>Carlos Arias</b> vienen sobre todo de <b>${esc(carlosByChannel[0][0])}</b> (${pct(carlosByChannel[0][1], cTotal)}% de sus ${cTotal})` +
+      (carlosByChannel[1] && carlosByChannel[1][1] ? `, seguido de ${esc(carlosByChannel[1][0])} (${pct(carlosByChannel[1][1], cTotal)}%).` : ".") : "")
     : "Sin datos en el período.";
 }
 
@@ -324,8 +393,8 @@ async function loadTopics() {
 async function loadAlerts() {
   const a = await j(`/api/alerts?days=${days()}`);
   $("#alerts").innerHTML = a.length ? a.map((m) => `<li>
-    <span class="tag negative">${m.score}</span> ${esc(m.text).slice(0, 200)}
-    <div class="meta">${srcName(m)} · ${esc(m.author || "")} · ${ago(m.published_at)}${m.url ? ` · <a href="${m.url}" target="_blank" rel="noopener">ver</a>` : ""}</div>
+    <span class="tag negative">${esc(m.score)}</span> ${clip(m.text, 200)}
+    <div class="meta">${srcName(m)} · ${esc(m.author || "")} · ${ago(m.published_at)}${m.url ? ` · <a href="${safeUrl(m.url)}" target="_blank" rel="noopener">ver</a>` : ""}</div>
   </li>`).join("") : `<li class="empty">Sin menciones negativas fuertes sobre Carlos Arias en el período.</li>`;
 }
 
@@ -333,13 +402,13 @@ async function loadSocialStrong() {
   if (!$("#social-strong")) return;
   const s = await j(`/api/social/strong?days=${Math.min(days(), 90)}`);
   $("#social-strong").innerHTML = s.length ? s.map((p) => `<li>
-    <span class="tag positive">${p.multiplier}×</span> <b>${esc(p.candidate)}</b>: ${esc(p.text).slice(0, 160)}
-    <div class="meta">${SRC_LABEL[p.platform] || p.platform} · ❤️ ${fmtNum(p.likes)} · 💬 ${fmtNum(p.comments)}${p.views ? ` · 👁 ${fmtNum(p.views)}` : ""} · habitual: ~${fmtNum(p.baseline)} · ${ago(p.published_at)}${p.url ? ` · <a href="${p.url}" target="_blank" rel="noopener">ver</a>` : ""}</div>
+    <span class="tag positive">${p.multiplier}×</span> <b>${esc(p.candidate)}</b>: ${clip(p.text, 160)}
+    <div class="meta">${esc(SRC_LABEL[p.platform] || p.platform)} · ❤️ ${fmtNum(p.likes)} · 💬 ${fmtNum(p.comments)}${p.views ? ` · 👁 ${fmtNum(p.views)}` : ""} · habitual: ~${fmtNum(p.baseline)} · ${ago(p.published_at)}${p.url ? ` · <a href="${safeUrl(p.url)}" target="_blank" rel="noopener">ver</a>` : ""}</div>
   </li>`).join("") : `<li class="empty">Sin publicaciones muy por encima de lo habitual en el período.</li>`;
 }
 
 /* ---------- feed (reutilizable: pestaña Publicaciones y vista de Perfil) ---------- */
-function srcName(m) { return m.platform ? (SRC_LABEL[m.platform] || m.platform) : (SRC[m.source_type] || esc(m.source)); }
+function srcName(m) { return esc(m.platform ? (SRC_LABEL[m.platform] || m.platform) : (SRC[m.source_type] || m.source)); }
 /* Google News y RSS son ambos "Prensa": sin esto salían como dos chips separados con el mismo nombre. */
 function mergedSources(sources) {
   const out = {};
@@ -354,15 +423,16 @@ function sentTag(m) {
   const emotionText = m.emotion && m.emotion !== "sin emoción marcada"
     ? (m.emotion_nuance ? `${m.emotion} (${m.emotion_nuance})` : m.emotion) : "";
   const emotion = emotionText ? `<div class="topic">siente: ${esc(emotionText)}${m.apalancador ? ` — por: ${esc(m.apalancador)}` : ""}</div>` : "";
-  return `<span class="tag ${m.label}">${LABEL[m.label]} ${m.score}</span>${m.topic ? `<div class="topic">${esc(m.topic)}</div>` : ""}${emotion}`;
+  return `<span class="tag ${esc(m.label)}">${LABEL[m.label] || ""} ${esc(m.score)}</span>${m.topic ? `<div class="topic">${esc(m.topic)}</div>` : ""}${emotion}`;
 }
 function thumb(r) {
   let host = null;
   try { host = new URL(r.url).hostname; } catch (e) { host = null; }
-  const favicon = host ? `https://www.google.com/s2/favicons?domain=${host}&sz=64` : "";
-  if (r.thumbnail) return `<div class="thumb"><img src="${r.thumbnail}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.onerror=null; this.parentNode.classList.add('logo'); this.src='${favicon}'"></div>`;
-  if (host) return `<div class="thumb logo"><img src="${favicon}" alt="" loading="lazy"></div>`;
-  return `<div class="thumb">${KIND[r.kind] || ""}</div>`;
+  const favicon = host ? `https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=64` : "";
+  const src = safeUrl(r.thumbnail);
+  if (src) return `<div class="thumb"><img src="${src}" alt="" loading="lazy" referrerpolicy="no-referrer" data-fallback="favicon" data-favicon="${esc(favicon)}"></div>`;
+  if (host) return `<div class="thumb logo"><img src="${esc(favicon)}" alt="" loading="lazy"></div>`;
+  return `<div class="thumb" aria-hidden="true">${esc(KIND[r.kind] || "")}</div>`;
 }
 function commentsBlock(r, idx) {
   const s = r.comments_summary;
@@ -378,7 +448,7 @@ function renderFeedList(sel, rows, { showCandidate = false } = {}) {
   $(sel).innerHTML = rows.map((r, i) => `<article class="item" data-row="${i}">
     ${thumb(r)}
     <div class="body">
-      <div class="meta">${showCandidate ? `<span class="cand">${esc(r.candidate)}</span>` : ""}<span class="tag src">${srcName(r)} · ${KIND[r.kind] || ""}</span><span>${fmtDate(r.published_at)}</span>${r.url ? `<a href="${r.url}" target="_blank" rel="noopener">ver original ↗</a>` : ""}</div>
+      <div class="meta">${showCandidate ? `<span class="cand">${esc(r.candidate)}</span>` : ""}<span class="tag src">${srcName(r)} · ${KIND[r.kind] || ""}</span><span>${fmtDate(r.published_at)}</span>${r.url ? `<a href="${safeUrl(r.url)}" target="_blank" rel="noopener">ver original ↗</a>` : ""}</div>
       <div class="text">${esc(r.text)}</div>
       ${r.summary ? `<div class="summary">📝 ${esc(r.summary)}</div>` : ""}
       ${r.author ? `<div class="author">${esc(r.author)}</div>` : ""}
@@ -397,7 +467,7 @@ function toggleComments(sel, idx, btn) {
   const r = feedStore[sel][idx];
   const div = document.createElement("div"); div.className = "thread";
   div.innerHTML = r.comments.map((c) => `<div class="comment">
-      <div>${esc(c.text)}<div class="who">${esc(c.author || "")} · ${fmtDate(c.published_at)}${(c.link || c.url) ? ` · <a href="${c.link || c.url}" target="_blank" rel="noopener">ver</a>` : ""}</div></div>
+      <div>${esc(c.text)}<div class="who">${esc(c.author || "")} · ${fmtDate(c.published_at)}${(c.link || c.url) ? ` · <a href="${safeUrl(c.link || c.url)}" target="_blank" rel="noopener">ver</a>` : ""}</div></div>
       <div>${sentTag(c)}</div></div>`).join("") || `<div class="empty">Sin comentarios que cumplan el filtro.</div>`;
   item.appendChild(div);
   btn.textContent = btn.textContent.replace("▸", "▾");
@@ -469,7 +539,7 @@ async function loadMeta() {
   $("#meta-feed").innerHTML = posts.length ? posts.map((r) => `<article class="item">
       ${thumb(r)}
       <div class="body">
-        <div class="meta"><span class="cand">${esc(r.candidate)}</span><span class="tag src">${SRC_LABEL[r.platform] || r.platform}</span><span>${fmtDate(r.published_at)}</span>${r.url ? `<a href="${r.url}" target="_blank" rel="noopener">ver original ↗</a>` : ""}</div>
+        <div class="meta"><span class="cand">${esc(r.candidate)}</span><span class="tag src">${esc(SRC_LABEL[r.platform] || r.platform)}</span><span>${fmtDate(r.published_at)}</span>${r.url ? `<a href="${safeUrl(r.url)}" target="_blank" rel="noopener">ver original ↗</a>` : ""}</div>
         <div class="text">${esc(r.text)}</div>
         ${r.summary ? `<div class="summary">📝 ${esc(r.summary)}</div>` : ""}
       </div>
@@ -484,19 +554,24 @@ async function loadMeta() {
    nada -- reach/reaction usan las mismas queries.candidate_reach_comparison/comment_reaction que
    el reporte, y el análisis se lee del último reporte ya generado, no se le pide de nuevo al LLM
    cada vez que alguien abre esta pestaña). ---------- */
+/* Mediana, no promedio: un solo reel viral multiplicaba el promedio de una cuenta (auditoría
+   estadística 2026-09-29). La tendencia también compara medianas de cada mitad del período. */
 function renderReach(suffix, rows) {
-  hbar(`#chart-meta-reach${suffix}`, rows.map((c) => c.candidate), rows.map((c) => c.avg_engagement),
-    rows.map((c) => c.candidate === CARLOS ? BLUE : CARLOS_GRAY));
-  const trendRows = rows.filter((c) => c.trend_pct !== null);
+  const val = (c) => c.median_engagement ?? c.avg_engagement;
+  const sorted = [...rows].sort((a, b) => val(b) - val(a));
+  hbar(`#chart-meta-reach${suffix}`, sorted.map((c) => `${c.candidate} (${c.posts})`), sorted.map(val),
+    sorted.map((c) => c.candidate === CARLOS ? BLUE : CARLOS_GRAY));
+  const trend = (c) => c.median_trend_pct ?? c.trend_pct;
+  const trendRows = rows.filter((c) => trend(c) != null && c.posts >= 6);
   $(`#meta-trend${suffix}-panel`).style.display = trendRows.length ? "" : "none";
   if (trendRows.length) {
-    hbar(`#chart-meta-trend${suffix}`, trendRows.map((c) => c.candidate), trendRows.map((c) => c.trend_pct),
-      trendRows.map((c) => c.trend_pct >= 0 ? GOOD : CRITICAL), { labelFmt: (v) => (v >= 0 ? "+" : "") + v + "%" });
+    hbar(`#chart-meta-trend${suffix}`, trendRows.map((c) => c.candidate), trendRows.map(trend),
+      trendRows.map((c) => trend(c) >= 0 ? GOOD : CRITICAL), { labelFmt: (v) => (v >= 0 ? "+" : "") + v + "%" });
   }
 }
 function renderReaction(suffix, rows) {
   const withReaction = rows.filter((c) => c.comments > 0);
-  hbar100(`#chart-meta-reaction${suffix}`, withReaction.map((c) => `${cap(c.candidate)} (${c.comments})`), [
+  hbar100(`#chart-meta-reaction${suffix}`, withReaction.map((c) => `${esc(cap(c.candidate))} (${c.comments})`), [
     { name: "Positivo", data: withReaction.map((c) => c.positive_pct) },
     { name: "Neutral", data: withReaction.map((c) => c.neutral_pct) },
     { name: "Negativo", data: withReaction.map((c) => c.negative_pct) }], [GOOD, NEUTRAL_TONE, CRITICAL]);
@@ -538,7 +613,7 @@ async function investigateProfile() {
   const btn = $("#inv-go"); btn.disabled = true; btn.textContent = "Investigando…";
   $("#inv-result").innerHTML = `<div class="empty">Consultando ${esc(url)}…</div>`;
   try {
-    const r = await fetch(`/api/investigate?${new URLSearchParams({ url, platform })}`);
+    const r = await post("/api/investigate", { url, platform });
     const data = await r.json();
     if (!r.ok) { $("#inv-result").innerHTML = `<div class="empty">${esc(data.error || "No se pudo investigar ese perfil.")}</div>`; return; }
     if (!data.total_posts) { $("#inv-result").innerHTML = `<div class="empty">Sin publicaciones recientes encontradas para esa cuenta.</div>`; return; }
@@ -551,8 +626,8 @@ async function investigateProfile() {
       </div>
       <div class="feed">${data.posts.map((p) => `<article class="item">
         <div class="body">
-          <div class="meta"><span>${esc(p.author || "")}</span><span>${p.published_at ? fmtDate(p.published_at) : ""}</span>${p.url ? `<a href="${p.url}" target="_blank" rel="noopener">ver original ↗</a>` : ""}</div>
-          <div class="text">${esc(p.text).slice(0, 200)}</div>
+          <div class="meta"><span>${esc(p.author || "")}</span><span>${p.published_at ? fmtDate(p.published_at) : ""}</span>${p.url ? `<a href="${safeUrl(p.url)}" target="_blank" rel="noopener">ver original ↗</a>` : ""}</div>
+          <div class="text">${clip(p.text, 200)}</div>
         </div>
         <div class="side"><div class="hint">❤️ ${fmtNum(p.likes)} · 💬 ${fmtNum(p.comments)}${p.views ? ` · 👁 ${fmtNum(p.views)}` : ""}</div></div>
       </article>`).join("")}</div>`;
@@ -614,10 +689,10 @@ function expandTopicCard(prefix, i, { scroll = false } = {}) {
 }
 
 /* ---------- perfil de candidato: se abre al tocar la tarjeta de Carlos o de un rival ---------- */
-const TAB_LABELS = { resumen: "resumen", candidatos: "candidatos" };
+const TAB_LABELS = { resumen: "resumen", candidatos: "candidatos", analisis: "análisis", agenda: "agenda" };
 let lastTab = "resumen";
 async function openProfile(candidateId, name) {
-  document.querySelectorAll(".tab").forEach((x) => x.classList.remove("active"));
+  document.querySelectorAll(".side-nav .tab").forEach((x) => { x.classList.remove("active"); x.removeAttribute("aria-current"); });
   document.querySelectorAll(".tabpane").forEach((p) => p.classList.toggle("active", p.id === "tab-perfil"));
   $("#perfil-back").textContent = `← Volver a ${TAB_LABELS[lastTab] || "resumen"}`;
   window.scrollTo({ top: 0 });
@@ -639,11 +714,7 @@ async function openProfile(candidateId, name) {
   renderTopicCards("#perfil-topics", "#read-perfil-topics", topics, "perfil-t");
   renderFeedList("#perfil-feed", feed);
 }
-function closeProfile() {
-  document.querySelectorAll(".tab").forEach((x) => x.classList.toggle("active", x.dataset.tab === lastTab));
-  document.querySelectorAll(".tabpane").forEach((p) => p.classList.toggle("active", p.id === `tab-${lastTab}`));
-  window.scrollTo({ top: 0 });
-}
+function closeProfile() { showTab(lastTab); }
 
 async function loadStatus() {
   const s = await j("/health");
@@ -686,14 +757,66 @@ function loadCandidatesTab(rows) {
     </button>`).join("");
 }
 
+/* ---------- carga por pestaña ----------
+   Antes loadAll() pedía TODO (unas 25 rutas y 40 gráficas, incluidas las de pestañas ocultas) al
+   abrir la página y otra vez cada 2 minutos, aunque nadie estuviera mirando. Ahora cada pestaña
+   carga lo suyo al abrirse, se recuerda con qué período se cargó, y la actualización automática
+   solo refresca la pestaña visible y solo si la ventana está a la vista. */
+let summaryPromise = null, summaryFor = null;
+function ensureSummary(force = false) {
+  if (force || !summaryPromise || summaryFor !== days()) { summaryFor = days(); summaryPromise = loadSummary(); }
+  return summaryPromise;
+}
+const TAB_LOADERS = {
+  resumen: async () => { await ensureSummary(true); await Promise.all([loadAlerts(), loadSocialStrong()]); },
+  candidatos: async () => { const rows = await ensureSummary(); loadCandidatesTab(rows);
+    await Promise.all([loadTopics(), loadPositivityCI(rows), (typeof loadCouncil === "function" ? loadCouncil() : null)]); },
+  publicaciones: async () => { await ensureSummary(); await Promise.all([loadFeed(), loadFeedYoutube(), loadFeedReddit(), loadMeta()]); },
+  meta: () => Promise.all([loadMeta(), loadMetaAnalytics(), loadMetaInsights()]),
+  analisis: async () => { const rows = await ensureSummary(); loadQuadrant(rows);
+    await Promise.all([loadTimeline(rows), loadSources(), loadTopics(), loadConversation()]); },
+  ciudad: () => Promise.all([loadCity(), loadCityFeed()]),
+  historico: () => Promise.all([loadHistorico(), loadInstitutionalHistory(), loadCityHistory()]),
+  agenda: () => loadAgenda(),
+  reporte: () => loadReporte(),
+};
+const loadedTabs = {};  // pestaña -> {days, at}
+let activeTab = "resumen";
+async function ensureTab(tab, { force = false } = {}) {
+  const loader = TAB_LOADERS[tab];
+  if (!loader) return;
+  const prev = loadedTabs[tab];
+  if (!force && prev && prev.days === days() && Date.now() - prev.at < 120000) return;
+  loadedTabs[tab] = { days: days(), at: Date.now() };
+  const pane = $(`#tab-${tab}`);
+  pane?.setAttribute("aria-busy", "true");
+  try { await loader(); }
+  catch (e) { delete loadedTabs[tab]; console.error(`pestaña ${tab}:`, e); }
+  finally { pane?.removeAttribute("aria-busy"); }
+}
+/* ApexCharts mide el ancho del contenedor al dibujar: en una pestaña o sub-pestaña oculta mide 0.
+   Al mostrarla se dispara un resize para que vuelva a medir (las gráficas escuchan ese evento). */
+function remeasureCharts() { requestAnimationFrame(() => { pruneCharts(); flushPendingCharts(); window.dispatchEvent(new Event("resize")); }); }
+function showTab(tab, { push = true } = {}) {
+  if (!document.getElementById(`tab-${tab}`) || tab === "perfil") tab = "resumen";
+  activeTab = lastTab = tab;
+  document.querySelectorAll(".side-nav .tab").forEach((x) => {
+    const on = x.dataset.tab === tab;
+    x.classList.toggle("active", on);
+    if (on) x.setAttribute("aria-current", "page"); else x.removeAttribute("aria-current");
+  });
+  document.querySelectorAll(".tabpane").forEach((p) => p.classList.toggle("active", p.id === `tab-${tab}`));
+  if (push && location.hash !== `#${tab}`) history.replaceState(null, "", `#${tab}`);
+  $(".sidebar")?.classList.remove("open");
+  $("#menu-toggle")?.setAttribute("aria-expanded", "false");
+  window.scrollTo({ top: 0 });
+  remeasureCharts();
+  return ensureTab(tab);
+}
+function invalidateAll() { for (const k of Object.keys(loadedTabs)) delete loadedTabs[k]; summaryPromise = null; peoplePromise = null; }
 async function loadAll() {
-  const rows = await loadSummary();
-  loadQuadrant(rows);
-  loadCandidatesTab(rows);
-  await Promise.all([loadTimeline(rows), loadSources(), loadTopics(), loadAlerts(), loadSocialStrong(),
-    loadFeed(), loadFeedYoutube(), loadFeedReddit(), loadMeta(), loadMetaAnalytics(), loadStatus(), loadCity(),
-    loadCityFeed(), loadHistorico(), loadInstitutionalHistory(), loadAgenda(), loadReporte(),
-    (typeof loadCouncil === "function" ? loadCouncil() : null)]);
+  invalidateAll();
+  await Promise.all([showTab(activeTab, { push: false }), loadStatus()]);
 }
 
 /* ---------- Reporte diario ---------- */
@@ -703,7 +826,7 @@ async function loadReporte() {
   const dates = list.map((r) => r.date);
   const sel = $("#rep-date");
   const cur = sel.value;
-  sel.innerHTML = dates.length ? dates.map((d) => `<option value="${d}">${d}</option>`).join("")
+  sel.innerHTML = dates.length ? dates.map((d) => `<option value="${esc(d)}">${esc(d)}</option>`).join("")
     : `<option value="">Sin reportes todavía</option>`;
   sel.value = dates.includes(cur) ? cur : (dates[0] || "");
   if (sel.value) await showReport(sel.value);
@@ -761,8 +884,8 @@ async function showReport(date) {
     <section class="panel alerts">
       <div class="panel-head"><h2>Actividad fuerte en redes</h2></div>
       <ul>${r.strong_social.length ? r.strong_social.map((p) => `<li>
-        <span class="tag positive">${p.multiplier}×</span> <b>${esc(p.candidate)}</b>: ${esc(p.text).slice(0, 160)}
-        <div class="meta">${SRC_LABEL[p.platform] || p.platform} · ❤️ ${fmtNum(p.likes)} · 💬 ${fmtNum(p.comments)}${p.url ? ` · <a href="${p.url}" target="_blank" rel="noopener">ver</a>` : ""}</div>
+        <span class="tag positive">${p.multiplier}×</span> <b>${esc(p.candidate)}</b>: ${clip(p.text, 160)}
+        <div class="meta">${esc(SRC_LABEL[p.platform] || p.platform)} · ❤️ ${fmtNum(p.likes)} · 💬 ${fmtNum(p.comments)}${p.url ? ` · <a href="${safeUrl(p.url)}" target="_blank" rel="noopener">ver</a>` : ""}</div>
       </li>`).join("") : `<li class="empty">Sin publicaciones fuera de lo habitual.</li>`}</ul>
     </section>
     <section class="panel">
@@ -771,11 +894,11 @@ async function showReport(date) {
     </section>
     <section class="panel alerts">
       <div class="panel-head"><h2>Temas de ciudad de los que Carlos no ha hablado</h2><span class="hint">categorías con conversación real en la ciudad, sin ninguna publicación de Carlos</span></div>
-      <ul>${gaps.length ? gaps.map((g) => `<li><b>${cap(g.category)}</b>: ${g.count} menciones en la ciudad, 0 de Carlos</li>`).join("") : `<li class="empty">Carlos tiene al menos una mención en todas las categorías activas.</li>`}</ul>
+      <ul>${gaps.length ? gaps.map((g) => `<li><b>${esc(cap(g.category))}</b>: ${g.count} menciones en la ciudad, 0 de Carlos</li>`).join("") : `<li class="empty">Carlos tiene al menos una mención en todas las categorías activas.</li>`}</ul>
     </section>
     <section class="panel alerts">
       <div class="panel-head"><h2>Novedades donde Carlos podría hablar</h2></div>
-      <ul>${r.city_opportunities.novedades.length ? r.city_opportunities.novedades.map((t) => `<li><b>${cap(t.topic)}</b> <span class="hint">(${cap(t.category)})</span>: ${t.count} menciones · Carlos: ${t.carlos_mentions === 0 ? "sin presencia" : `${t.carlos_mentions} menciones`}</li>`).join("") : `<li class="empty">Sin novedades sin presencia de Carlos en el período.</li>`}</ul>
+      <ul>${r.city_opportunities.novedades.length ? r.city_opportunities.novedades.map((t) => `<li><b>${esc(cap(t.topic))}</b> <span class="hint">(${esc(cap(t.category))})</span>: ${t.count} menciones · Carlos: ${t.carlos_mentions === 0 ? "sin presencia" : `${t.carlos_mentions} menciones`}</li>`).join("") : `<li class="empty">Sin novedades sin presencia de Carlos en el período.</li>`}</ul>
     </section>
     ${n ? `
     <section class="panel alerts">
@@ -786,7 +909,7 @@ async function showReport(date) {
       <div class="panel-head"><h2>Pendiente de análisis</h2><span class="hint">${r.pending_review.total} menciones totales sin clasificar aún, algunas de muestra abajo</span></div>
       <div class="feed">${r.pending_review.samples.length ? r.pending_review.samples.map((s) => `<article class="item">
         <div class="body">
-          <div class="meta"><span class="cand">${esc(s.candidate)}</span><span class="tag src">${esc(s.source)}</span>${s.url ? `<a href="${s.url}" target="_blank" rel="noopener">ver original ↗</a>` : ""}</div>
+          <div class="meta"><span class="cand">${esc(s.candidate)}</span><span class="tag src">${esc(s.source)}</span>${s.url ? `<a href="${safeUrl(s.url)}" target="_blank" rel="noopener">ver original ↗</a>` : ""}</div>
           <div class="text">${esc(s.text)}</div>
         </div>
       </article>`).join("") : `<div class="empty">Nada pendiente por ahora.</div>`}</div>
@@ -803,7 +926,7 @@ async function showReport(date) {
       trendRows.map((c) => c.trend_pct >= 0 ? GOOD : CRITICAL), { labelFmt: (v) => (v >= 0 ? "+" : "") + v + "%" });
   }
   const withReaction = reaction.filter((c) => c.comments > 0);
-  hbar100("#chart-rep-reaction", withReaction.map((c) => `${cap(c.candidate)} (${c.comments})`), [
+  hbar100("#chart-rep-reaction", withReaction.map((c) => `${esc(cap(c.candidate))} (${c.comments})`), [
     { name: "Positivo", data: withReaction.map((c) => c.positive_pct) },
     { name: "Neutral", data: withReaction.map((c) => c.neutral_pct) },
     { name: "Negativo", data: withReaction.map((c) => c.negative_pct) }], [GOOD, NEUTRAL_TONE, CRITICAL]);
@@ -812,36 +935,61 @@ async function showReport(date) {
 $("#rep-date")?.addEventListener("change", () => showReport($("#rep-date").value));
 $("#rep-generate")?.addEventListener("click", async () => {
   const b = $("#rep-generate"); b.disabled = true; b.textContent = "Generando…";
-  try { await fetch("/api/reports/generate", { method: "POST" }); await loadReporte(); }
+  try {
+    const r = await post("/api/reports/generate");
+    if (r.status === 429) { const d = await r.json(); notify(d.error || "Espera un momento antes de regenerar."); }
+    else if (!r.ok) notify("No se pudo generar el reporte.", "error");
+    await loadReporte();
+  }
   finally { b.disabled = false; b.textContent = "Generar el de hoy"; }
 });
 $("#rep-pdf")?.addEventListener("click", () => {
   const d = $("#rep-date").value;
-  if (d) window.open(`/api/reports/${d}/pdf`, "_blank");
+  if (d) window.open(`/api/reports/${encodeURIComponent(d)}/pdf`, "_blank", "noopener");
 });
 
-document.querySelectorAll(".side-nav .tab").forEach((b) => b.addEventListener("click", () => {
-  lastTab = b.dataset.tab;
-  document.querySelectorAll(".tab").forEach((x) => x.classList.toggle("active", x === b));
-  document.querySelectorAll(".tabpane").forEach((p) => p.classList.toggle("active", p.id === `tab-${b.dataset.tab}`));
-  window.scrollTo({ top: 0 });
-  $(".sidebar")?.classList.remove("open");
-  $("#menu-toggle")?.setAttribute("aria-expanded", "false");
-}));
+document.querySelectorAll(".side-nav .tab").forEach((b) => b.addEventListener("click", () => showTab(b.dataset.tab)));
 $("#menu-toggle")?.addEventListener("click", () => {
   const open = $(".sidebar").classList.toggle("open");
   $("#menu-toggle").setAttribute("aria-expanded", String(open));
 });
-document.querySelectorAll(".sub-nav .subtab").forEach((b) => b.addEventListener("click", () => {
-  document.querySelectorAll(".sub-nav .subtab").forEach((x) => x.classList.toggle("active", x === b));
-  document.querySelectorAll(".subtabpane").forEach((p) => p.classList.toggle("active", p.id === `subtab-${b.dataset.subtab}`));
-}));
+document.querySelectorAll(".sub-nav").forEach((nav) => {
+  nav.setAttribute("role", "tablist");
+  nav.querySelectorAll(".subtab").forEach((b) => {
+    b.setAttribute("role", "tab");
+    b.setAttribute("aria-selected", String(b.classList.contains("active")));
+    b.addEventListener("click", () => {
+      nav.querySelectorAll(".subtab").forEach((x) => { x.classList.toggle("active", x === b); x.setAttribute("aria-selected", String(x === b)); });
+      const scope = nav.parentElement;
+      scope.querySelectorAll(":scope > .subtabpane").forEach((p) => p.classList.toggle("active", p.id === `subtab-${b.dataset.subtab}`));
+      remeasureCharts();
+    });
+  });
+});
 $("#perfil-back")?.addEventListener("click", closeProfile);
 document.addEventListener("click", (e) => {
   const card = e.target.closest("[data-candidate-id]");
   if (card) openProfile(Number(card.dataset.candidateId), card.dataset.name);
 });
-$("#days").addEventListener("change", loadAllSafely);
+/* Período elegido: se recuerda en este navegador (si el almacenamiento está disponible). */
+try { const saved = localStorage.getItem("monitor.days"); if (saved && [...$("#days").options].some((o) => o.value === saved)) $("#days").value = saved; } catch (e) { /* modo privado */ }
+$("#days").addEventListener("change", () => {
+  try { localStorage.setItem("monitor.days", $("#days").value); } catch (e) { /* sin almacenamiento */ }
+  loadAll();
+});
+/* Las 4 listas de temas y emociones (Prensa, YouTube, Reddit, Ciudad) salen de una sola lista
+   aquí, en vez de repetir 17 + 7 <option> a mano en cada filtro del HTML. */
+const CATEGORY_OPTIONS = ["seguridad", "movilidad y transporte", "terremoto y reconstrucción", "servicios públicos", "salud",
+  "educación", "empleo y economía", "vivienda", "medio ambiente y clima", "cultura y eventos", "deporte",
+  "corrupción y gobierno", "política y elecciones", "orden público y protestas", "infraestructura y obras", "animales", "otro"];
+const EMOTION_OPTIONS = [["ira", "Ira"], ["miedo", "Miedo"], ["asco", "Asco / repulsión"], ["tristeza", "Tristeza"],
+  ["felicidad", "Felicidad"], ["sorpresa", "Sorpresa"], ["sin emoción marcada", "Sin emoción marcada"]];
+document.querySelectorAll("select[data-fill='categories']").forEach((sel) => {
+  sel.insertAdjacentHTML("beforeend", CATEGORY_OPTIONS.map((c) => `<option value="${esc(c)}">${esc(cap(c))}</option>`).join(""));
+});
+document.querySelectorAll("select[data-fill='emotions']").forEach((sel) => {
+  sel.insertAdjacentHTML("beforeend", EMOTION_OPTIONS.map(([v, l]) => `<option value="${esc(v)}">${esc(l)}</option>`).join(""));
+});
 ["#f-candidate", "#f-label", "#f-emotion", "#f-category"].forEach((id) => $(id).addEventListener("change", loadFeed));
 ["#yt-f-candidate", "#yt-f-label", "#yt-f-emotion", "#yt-f-category"].forEach((id) => $(id).addEventListener("change", loadFeedYoutube));
 ["#rd-f-candidate", "#rd-f-label", "#rd-f-emotion", "#rd-f-category"].forEach((id) => $(id).addEventListener("change", loadFeedReddit));
@@ -850,40 +998,34 @@ $("#days").addEventListener("change", loadAllSafely);
 $("#refresh").addEventListener("click", async () => {
   const b = $("#refresh"); b.disabled = true; b.textContent = "Actualizando…";
   const clickedAt = Date.now();
-  // try/finally: si algo de esto falla (red caída, refresh que tarda más de la cuenta), el botón
-  // NO debe quedar "Actualizando…" deshabilitado para siempre -- antes eso pasaba.
   try {
-    await fetch("/api/refresh", { method: "POST" });
-    // Antes esperaba 25s fijos sin importar cuánto tardara en realidad; ahora consulta /health
-    // hasta ver una corrida terminada después del clic (las fuentes ya corren en paralelo, así
-    // que normalmente termina mucho antes). 90s es solo un salvavidas por si algo se cuelga.
-    const deadline = Date.now() + 90000;
-    while (Date.now() < deadline) {
-      await new Promise((r) => setTimeout(r, 1500));
-      const s = await j("/health");
-      if (s.last_run && new Date(s.last_run + "Z").getTime() > clickedAt) break;
+    const r = await post("/api/refresh");
+    if (r.status === 429) { const d = await r.json(); notify(`La captura no se relanzó: ${d.reason || "ya hay una en curso"}.`); }
+    else if (!r.ok) { notify("No se pudo iniciar la actualización.", "error"); return; }
+    else {
+      // Consulta /health hasta ver una corrida terminada después del clic (90 s como salvavidas).
+      const deadline = Date.now() + 90000;
+      while (Date.now() < deadline) {
+        await new Promise((res) => setTimeout(res, 1500));
+        const s = await j("/health");
+        if (s.last_run && new Date(s.last_run + "Z").getTime() > clickedAt) break;
+      }
     }
     await loadAll();
-  } catch (err) {
-    console.error("actualizar ahora falló:", err);
-  } finally {
-    b.disabled = false; b.textContent = "Actualizar ahora";
-  }
+  } catch (e) { notify("La actualización falló; revisa la conexión.", "error"); }
+  finally { b.disabled = false; b.textContent = "Actualizar ahora"; }
 });
-/* Si algo falla en loadAll() (red caída, sesión de Cloudflare Access vencida, un endpoint que
-   tira error), antes quedaba en silencio total -- Promise.all revienta con la primera falla y
-   nadie se entera. Ahora al menos se avisa en la cabecera en vez de dejar todo con datos viejos
-   sin ninguna señal. setInterval igual reintenta solo cada 2 minutos. */
-async function loadAllSafely() {
-  try {
-    await loadAll();
-  } catch (err) {
-    console.error("loadAll falló:", err);
-    if ($("#last-run")) $("#last-run").textContent = "No se pudo actualizar -- reintentando…";
-  }
-}
-loadAllSafely();
-setInterval(loadAllSafely, 120000);
+window.addEventListener("hashchange", () => showTab(location.hash.slice(1), { push: false }));
+activeTab = location.hash.slice(1) || "resumen";
+/* Tras DOMContentLoaded: así todo este archivo (y council.js) ya está evaluado. Arrancar antes
+   rompía al abrir directo una pestaña como #historico (variables aún no inicializadas). */
+document.addEventListener("DOMContentLoaded", loadAll);
+/* Auto-actualización: solo la pestaña visible, y solo si la ventana está a la vista. */
+setInterval(() => {
+  if (document.visibilityState !== "visible") return;
+  ensureTab(activeTab, { force: true });
+  loadStatus().catch(() => {});
+}, 120000);
 
 /* ---------- ciudad ---------- */
 const CAT_COLOR = BLUE;
@@ -905,7 +1047,7 @@ async function loadCity() {
 
   $("#city-kpis").innerHTML = `
     <div class="kpi"><div class="label">Menciones sobre la ciudad</div><div class="value">${kpis.total}</div><div class="foot">noticias, videos, posts y comentarios · ${periodLabel()}</div></div>
-    <div class="kpi"><div class="label">Tema del que más se habla</div><div class="value" style="font-size:20px">${cap(kpis.top_category || "—")}</div><div class="foot">por número de menciones</div></div>
+    <div class="kpi"><div class="label">Tema del que más se habla</div><div class="value" style="font-size:20px">${esc(cap(kpis.top_category || "—"))}</div><div class="foot">por número de menciones</div></div>
     <div class="kpi"><div class="label">Emoción dominante</div><div class="value" style="font-size:20px">${topEmotion ? cap(topEmotion.emotion) : "—"}</div><div class="foot">${topEmotion ? `${topEmotion.count} menciones` : ""}</div></div>
     <div class="kpi"><div class="label">Molestia ciudadana</div><div class="value ${kpis.negative_pct >= 40 ? "neg" : ""}">${kpis.total ? kpis.negative_pct + "%" : "—"}</div><div class="foot">menciones con queja, miedo o indignación</div></div>`;
 
@@ -913,7 +1055,7 @@ async function loadCity() {
     { onClick: (idx) => expandTopicCard("city-t", idx, { scroll: true }) });
 
   const scored = topics.filter((t) => t.count > 0);
-  hbar100("#chart-city-perception", scored.map((t) => `${cap(t.category)} (${t.count})`), [
+  hbar100("#chart-city-perception", scored.map((t) => `${esc(cap(t.category))} (${t.count})`), [
     { name: "Molestia", data: scored.map((t) => pct(t.negative, t.count)) },
     { name: "Informativa", data: scored.map((t) => pct(t.neutral, t.count)) },
     { name: "A favor", data: scored.map((t) => pct(t.positive, t.count)) }], [CRITICAL, NEUTRAL_TONE, GOOD]);
@@ -922,7 +1064,7 @@ async function loadCity() {
     emotions.map((e) => EMOTION_COLOR[e.emotion] || MUTED),
     { onClick: (idx) => {
       const e = emotions[idx];
-      $("#city-emotion-detail").innerHTML = `<div class="topic-card"><div class="head"><h3>${cap(e.emotion)}</h3><div>${e.count} menciones</div></div>` +
+      $("#city-emotion-detail").innerHTML = `<div class="topic-card"><div class="head"><h3>${esc(cap(e.emotion))}</h3><div>${e.count} menciones</div></div>` +
         (e.samples.length ? e.samples.map(quote).join("") : `<div class="empty">Sin ejemplos de muestra para esta emoción.</div>`) + `</div>`;
       $("#city-emotion-detail").scrollIntoView({ behavior: "smooth", block: "nearest" });
     } });
@@ -930,9 +1072,9 @@ async function loadCity() {
   const novedades = opps.novedades, strong = opps.carlos_strong;
   $("#city-opps").innerHTML = `
     <div class="opp hot"><h3>Novedades donde Carlos podría hablar</h3>
-      ${novedades.length ? `<ul>${novedades.map((t) => `<li><b>${cap(t.topic)}</b> <span class="hint">(${cap(t.category)})</span>: ${t.count} menciones${t.is_new ? " · tema nuevo" : ` · ${t.trend_pct}% más que el período anterior`} · ${pct(t.positive, t.count)}% a favor, ${pct(t.negative, t.count)}% molestia · Carlos: ${t.carlos_mentions === 0 ? "sin presencia" : `${t.carlos_mentions} menciones`}</li>`).join("")}</ul>` : `<div class="empty">No hay temas nuevos ni en alza sin presencia de Carlos en el período.</div>`}</div>
+      ${novedades.length ? `<ul>${novedades.map((t) => `<li><b>${esc(cap(t.topic))}</b> <span class="hint">(${esc(cap(t.category))})</span>: ${t.count} menciones${t.is_new ? " · tema nuevo" : ` · ${t.trend_pct}% más que el período anterior`} · ${pct(t.positive, t.count)}% a favor, ${pct(t.negative, t.count)}% molestia · Carlos: ${t.carlos_mentions === 0 ? "sin presencia" : `${t.carlos_mentions} menciones`}</li>`).join("")}</ul>` : `<div class="empty">No hay temas nuevos ni en alza sin presencia de Carlos en el período.</div>`}</div>
     <div class="opp strong"><h3>Temas donde Carlos ya suma</h3>
-      ${strong.length ? `<ul>${strong.map((t) => `<li><b>${cap(t.category)}</b>: ${t.carlos_mentions} menciones de Carlos, ${t.carlos_positive_pct}% positivas · la ciudad habló ${t.city_count} veces del tema</li>`).join("")}</ul>` : `<div class="empty">Aún no hay temas con presencia positiva sostenida de Carlos en el período.</div>`}</div>`;
+      ${strong.length ? `<ul>${strong.map((t) => `<li><b>${esc(cap(t.category))}</b>: ${t.carlos_mentions} menciones de Carlos, ${t.carlos_positive_pct}% positivas · la ciudad habló ${t.city_count} veces del tema</li>`).join("")}</ul>` : `<div class="empty">Aún no hay temas con presencia positiva sostenida de Carlos en el período.</div>`}</div>`;
 
   const normalized = topics.map((t) => ({ topic: cap(t.category), count: t.count, positive: t.positive, neutral: t.neutral,
     negative: t.negative, positive_pct: pct(t.positive, t.count), sources: t.sources, samples: t.samples, subtopics: t.subtopics }));
@@ -970,8 +1112,9 @@ async function loadHistorico() {
   const totalNow = topics.reduce((a, t) => a + t.count, 0);
   const totalPrev = topics.reduce((a, t) => a + t.previous, 0);
   const totalTrend = totalPrev ? Math.round((totalNow - totalPrev) / totalPrev * 100) : null;
-  const withTrend = topics.filter((t) => t.trend_pct !== null).sort((a, b) => b.trend_pct - a.trend_pct);
-  const rising = withTrend[0];
+  // Solo cambios con volumen suficiente: "+300%" pasando de 1 a 4 menciones no es una tendencia.
+  const withTrend = topics.filter((t) => t.trend_pct !== null && !t.small_sample).sort((a, b) => b.trend_pct - a.trend_pct);
+  const rising = withTrend.find((t) => t.trend_significant && t.trend_pct > 0) || null;
 
   $("#hist-kpis").innerHTML = `
     <div class="kpi"><div class="label">Menciones ahora</div><div class="value">${totalNow}</div><div class="foot">${periodLabel()}</div></div>
@@ -979,16 +1122,18 @@ async function loadHistorico() {
     <div class="kpi"><div class="label">Variación total</div><div class="value ${totalTrend === null ? "" : totalTrend >= 0 ? "pos" : "neg"}">${totalTrend === null ? "—" : (totalTrend >= 0 ? "+" : "") + totalTrend + "%"}</div><div class="foot">vs el período anterior</div></div>
     <div class="kpi"><div class="label">Más creció</div><div class="value" style="font-size:18px">${rising ? cap(rising.category) : "—"}</div><div class="foot">${rising ? `+${rising.trend_pct}% vs antes` : "sin comparación disponible"}</div></div>`;
 
-  hbar("#chart-hist-trend", withTrend.map((t) => cap(t.category)), withTrend.map((t) => t.trend_pct),
-    withTrend.map((t) => t.trend_pct >= 0 ? GOOD : CRITICAL), { labelFmt: (v) => (v >= 0 ? "+" : "") + v + "%" });
+  hbar("#chart-hist-trend", withTrend.map((t) => cap(t.category) + (t.trend_significant ? "" : " (no concluyente)")), withTrend.map((t) => t.trend_pct),
+    withTrend.map((t) => !t.trend_significant ? NEUTRAL_TONE : t.trend_pct >= 0 ? GOOD : CRITICAL), { labelFmt: (v) => (v >= 0 ? "+" : "") + v + "%" });
 
   const sorted = [...topics].sort((a, b) => b.count - a.count);
   $("#hist-table").innerHTML = sorted.map((t) => {
     const badge = t.previous === 0 && t.count > 0 ? `<span class="tag positive">nuevo</span>`
       : t.trend_pct === null ? `<span class="hint">sin datos previos</span>`
-      : `<span class="tag ${t.trend_pct >= 0 ? "positive" : "negative"}">${t.trend_pct >= 0 ? "+" : ""}${t.trend_pct}%</span>`;
+      : t.small_sample ? `<span class="hint" title="Menos de 10 menciones entre los dos períodos: no alcanza para hablar de tendencia">${t.trend_pct >= 0 ? "+" : ""}${t.trend_pct}% · muestra chica</span>`
+      : !t.trend_significant ? `<span class="tag" title="p = ${t.trend_p}: el cambio cabe dentro de la variación normal">${t.trend_pct >= 0 ? "+" : ""}${t.trend_pct}% · no concluyente</span>`
+      : `<span class="tag ${t.trend_pct >= 0 ? "positive" : "negative"}" title="p = ${t.trend_p}">${t.trend_pct >= 0 ? "+" : ""}${t.trend_pct}% · significativo</span>`;
     return `<div class="pcard"><div style="width:100%">
-        <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><b>${cap(t.category)}</b>
+        <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><b>${esc(cap(t.category))}</b>
           <span class="hint">${t.count} ahora · ${t.previous} antes · ${badge}</span></div>
       </div></div>`;
   }).join("") || `<div class="empty">Sin datos suficientes en el período.</div>`;
@@ -1010,18 +1155,18 @@ async function loadInstitutionalHistory() {
     const counts = a.status_counts;
     const debtLine = a.debt && a.debt.value_billones_cop != null
       ? `<div class="subs"><span class="tag negative">Deuda: ~$${a.debt.value_billones_cop} billones</span></div>
-         <p class="hint" style="margin:4px 0 0">${esc(a.debt.note)} — <a href="${a.debt.source.url}" target="_blank" rel="noopener">fuente: ${esc(a.debt.source.name)}</a></p>`
-      : a.debt ? `<p class="hint" style="margin:6px 0 0">${esc(a.debt.note)} — <a href="${a.debt.source.url}" target="_blank" rel="noopener">fuente: ${esc(a.debt.source.name)}</a></p>` : "";
+         <p class="hint" style="margin:4px 0 0">${esc(a.debt.note)} — <a href="${safeUrl(a.debt.source.url)}" target="_blank" rel="noopener">fuente: ${esc(a.debt.source.name)}</a></p>`
+      : a.debt ? `<p class="hint" style="margin:6px 0 0">${esc(a.debt.note)} — <a href="${safeUrl(a.debt.source.url)}" target="_blank" rel="noopener">fuente: ${esc(a.debt.source.name)}</a></p>` : "";
     const metrics = (a.metrics || []).map((m) => `<div class="pcard" style="margin-top:8px"><div>
         <b>${esc(m.label)}</b>${m.change_pct != null ? ` <span class="tag ${m.change_pct <= 0 ? "positive" : "negative"}">${m.change_pct > 0 ? "+" : ""}${m.change_pct}%</span>` : ""}
         <div class="hint">${esc(m.note)}</div>
-        <div class="hint">Fuente: <a href="${m.source.url}" target="_blank" rel="noopener">${esc(m.source.name)}</a></div>
+        <div class="hint">Fuente: <a href="${safeUrl(m.source.url)}" target="_blank" rel="noopener">${esc(m.source.name)}</a>${m.source.verify ? ` <span class="tag pending">por verificar</span>` : ""}</div>
       </div></div>`).join("");
     const projects = a.projects.map((p) => `<div class="pcard" style="margin-top:8px"><div>
         <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><b>${esc(p.name)}</b><span class="tag ${STATUS_TAG[p.status]}">${esc(p.status)}</span></div>
         <div class="hint">${esc(p.category)}</div>
         <p style="margin:6px 0">${esc(p.description)}</p>
-        <div class="hint">Fuente: <a href="${p.source.url}" target="_blank" rel="noopener">${esc(p.source.name)}</a></div>
+        <div class="hint">Fuente: <a href="${safeUrl(p.source.url)}" target="_blank" rel="noopener">${esc(p.source.name)}</a>${p.source.verify ? ` <span class="tag pending">por verificar</span>` : ""}</div>
       </div></div>`).join("");
     return `<div class="panel">
       <div class="panel-head"><div><h2>${esc(a.mayor)}</h2><span class="hint">${esc(a.period)} · ${esc(a.party)} · <span class="tag ${a.status === "en curso" ? "pending" : "neutral"}">${esc(a.status)}</span></span></div></div>
@@ -1040,7 +1185,7 @@ async function loadInstitutionalHistory() {
 
 /* ---------- agenda ---------- */
 function quote(m) {
-  return `<div class="quote">“${esc(m.text).slice(0, 220)}”<div class="who">${srcName(m)} · ${esc(m.author || "")} · ${fmtDate(m.published_at)}${(m.link || m.url) ? ` · <a href="${m.link || m.url}" target="_blank" rel="noopener">ver ↗</a>` : ""}</div></div>`;
+  return `<div class="quote">“${clip(m.text, 220)}”<div class="who">${srcName(m)} · ${esc(m.author || "")} · ${fmtDate(m.published_at)}${(m.link || m.url) ? ` · <a href="${safeUrl(m.link || m.url)}" target="_blank" rel="noopener">ver ↗</a>` : ""}</div></div>`;
 }
 
 async function loadAgenda() {
@@ -1049,7 +1194,7 @@ async function loadAgenda() {
   const [a, perception] = await Promise.all([j(`/api/agenda?days=${d}`), j(`/api/perception?days=${d}`)]);
 
   $("#agenda-speak").innerHTML = a.speak.map((t, i) => `<div class="agenda-card speak">
-      <div class="head"><h3><span class="rank">${i + 1}</span> ${t.category}</h3>
+      <div class="head"><h3><span class="rank">${i + 1}</span> ${esc(t.category)}</h3>
         <div><span class="tag negative">${t.negative_pct}% molestia</span> <span class="tag">${t.count} menciones</span> ${t.carlos_mentions === 0 ? `<span class="tag">Carlos: sin presencia</span>` : `<span class="tag positive">Carlos: ${t.carlos_mentions} menciones</span>`}</div></div>
       <div class="why">La ciudad habló ${t.count} veces de este tema y ${t.negative_pct}% de esas menciones son quejas o denuncias. ${t.carlos_mentions === 0 ? "<b>Carlos no ha aparecido en la conversación.</b>" : `Carlos ya tiene ${t.carlos_mentions} menciones aquí; hay espacio para reforzar.`}</div>
       ${t.subtopics.length ? `<div class="subs">${t.subtopics.map((x) => `<span class="tag">${esc(x.topic)} · ${x.count}</span>`).join("")}</div>` : ""}
@@ -1057,18 +1202,18 @@ async function loadAgenda() {
     </div>`).join("") || `<div class="empty">No hay temas con molestia alta sin presencia de Carlos en el período.</div>`;
   const top = a.speak[0];
   $("#read-agenda-speak").innerHTML = top
-    ? `La prioridad es <b>${top.category}</b>: ${top.count} menciones con ${top.negative_pct}% de molestia y ${top.carlos_mentions === 0 ? "ninguna mención" : `${top.carlos_mentions} ${top.carlos_mentions === 1 ? "mención" : "menciones"}`} de Carlos. ` +
-      (a.speak[1] ? `Le siguen <b>${a.speak[1].category}</b>${a.speak[2] ? ` y <b>${a.speak[2].category}</b>` : ""}.` : "")
+    ? `La prioridad es <b>${esc(top.category)}</b>: ${top.count} menciones con ${top.negative_pct}% de molestia y ${top.carlos_mentions === 0 ? "ninguna mención" : `${top.carlos_mentions} ${top.carlos_mentions === 1 ? "mención" : "menciones"}`} de Carlos. ` +
+      (a.speak[1] ? `Le siguen <b>${esc(a.speak[1].category)}</b>${a.speak[2] ? ` y <b>${esc(a.speak[2].category)}</b>` : ""}.` : "")
     : "Sin temas prioritarios en el período seleccionado.";
 
   $("#agenda-avoid").innerHTML = a.avoid.map((t) => `<div class="agenda-card avoid">
-      <div class="head"><h3>${t.category}</h3><div><span class="tag negative">${t.candidate_negative_pct}% de rechazo</span> <span class="tag">${t.candidate_comments} reacciones</span></div></div>
+      <div class="head"><h3>${esc(t.category)}</h3><div><span class="tag negative">${t.candidate_negative_pct}% de rechazo</span> <span class="tag">${t.candidate_comments} reacciones</span></div></div>
       <div class="why">Cuando ${t.candidates.length === 1 ? "<b>" + esc(t.candidates[0]) + "</b> habló" : "<b>" + t.candidates.map(esc).join(", ") + "</b> hablaron"} de este tema, ${t.candidate_negative_pct}% de las reacciones ciudadanas fueron en contra. La ciudad lo menciona ${t.city_count} veces con ${t.city_negative_pct}% de molestia.</div>
       ${t.subtopics.length ? `<div class="subs">${t.subtopics.map((x) => `<span class="tag">${esc(x.topic)} · ${x.count}</span>`).join("")}</div>` : ""}
       ${t.samples.slice(0, 1).map(quote).join("")}
     </div>`).join("") || `<div class="empty">Ningún tema muestra rechazo mayoritario hacia los candidatos que lo tocaron.</div>`;
   $("#read-agenda-avoid").innerHTML = a.avoid.length
-    ? `<b>${a.avoid[0].category}</b> es el terreno más hostil: ${a.avoid[0].candidate_negative_pct}% de las reacciones a quienes lo tocaron fueron negativas. Entrar ahí exige ángulo propio y propuesta concreta, no opinión general.`
+    ? `<b>${esc(a.avoid[0].category)}</b> es el terreno más hostil: ${a.avoid[0].candidate_negative_pct}% de las reacciones a quienes lo tocaron fueron negativas. Entrar ahí exige ángulo propio y propuesta concreta, no opinión general.`
     : "Ningún tema resultó hostil para los candidatos en el período.";
 
   const withComments = perception.filter((r) => r.comments > 0);
@@ -1080,7 +1225,7 @@ async function loadAgenda() {
   const worst = [...withComments].sort((a, b) => b.negative_pct - a.negative_pct)[0];
   $("#read-perception").innerHTML = carlos
     ? `A <b>Carlos Arias</b> la gente le responde ${carlos.positive_pct}% a favor y ${carlos.negative_pct}% en contra sobre ${carlos.comments} comentarios. ` +
-      (worst && worst.name !== CARLOS ? `El más golpeado es <b>${worst.name}</b>, con ${worst.negative_pct}% de reacciones en contra (${worst.comments} comentarios).` : "")
+      (worst && worst.name !== CARLOS ? `El más golpeado es <b>${esc(worst.name)}</b>, con ${worst.negative_pct}% de reacciones en contra (${worst.comments} comentarios).` : "")
     : "Aún no hay comentarios ciudadanos sobre las publicaciones de Carlos en el período.";
 
   $("#perception-detail").innerHTML = withComments.map((r) => `<div class="pcard">
@@ -1090,4 +1235,263 @@ async function loadAgenda() {
         ${r.topics.length ? `<div class="subs">${r.topics.map((t) => `<span class="tag">${esc(t.topic)} · ${t.count}</span>`).join("")}</div>` : ""}
         ${r.samples.slice(0, 2).map(quote).join("")}
       </div></div>`).join("") || `<div class="empty">Sin comentarios ciudadanos en el período.</div>`;
+}
+
+
+/* ================================================================================================
+   Nuevas vistas estadísticas (auditoría 2026-09-29, docs/auditoria/04-estadistica-y-estrategia-redes.md)
+   ================================================================================================ */
+
+/* Positividad con su intervalo de confianza del 95% (Wilson): con 5 menciones, "80% positivas"
+   puede ser cualquier cosa entre 38% y 96%; con 300, casi no se mueve. Barras = rango plausible. */
+function loadPositivityCI(rows) {
+  if (!$("#chart-cand-ci")) return;
+  const scored = rows.filter((r) => r.positive_ci).map((r) => ({ ...r, n: r.positive + r.neutral + r.negative }))
+    .sort((a, b) => share(b, "positive") - share(a, "positive"));
+  chart("#chart-cand-ci", {
+    chart: { type: "rangeBar", height: barsHeight("#chart-cand-ci", scored.length) },
+    plotOptions: { bar: { horizontal: true, barHeight: "46%", borderRadius: 3 } },
+    series: [{ name: "Intervalo 95%", data: scored.map((r) => ({
+      x: `${r.name} (n=${r.n})`, y: r.positive_ci, fillColor: r.name === CARLOS ? BLUE : CARLOS_GRAY })) }],
+    xaxis: { min: 0, max: 100, labels: { formatter: (v) => Math.round(v) + "%" } },
+    dataLabels: { enabled: true, formatter: (v, { dataPointIndex }) => `${share(scored[dataPointIndex], "positive")}%`,
+      style: { colors: [INK], fontWeight: 600 } },
+    tooltip: { custom: ({ dataPointIndex }) => { const r = scored[dataPointIndex];
+      return `<div style="padding:6px 10px"><b>${esc(r.name)}</b><br>${share(r, "positive")}% positivas de ${r.n}<br>rango plausible: ${r.positive_ci[0]}% a ${r.positive_ci[1]}%</div>`; } },
+    legend: { show: false },
+  });
+  const c = scored.find((r) => r.name === CARLOS);
+  const overlap = c ? scored.filter((r) => r !== c && r.positive_ci[0] <= c.positive_ci[1] && c.positive_ci[0] <= r.positive_ci[1]).map((r) => r.name) : [];
+  $("#read-cand-ci").innerHTML = c
+    ? `<b>Carlos Arias</b>: ${share(c, "positive")}% positivas sobre ${c.n} menciones clasificadas; el valor real está, con 95% de confianza, entre <b>${c.positive_ci[0]}% y ${c.positive_ci[1]}%</b>. ` +
+      (overlap.length ? `Sus rangos se cruzan con los de ${overlap.map(esc).join(", ")}: con estos datos no se puede afirmar que uno tenga mejor imagen que el otro.` : "Su rango no se cruza con el de ningún rival: la diferencia es estadísticamente clara.")
+    : "Sin menciones clasificadas de Carlos en el período.";
+}
+
+/* Participación en la conversación (share of voice) y sentimiento neto, semana a semana. */
+async function loadConversation() {
+  if (!$("#chart-sov")) return;
+  const d = await j(`/api/conversation/weekly?days=${Math.max(days(), 56)}`);
+  const w = d.weeks.filter((x) => x.all_mentions > 0);
+  chart("#chart-sov", {
+    chart: { type: "bar", height: "100%" },
+    series: [{ name: "Carlos Arias (% de las menciones de candidatos)", data: w.map((x) => x.share_pct) }],
+    xaxis: { categories: w.map((x) => x.week.replace("-S", " · sem ")) },
+    colors: [BLUE], plotOptions: { bar: { borderRadius: 3, columnWidth: "55%" } },
+    dataLabels: { enabled: true, formatter: (v) => v + "%", style: { colors: [INK] }, offsetY: -18 },
+    yaxis: { labels: { formatter: (v) => Math.round(v) + "%" } },
+    tooltip: { y: { formatter: (v, { dataPointIndex }) => `${v}% · ${w[dataPointIndex].mentions} de ${w[dataPointIndex].all_mentions} menciones` } },
+  });
+  const scored = w.filter((x) => x.scored > 0);
+  chart("#chart-net", {
+    chart: { type: "rangeArea", height: "100%" },
+    series: [
+      { type: "rangeArea", name: "Rango plausible (95%)", data: scored.map((x) => ({ x: x.week.replace("-S", " · sem "), y: [x.net_low, x.net_high] })) },
+      { type: "line", name: "Sentimiento neto", data: scored.map((x) => ({ x: x.week.replace("-S", " · sem "), y: x.net_sentiment })) },
+    ],
+    colors: ["#c9dbf3", BLUE], fill: { opacity: [0.5, 1] }, stroke: { curve: "straight", width: [0, 3] },
+    markers: { size: [0, 5] }, yaxis: { min: -100, max: 100, labels: { formatter: (v) => Math.round(v) } },
+    annotations: { yaxis: [{ y: 0, borderColor: MUTED, strokeDashArray: 4 }] },
+    tooltip: { shared: true, custom: ({ dataPointIndex }) => { const x = scored[dataPointIndex];
+      return `<div style="padding:6px 10px"><b>${esc(x.week)}</b><br>neto ${x.net_sentiment} (rango ${x.net_low} a ${x.net_high})<br>${x.scored} menciones clasificadas</div>`; } },
+    legend: { position: "bottom" },
+  });
+  const last = scored[scored.length - 1];
+  const avgShare = w.length ? (w.reduce((a, x) => a + x.share_pct, 0) / w.length).toFixed(1) : 0;
+  $("#read-conversation").innerHTML = w.length
+    ? `En promedio, Carlos concentra el <b>${avgShare}%</b> de las menciones de los candidatos por semana. ` +
+      (last ? `La última semana con datos (${esc(last.week)}) su sentimiento neto fue <b>${last.net_sentiment}</b> sobre ${last.scored} menciones` +
+        (last.scored < 15 ? `: con tan pocas menciones el rango va de ${last.net_low} a ${last.net_high}, así que no permite concluir si mejoró o empeoró.` : ".") : "")
+    : "Sin menciones de candidatos en el período.";
+}
+
+/* Qué le funciona a cada cuenta: alcance RELATIVO (1,0 = una publicación típica de esa cuenta). */
+async function loadMetaInsights() {
+  if (!$("#chart-ins-format")) return;
+  const d = await j(`/api/social/insights?days=${Math.max(days(), 60)}`);
+  const relBars = (id, rowsAll, rowsMine) => {
+    const keys = rowsAll.map((r) => r.key);
+    // Celdas de Carlos con menos de 5 publicaciones no se dibujan: un solo reel viral un sábado
+    // no demuestra que el sábado funcione (salía 16× y aplastaba la escala).
+    const mine = Object.fromEntries(rowsMine.filter((r) => r.conclusive).map((r) => [r.key, r]));
+    chart(id, {
+      chart: { type: "bar", height: "100%" },
+      series: [{ name: "Todas las cuentas", data: rowsAll.map((r) => r.median_rel) },
+               { name: "Carlos Arias", data: keys.map((k) => mine[k] ? mine[k].median_rel : null) }],
+      xaxis: { categories: keys.map((k) => { const a = rowsAll.find((r) => r.key === k); return `${cap(k)} (n=${a.n}${mine[k] ? `/${mine[k].n}` : ""})`; }) },
+      colors: [CARLOS_GRAY, BLUE], plotOptions: { bar: { borderRadius: 3, columnWidth: "58%" } },
+      dataLabels: { enabled: true, formatter: (v) => (v == null ? "" : v.toFixed(2) + "×"), style: { colors: [INK] }, offsetY: -18 },
+      yaxis: { labels: { formatter: (v) => (v == null ? "" : Number(v).toFixed(1) + "×") } },
+      annotations: { yaxis: [{ y: 1, borderColor: MUTED, strokeDashArray: 4, label: { text: "publicación típica", style: { color: MUTED, background: "#fff" } } }] },
+      tooltip: { y: { formatter: (v, { seriesIndex, dataPointIndex }) => {
+        if (v == null) return "sin publicaciones";
+        const r = seriesIndex === 0 ? rowsAll[dataPointIndex] : mine[keys[dataPointIndex]];
+        return `${v.toFixed(2)}× (la mitad central entre ${r.q1}× y ${r.q3}×, n=${r.n}${r.conclusive ? "" : ", no concluyente"})`; } } },
+      legend: { position: "bottom" },
+    });
+  };
+  relBars("#chart-ins-format", d.all.format, d.candidate_dims.format);
+  relBars("#chart-ins-weekday", d.all.weekday, d.candidate_dims.weekday);
+  relBars("#chart-ins-hour", d.all.hour_block, d.candidate_dims.hour_block);
+  const wk = d.weekly;
+  chart("#chart-ins-weekly", {
+    chart: { type: "line", height: "100%" },
+    series: [{ name: "Carlos Arias (mediana)", data: wk.mine }, { name: "Resto de cuentas (mediana)", data: wk.others }],
+    xaxis: { categories: wk.weeks.map((x) => x.replace("-S", " · sem ")) },
+    colors: [BLUE, CARLOS_GRAY], stroke: { width: [3, 2], curve: "straight" }, markers: { size: [5, 3] },
+    yaxis: { labels: { formatter: (v) => fmtNum(Math.round(v)) }, title: { text: "interacciones por publicación" } },
+    tooltip: { shared: true, y: { formatter: (v, { seriesIndex, dataPointIndex }) => v == null ? "sin publicaciones" :
+      `${fmtNum(Math.round(v))}${seriesIndex === 0 ? ` (${wk.mine_n[dataPointIndex]} publicaciones)` : ""}` } },
+    legend: { position: "bottom" },
+  });
+  const cad = d.cadence.filter((r) => r.posts >= 2).slice(0, 18);
+  hbar("#chart-ins-cadence", cad.map((r) => `${r.candidate} · ${SRC_LABEL[r.platform] || r.platform}`), cad.map((r) => r.posts_per_week),
+    cad.map((r) => r.candidate === CARLOS ? BLUE : CARLOS_GRAY), { labelFmt: (v) => v + "/sem" });
+
+  const best = [...d.all.format].filter((r) => r.conclusive).sort((a, b) => b.median_rel - a.median_rel)[0];
+  const worst = [...d.all.format].filter((r) => r.conclusive).sort((a, b) => a.median_rel - b.median_rel)[0];
+  const days7 = d.all.weekday.filter((r) => r.conclusive);
+  const spread = days7.length ? (Math.max(...days7.map((r) => r.median_rel)) - Math.min(...days7.map((r) => r.median_rel))).toFixed(2) : null;
+  const mineCad = d.cadence.filter((r) => r.candidate === CARLOS).reduce((a, r) => a + r.posts_per_week, 0);
+  const others = d.cadence.filter((r) => r.candidate !== CARLOS).map((r) => r.posts_per_week).sort((a, b) => a - b);
+  const medOthers = others.length ? others[Math.floor(others.length / 2)] : null;
+  $("#read-insights").innerHTML =
+    (best && worst ? `En ${d.posts_total} publicaciones, el formato que mejor rinde frente a lo habitual de cada cuenta es <b>${esc(best.key)}</b> (${best.median_rel}×); el que menos, <b>${esc(worst.key)}</b> (${worst.median_rel}×). ` : "") +
+    (spread !== null ? `El día de la semana mueve poco el resultado (diferencia máxima de ${spread}× entre días): pesa más qué y cuánto se publica que cuándo. ` : "") +
+    (medOthers !== null ? `Carlos publica <b>${mineCad.toFixed(1)} veces por semana</b>; la cuenta mediana monitoreada, ${medOthers}. ` : "") +
+    (d.engagement_per_view_pct ? `De cada 100 personas que ven un video suyo, ${d.engagement_per_view_pct} interactúan.` : "");
+}
+
+/* ---------- Histórico 2008 a hoy: indicadores de ciudad por alcaldía ---------- */
+const DOMAIN_ORDER = ["economico", "social", "seguridad", "salud", "transporte"];
+const PERIOD_FILL = ["#eef3fb", "#f7f3ea", "#eef3fb", "#f7f3ea", "#eef7f1"];
+let cityHistory = null;
+function fmtVal(v, ind) {
+  if (v == null) return "—";
+  return Number(v).toLocaleString("es-CO", { minimumFractionDigits: ind.decimals, maximumFractionDigits: ind.decimals });
+}
+function verdictTag(v, partial) {
+  if (!v) return `<span class="hint">sin dato</span>`;
+  const cls = v === "mejoró" ? "positive" : v === "empeoró" ? "negative" : "";
+  return `<span class="tag ${cls}">${esc(v)}${partial ? " *" : ""}</span>`;
+}
+function renderIndicator(ind, idx) {
+  const periods = cityHistory.periods;
+  const box = `city-hist-chart-${idx}`;
+  const rows = ind.periods.map((s) => `<tr><th scope="row">${esc(s.label)}</th>
+      <td>${s.start_year ? `${fmtVal(s.start, ind)} <span class="hint">(${s.start_year}${s.start_is_inherited ? ", recibido" : ""})</span>` : "—"}</td>
+      <td>${s.end_year ? `${fmtVal(s.end, ind)} <span class="hint">(${s.end_year})</span>` : "—"}</td>
+      <td>${s.pct != null ? `${s.pct > 0 ? "+" : ""}${s.pct.toLocaleString("es-CO")}%` : "—"}</td>
+      <td>${verdictTag(s.verdict, s.partial)}</td></tr>`).join("");
+  const o = ind.overall;
+  return `<article class="panel hist-ind" id="hist-ind-${esc(ind.id)}">
+    <div class="panel-head"><div><h2>${esc(ind.label)}</h2><div class="hint">${esc(ind.unit)} · ${ind.better === "lower" ? "menos es mejor" : ind.better === "higher" ? "más es mejor" : "contexto"}</div></div>
+      <div class="hist-overall">${o.first_year} → ${o.last_year}: <b>${fmtVal(o.first, ind)} → ${fmtVal(o.last, ind)}</b> ${verdictTag(o.verdict)}</div></div>
+    <div class="chart-box"><div id="${box}"></div></div>
+    <div class="table-scroll"><table class="hist-table">
+      <thead><tr><th scope="col">Alcaldía</th><th scope="col">Recibió</th><th scope="col">Entregó</th><th scope="col">Cambio</th><th scope="col">Resultado</th></tr></thead>
+      <tbody>${rows}</tbody></table></div>
+    <p class="hint">${esc(ind.notes || "")}</p>
+    <p class="hint">Fuentes: ${ind.sources.map((s) => `<a href="${safeUrl(s.url)}" target="_blank" rel="noopener">${esc(s.name)}</a>`).join(" · ")}</p>
+  </article>`;
+}
+function drawIndicator(ind, idx) {
+  const periods = cityHistory.periods;
+  const pts = ind.points;
+  const x0 = Math.min(...pts.map((p) => p.year)), x1 = Math.max(...pts.map((p) => p.year), 2025);
+  chart(`#city-hist-chart-${idx}`, {
+    chart: { type: "line", height: 260, zoom: { enabled: false } },
+    series: [{ name: ind.label, data: pts.map((p) => ({ x: p.year, y: p.value })) }],
+    xaxis: { type: "numeric", min: x0 - 0.5, max: x1 + 0.5, tickAmount: Math.min(12, x1 - x0 + 1), labels: { formatter: (v) => Math.round(v) } },
+    yaxis: { labels: { formatter: (v) => fmtVal(v, ind) } },
+    colors: [BLUE], stroke: { width: 3, curve: "straight" }, markers: { size: 4 },
+    dataLabels: { enabled: pts.length <= 12, formatter: (v) => fmtVal(v, ind), style: { colors: [INK], fontSize: "10px" }, background: { enabled: false }, offsetY: -6 },
+    // Franjas por alcaldía, detrás de la línea y solo donde hay datos; etiqueta corta para que no se encimen.
+    annotations: { position: "back", xaxis: periods.map((p, i) => ({ p, i })).filter(({ p }) => p.end >= x0 && p.start <= x1).map(({ p, i }) => ({
+      x: Math.max(p.start - 0.5, x0 - 0.5), x2: Math.min(p.end, x1) + 0.5, fillColor: PERIOD_FILL[i], opacity: 0.9, borderColor: "transparent",
+      label: { text: p.label.split(" (")[0], orientation: "horizontal", position: "top", borderWidth: 0, style: { color: INK_SOFT, background: "transparent", fontSize: "9.5px" } } })) },
+    tooltip: { x: { formatter: (v) => `${v}` }, y: { formatter: (v, { dataPointIndex }) => `${fmtVal(v, ind)} ${ind.unit}` } },
+  });
+}
+function showHistDomain(domain) {
+  document.querySelectorAll("#city-hist-nav .subtab").forEach((b) => { const on = b.dataset.domain === domain; b.classList.toggle("active", on); b.setAttribute("aria-selected", String(on)); });
+  const body = $("#city-hist-body");
+  body.innerHTML = "";
+  pruneCharts();
+  if (domain === "comparacion") { renderHistComparison(); return; }
+  if (domain === "conclusiones") { renderHistConclusions(); return; }
+  const inds = cityHistory.indicators.map((ind, i) => ({ ind, i })).filter((x) => x.ind.domain === domain);
+  const events = cityHistory.events.filter((e) => e.domain === domain);
+  const conclusion = cityHistory.conclusions.find((c) => c.domain === domain);
+  body.innerHTML = (conclusion ? `<div class="intro panel"><h2>Lectura del período 2008 a hoy</h2><p class="reading">${esc(conclusion.text)}</p></div>` : "") +
+    (events.length ? `<div class="panel"><div class="panel-head"><h2>Hitos</h2></div><ul class="timeline-list">${events.map((e) =>
+      `<li><b>${e.year}</b> · ${esc(e.title)}. <span class="hint">${esc(e.detail)} <a href="${safeUrl(e.source.url)}" target="_blank" rel="noopener">fuente</a></span></li>`).join("")}</ul></div>` : "") +
+    `<div class="hist-grid">${inds.map((x) => renderIndicator(x.ind, x.i)).join("")}</div>`;
+  inds.forEach((x) => drawIndicator(x.ind, x.i));
+}
+function renderHistComparison() {
+  const { periods, scorecard, balance } = cityHistory;
+  const head = periods.map((p) => `<th scope="col">${esc(p.label)}</th>`).join("");
+  const body = DOMAIN_ORDER.map((dom) => {
+    const rows = scorecard.filter((r) => r.domain === dom);
+    if (!rows.length) return "";
+    const label = cityHistory.domains.find((d) => d.id === dom).label;
+    return `<tr class="group"><th colspan="${periods.length + 1}" scope="rowgroup">${esc(label)}</th></tr>` + rows.map((r) =>
+      `<tr><th scope="row">${esc(r.label)}</th>${r.cells.map((c) => `<td class="v-${c.verdict ? c.verdict.replace("ó", "o") : "none"}${c.partial ? " partial" : ""}">${c.verdict ? `${esc(c.verdict)}${c.pct != null ? `<br><span>${c.pct > 0 ? "+" : ""}${c.pct.toLocaleString("es-CO")}%</span>` : ""}${c.partial ? " *" : ""}` : "sin dato"}</td>`).join("")}</tr>`).join("");
+  }).join("");
+  $("#city-hist-body").innerHTML = `
+    <section class="panel big"><div class="panel-head"><div><h2>Balance por alcaldía</h2><div class="hint">Indicadores que mejoraron, empeoraron o quedaron estables (±2%) entre lo que cada alcaldía recibió y lo que entregó. Solo cuentan los que se pueden medir en el período completo.</div></div></div>
+      <div class="chart-box xl"><div id="chart-hist-balance"></div></div><p class="reading" id="read-hist-balance"></p></section>
+    <section class="panel big"><div class="panel-head"><div><h2>Tablero comparativo</h2><div class="hint">Cambio de cada indicador en cada alcaldía. * = ventana parcial (falta el dato de inicio o de cierre): sirve como referencia, no para comparar alcaldías.</div></div></div>
+      <div class="table-scroll"><table class="hist-table scorecard"><thead><tr><th scope="col">Indicador</th>${head}</tr></thead><tbody>${body}</tbody></table></div>
+      <ul class="hint method">${cityHistory.methodology.map((m) => `<li>${esc(m)}</li>`).join("")}</ul></section>`;
+  chart("#chart-hist-balance", {
+    chart: { type: "bar", stacked: true, height: "100%" },
+    series: [{ name: "Mejoraron", data: balance.map((b) => b.improved) }, { name: "Estables", data: balance.map((b) => b.stable) },
+             { name: "Empeoraron", data: balance.map((b) => b.worsened) }],
+    xaxis: { categories: balance.map((b) => b.label) }, colors: [GOOD, NEUTRAL_TONE, CRITICAL],
+    plotOptions: { bar: { horizontal: true, borderRadius: 3, barHeight: "60%" } },
+    dataLabels: { enabled: true, style: { colors: ["#fff"], fontWeight: 600 } }, legend: { position: "bottom" },
+  });
+  const ranked = balance.map((b) => ({ ...b, net: b.improved - b.worsened, n: b.improved + b.worsened + b.stable })).filter((b) => b.n);
+  const best = [...ranked].sort((a, b) => b.net - a.net)[0], worst = [...ranked].sort((a, b) => a.net - b.net)[0];
+  $("#read-hist-balance").innerHTML = best && worst
+    ? `Con los indicadores medibles de punta a punta, el mejor balance es el de <b>${esc(best.label)}</b> (${best.improved} mejoraron, ${best.worsened} empeoraron) y el más negativo, el de <b>${esc(worst.label)}</b> (${worst.improved} contra ${worst.worsened}), que coincide con la pandemia y el paro nacional. La alcaldía en curso se mide solo hasta el último dato cerrado (2025). El balance cuenta indicadores, no los pondera: una mejora en homicidios pesa lo mismo que una en empresas registradas.`
+    : "";
+}
+function renderHistConclusions() {
+  const { conclusions, strategies, domains } = cityHistory;
+  const label = (id) => domains.find((d) => d.id === id)?.label || id;
+  const indLabel = (id) => cityHistory.indicators.find((i) => i.id === id)?.label || id;
+  $("#city-hist-body").innerHTML = `
+    <section class="panel big"><div class="panel-head"><h2>Qué dicen 17 años de datos</h2></div>
+      ${conclusions.map((c) => `<div class="concl"><span class="tag src">${esc(label(c.domain))}</span><p>${esc(c.text)}</p></div>`).join("")}</section>
+    <section class="panel big"><div class="panel-head"><div><h2>Estrategias para Carlos Arias</h2><div class="hint">Cada una se apoya en indicadores de esta pestaña y está dentro de lo que un concejal y candidato puede hacer: control político, proyectos de acuerdo, propuesta de gobierno y comunicación con datos.</div></div></div>
+      <div class="strategy-grid">${strategies.map((s, i) => `<article class="strategy">
+        <h3><span class="rank">${i + 1}</span> ${esc(s.title)}</h3>
+        <p><b>Por qué:</b> ${esc(s.why)}</p>
+        <p><b>Qué hacer:</b></p><ul>${s.actions.map((a) => `<li>${esc(a)}</li>`).join("")}</ul>
+        <p><b>Viabilidad:</b> ${esc(s.viability)}</p>
+        <p><b>Cómo medir el avance:</b> ${esc(s.measure)}</p>
+        <div class="subs">${s.evidence.map((e) => `<button class="tag linklike" data-goto-ind="${esc(e)}">${esc(indLabel(e))}</button>`).join("")}</div>
+      </article>`).join("")}</div></section>`;
+  $("#city-hist-body").querySelectorAll("[data-goto-ind]").forEach((b) => b.addEventListener("click", () => {
+    const ind = cityHistory.indicators.find((i) => i.id === b.dataset.gotoInd);
+    if (!ind) return;
+    showHistDomain(ind.domain);
+    requestAnimationFrame(() => document.getElementById(`hist-ind-${ind.id}`)?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  }));
+}
+async function loadCityHistory() {
+  if (!$("#city-hist-nav") || cityHistory) return;
+  cityHistory = await j("/api/city-history");
+  const nav = $("#city-hist-nav");
+  nav.innerHTML = DOMAIN_ORDER.map((id, i) => `<button class="subtab${i === 0 ? " active" : ""}" role="tab" aria-selected="${i === 0}" data-domain="${id}">${esc(cityHistory.domains.find((d) => d.id === id).label)}</button>`).join("")
+    + `<button class="subtab" role="tab" aria-selected="false" data-domain="comparacion">Comparación</button><button class="subtab" role="tab" aria-selected="false" data-domain="conclusiones">Conclusiones y estrategias</button>`;
+  nav.querySelectorAll(".subtab").forEach((b) => b.addEventListener("click", () => showHistDomain(b.dataset.domain)));
+  const heads = cityHistory.indicators.filter((i) => i.headline);
+  $("#city-hist-kpis").innerHTML = heads.map((ind) => { const o = ind.overall;
+    return `<div class="kpi"><div class="label">${esc(ind.label)}</div><div class="value ${o.verdict === "mejoró" ? "pos" : o.verdict === "empeoró" ? "neg" : ""}" style="font-size:22px">${fmtVal(o.last, ind)}</div>
+      <div class="foot">${o.last_year} · ${o.first_year}: ${fmtVal(o.first, ind)} (${o.pct > 0 ? "+" : ""}${o.pct.toLocaleString("es-CO")}%)${o.best_year && o.best_year !== o.last_year ? ` · mejor año: ${o.best_year} (${fmtVal(ind.points.find((p) => p.year === o.best_year).value, ind)})` : ""}</div></div>`; }).join("");
+  showHistDomain(DOMAIN_ORDER[0]);
 }

@@ -15,10 +15,12 @@ async function loadCouncil() {
     <div class="kpi"><div class="label">Bancada más visible</div><div class="value" style="font-size:18px">${topParty ? esc(topParty.party) : "—"}</div><div class="foot">${topParty ? `${topParty.mentions} menciones · ${topParty.members} concejales` : ""}</div></div>`;
 
   hbar("#chart-council", withM.map((m) => m.name), withM.map((m) => m.mentions), withM.map((m) => m.name === CARLOS ? BLUE : CARLOS_GRAY));
-  charts["#chart-council"].updateOptions({ tooltip: { custom: ({ dataPointIndex }) => {
+  const councilTip = { custom: ({ dataPointIndex }) => {
     const m = withM[dataPointIndex];
     return `<div style="padding:6px 10px"><b>${esc(m.name)}</b><div class="hint">${esc(m.party || "sin partido")}${m.is_candidate ? " · también candidato a la Alcaldía" : ""}</div></div>`;
-  } } }, false, false);
+  } };
+  if (charts["#chart-council"]) charts["#chart-council"].updateOptions({ tooltip: councilTip }, false, false);
+  else if (pendingCharts["#chart-council"]) pendingCharts["#chart-council"].tooltip = { ...pendingCharts["#chart-council"].tooltip, ...councilTip };
   $("#read-council").innerHTML = withM.length
     ? `De los ${o.members.length} concejales, ${withM.length} tuvieron menciones en ${periodLabel()}. El más mencionado es <b>${esc(withM[0].name)}</b> (${withM[0].mentions}, ${esc(withM[0].party || "sin partido")})` +
       (!carlos ? `; <b>Carlos Arias</b> no registra menciones en el período.`

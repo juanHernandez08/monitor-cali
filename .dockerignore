@@ -1,0 +1,19 @@
+# Nunca dentro de la imagen: secretos, datos y artefactos locales.
+.env
+.env.*
+!.env.example
+monitor.db
+monitor.db*
+*.db
+*.bak*
+data/
+.git/
+.gitattributes
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.claude/
+docs/
+tests/
+scripts/*.ps1

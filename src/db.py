@@ -29,9 +29,28 @@ def _sqlite_pragmas(dbapi_connection, connection_record):
 SessionLocal = sessionmaker(bind=engine, expire_on_commit=False, future=True)
 
 
+# Índices para los filtros que usan todas las consultas del dashboard (candidato, fecha, relevancia).
+# create_all() no agrega índices a tablas que ya existen, así que se crean aquí de forma idempotente.
+_INDEXES = [
+    "CREATE INDEX IF NOT EXISTS ix_mentions_candidate_rel ON mentions (candidate_id, relevant)",
+    "CREATE INDEX IF NOT EXISTS ix_mentions_published ON mentions (published_at)",
+    "CREATE INDEX IF NOT EXISTS ix_mentions_fetched ON mentions (fetched_at)",
+    "CREATE INDEX IF NOT EXISTS ix_mentions_source ON mentions (source_id)",
+    "CREATE INDEX IF NOT EXISTS ix_runs_source_started ON runs (source_id, started_at)",
+]
+
+
 def init_db():
     Base.metadata.create_all(engine)
     _add_missing_columns()
+    _ensure_indexes()
+
+
+def _ensure_indexes():
+    from sqlalchemy import text
+    with engine.begin() as conn:
+        for ddl in _INDEXES:
+            conn.execute(text(ddl))
 
 
 def _add_missing_columns():

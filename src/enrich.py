@@ -38,8 +38,11 @@ def fetch_body(url: str) -> str | None:
 def fetch_article(url: str) -> tuple[str | None, str | None]:
     """(texto principal, URL de la imagen principal) del artículo; None en lo que no se pudo."""
     import trafilatura
+    from src.netsafe import safe_get_text
     try:
-        html = trafilatura.fetch_url(url)
+        # No trafilatura.fetch_url: esa descarga seguiría cualquier URL o redirección, incluidas
+        # direcciones internas del servidor (ver src/netsafe.py).
+        html = safe_get_text(url)
         if not html:
             return None, None
         text = trafilatura.extract(html, include_comments=False, include_tables=False)

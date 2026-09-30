@@ -5,12 +5,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Monitor Alcaldía Cali 2027</title>
 <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v={{ v }}">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#2a78d6">
 <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/dashboard.css?v={{ v }}">
-<script src="https://cdn.jsdelivr.net/npm/apexcharts@3.49.2/dist/apexcharts.min.js"></script>
+<!-- integrity: si el CDN sirviera un archivo alterado, el navegador no lo ejecuta (hash de apexcharts@3.49.2 de npm) -->
+<script src="https://cdn.jsdelivr.net/npm/apexcharts@3.49.2/dist/apexcharts.min.js" integrity="sha384-I+1v4dFOPd0E3t3+sgN7YJrx8JSkxMdTH5ePhkihV+cF71nQgnr5e0DW+IswK/31" crossorigin="anonymous"></script>
 </head>
 <body>
+<a class="skip-link" href="#main">Saltar al contenido</a>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
 <div class="shell">
 <aside class="sidebar">
   <div class="side-brand">
@@ -23,8 +29,8 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
     </button>
   </div>
-  <nav class="side-nav">
-    <button class="tab active" data-tab="resumen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg><span>Resumen</span></button>
+  <nav class="side-nav" aria-label="Secciones del monitor">
+    <button class="tab active" data-tab="resumen" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg><span>Resumen</span></button>
     <button class="tab" data-tab="candidatos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>Candidatos</span></button>
     <button class="tab" data-tab="publicaciones"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v12H8l-4 4z"/><line x1="8" y1="9" x2="16" y2="9"/><line x1="8" y1="13" x2="13" y2="13"/></svg><span>Publicaciones</span></button>
     <button class="tab" data-tab="meta"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5"/><path d="M16 8a4 4 0 1 1-8 0"/></svg><span>Meta y redes</span></button>
@@ -63,7 +69,7 @@
   </div>
 </header>
 
-<main>
+<main id="main" tabindex="-1">
   <div id="tab-resumen" class="tabpane active">
     <section class="kpis" id="kpis"></section>
     <section id="hero" class="hero"></section>
@@ -96,6 +102,11 @@
           <div class="panel-head"><h2>¿Cómo les está yendo?</h2><span class="hint">positivo / neutral / negativo</span></div>
           <div class="chart-box tall" id="chart-cand-sentiment"></div>
         </div>
+      </section>
+      <section class="panel">
+        <div class="panel-head"><div><h2>¿Qué tan seguro es ese porcentaje de positividad?</h2><div class="hint">Rango plausible (intervalo de confianza del 95%) del % de menciones positivas de cada candidato. Con pocas menciones el rango es ancho; si dos rangos se cruzan, los datos no permiten decir que uno está mejor que el otro. Entre paréntesis, menciones clasificadas.</div></div></div>
+        <p class="reading" id="read-cand-ci"></p>
+        <div class="chart-box" id="chart-cand-ci"></div>
       </section>
       <section class="panel">
         <div class="panel-head"><h2>Qué piden o reclaman los ciudadanos</h2><span class="hint">asuntos más mencionados en los comentarios a los candidatos</span></div>
@@ -160,35 +171,11 @@
               <option value="neutral">Neutral</option>
               <option value="positive">Positivo</option>
             </select>
-            <select id="f-emotion" aria-label="Filtrar por emoción">
+            <select id="f-emotion" data-fill="emotions" aria-label="Filtrar por emoción">
               <option value="">Toda emoción</option>
-              <option value="ira">Ira</option>
-              <option value="miedo">Miedo</option>
-              <option value="asco">Asco / repulsión</option>
-              <option value="tristeza">Tristeza</option>
-              <option value="felicidad">Felicidad</option>
-              <option value="sorpresa">Sorpresa</option>
-              <option value="sin emoción marcada">Sin emoción marcada</option>
             </select>
-            <select id="f-category" aria-label="Filtrar por tema">
+            <select id="f-category" data-fill="categories" aria-label="Filtrar por tema">
               <option value="">Todos los temas</option>
-              <option value="seguridad">Seguridad</option>
-              <option value="movilidad y transporte">Movilidad y transporte</option>
-              <option value="terremoto y reconstrucción">Terremoto y reconstrucción</option>
-              <option value="servicios públicos">Servicios públicos</option>
-              <option value="salud">Salud</option>
-              <option value="educación">Educación</option>
-              <option value="empleo y economía">Empleo y economía</option>
-              <option value="vivienda">Vivienda</option>
-              <option value="medio ambiente y clima">Medio ambiente y clima</option>
-              <option value="cultura y eventos">Cultura y eventos</option>
-              <option value="deporte">Deporte</option>
-              <option value="corrupción y gobierno">Corrupción y gobierno</option>
-              <option value="política y elecciones">Política y elecciones</option>
-              <option value="orden público y protestas">Orden público y protestas</option>
-              <option value="infraestructura y obras">Infraestructura y obras</option>
-              <option value="animales">Animales</option>
-              <option value="otro">Otro</option>
             </select>
           </div>
         </div>
@@ -210,13 +197,13 @@
           <div><h2>Publicaciones</h2><span class="hint">ordenadas por alcance (likes + comentarios); toca "ver original" para abrirla</span></div>
           <div class="filters">
             <select id="meta-f-candidate" aria-label="Filtrar por candidato o concejal"><option value="">Todos los candidatos</option></select>
-            <select id="meta-f-platform" aria-label="Filtrar por red social">
+            <select id="meta-f-platform" aria-label="Filtrar por red">
               <option value="">Todas las redes</option>
               <option value="instagram">Instagram</option>
               <option value="facebook">Facebook</option>
               <option value="x">X</option>
             </select>
-            <select id="meta-f-sort" aria-label="Ordenar publicaciones">
+            <select id="meta-f-sort" aria-label="Ordenar">
               <option value="engagement">Más alcance</option>
               <option value="views">Más vistas</option>
               <option value="recent">Más recientes</option>
@@ -239,35 +226,11 @@
               <option value="neutral">Neutral</option>
               <option value="positive">Positivo</option>
             </select>
-            <select id="yt-f-emotion" aria-label="Filtrar por emoción">
+            <select id="yt-f-emotion" data-fill="emotions" aria-label="Filtrar por emoción">
               <option value="">Toda emoción</option>
-              <option value="ira">Ira</option>
-              <option value="miedo">Miedo</option>
-              <option value="asco">Asco / repulsión</option>
-              <option value="tristeza">Tristeza</option>
-              <option value="felicidad">Felicidad</option>
-              <option value="sorpresa">Sorpresa</option>
-              <option value="sin emoción marcada">Sin emoción marcada</option>
             </select>
-            <select id="yt-f-category" aria-label="Filtrar por tema">
+            <select id="yt-f-category" data-fill="categories" aria-label="Filtrar por tema">
               <option value="">Todos los temas</option>
-              <option value="seguridad">Seguridad</option>
-              <option value="movilidad y transporte">Movilidad y transporte</option>
-              <option value="terremoto y reconstrucción">Terremoto y reconstrucción</option>
-              <option value="servicios públicos">Servicios públicos</option>
-              <option value="salud">Salud</option>
-              <option value="educación">Educación</option>
-              <option value="empleo y economía">Empleo y economía</option>
-              <option value="vivienda">Vivienda</option>
-              <option value="medio ambiente y clima">Medio ambiente y clima</option>
-              <option value="cultura y eventos">Cultura y eventos</option>
-              <option value="deporte">Deporte</option>
-              <option value="corrupción y gobierno">Corrupción y gobierno</option>
-              <option value="política y elecciones">Política y elecciones</option>
-              <option value="orden público y protestas">Orden público y protestas</option>
-              <option value="infraestructura y obras">Infraestructura y obras</option>
-              <option value="animales">Animales</option>
-              <option value="otro">Otro</option>
             </select>
           </div>
         </div>
@@ -287,35 +250,11 @@
               <option value="neutral">Neutral</option>
               <option value="positive">Positivo</option>
             </select>
-            <select id="rd-f-emotion" aria-label="Filtrar por emoción">
+            <select id="rd-f-emotion" data-fill="emotions" aria-label="Filtrar por emoción">
               <option value="">Toda emoción</option>
-              <option value="ira">Ira</option>
-              <option value="miedo">Miedo</option>
-              <option value="asco">Asco / repulsión</option>
-              <option value="tristeza">Tristeza</option>
-              <option value="felicidad">Felicidad</option>
-              <option value="sorpresa">Sorpresa</option>
-              <option value="sin emoción marcada">Sin emoción marcada</option>
             </select>
-            <select id="rd-f-category" aria-label="Filtrar por tema">
+            <select id="rd-f-category" data-fill="categories" aria-label="Filtrar por tema">
               <option value="">Todos los temas</option>
-              <option value="seguridad">Seguridad</option>
-              <option value="movilidad y transporte">Movilidad y transporte</option>
-              <option value="terremoto y reconstrucción">Terremoto y reconstrucción</option>
-              <option value="servicios públicos">Servicios públicos</option>
-              <option value="salud">Salud</option>
-              <option value="educación">Educación</option>
-              <option value="empleo y economía">Empleo y economía</option>
-              <option value="vivienda">Vivienda</option>
-              <option value="medio ambiente y clima">Medio ambiente y clima</option>
-              <option value="cultura y eventos">Cultura y eventos</option>
-              <option value="deporte">Deporte</option>
-              <option value="corrupción y gobierno">Corrupción y gobierno</option>
-              <option value="política y elecciones">Política y elecciones</option>
-              <option value="orden público y protestas">Orden público y protestas</option>
-              <option value="infraestructura y obras">Infraestructura y obras</option>
-              <option value="animales">Animales</option>
-              <option value="otro">Otro</option>
             </select>
           </div>
         </div>
@@ -331,11 +270,11 @@
     <section class="panel">
       <div class="panel-head"><h2>Investigar un perfil</h2><span class="hint">trae publicaciones recientes de CUALQUIER cuenta pública de Instagram/Facebook al momento -- rivales, cuentas nuevas, lo que sea. Consulta puntual, no queda guardada.</span></div>
       <div class="filters" style="margin-bottom:10px">
-        <select id="inv-platform" aria-label="Elegir red social a investigar" style="max-width:130px">
+        <select id="inv-platform" aria-label="Red social" style="max-width:130px">
           <option value="instagram">Instagram</option>
           <option value="facebook">Facebook</option>
         </select>
-        <input id="inv-url" type="text" placeholder="https://www.instagram.com/usuario/" aria-label="URL del perfil de Instagram o Facebook a investigar" style="flex:1;min-width:260px">
+        <input id="inv-url" type="url" inputmode="url" autocomplete="off" aria-label="URL del perfil" placeholder="https://www.instagram.com/usuario/" style="flex:1;min-width:220px">
         <button id="inv-go">Investigar</button>
       </div>
       <div id="inv-result"></div>
@@ -344,11 +283,11 @@
 
     <div class="intro panel"><h2>Candidatos a la Alcaldía</h2></div>
     <section class="panel">
-      <div class="panel-head"><div><h2>Alcance promedio por publicación</h2><div class="hint">likes + comentarios por publicación, candidatos con al menos 2 posts en el período. Carlos en azul.</div></div></div>
+      <div class="panel-head"><div><h2>Alcance típico por publicación</h2><div class="hint">Mediana de likes + comentarios por publicación (la mediana no se deja inflar por un solo post viral). Entre paréntesis, publicaciones medidas; no incluye las de likes ocultos. Carlos en azul.</div></div></div>
       <div class="chart-box" id="chart-meta-reach"></div>
     </section>
     <section class="panel" id="meta-trend-panel" style="display:none">
-      <div class="panel-head"><div><h2>Tendencia de alcance</h2><div class="hint">variación entre la primera y la segunda mitad del período -- verde sube, rojo baja</div></div></div>
+      <div class="panel-head"><div><h2>Tendencia de alcance</h2><div class="hint">Variación de la mediana entre la primera y la segunda mitad del período (cuentas con 6 o más publicaciones). Verde sube, rojo baja.</div></div></div>
       <div class="chart-box" id="chart-meta-trend"></div>
     </section>
     <section class="panel">
@@ -358,7 +297,7 @@
 
     <div class="intro panel"><h2>Concejales</h2><p>No incluye a Carlos Arias ni a Roberto Ortiz -- ya están en la sección de candidatos de arriba.</p></div>
     <section class="panel">
-      <div class="panel-head"><div><h2>Alcance promedio por publicación</h2><div class="hint">likes + comentarios por publicación, concejales con al menos 2 posts en el período.</div></div></div>
+      <div class="panel-head"><div><h2>Alcance típico por publicación</h2><div class="hint">Mediana de likes + comentarios por publicación, concejales con al menos 2 posts medibles en el período.</div></div></div>
       <div class="chart-box" id="chart-meta-reach-council"></div>
     </section>
     <section class="panel" id="meta-trend-council-panel" style="display:none">
@@ -368,6 +307,19 @@
     <section class="panel">
       <div class="panel-head"><div><h2>Reacción de la audiencia</h2><div class="hint">De los comentarios en las publicaciones PROPIAS de cada quien (no menciones de paso): cuántos son positivos, neutrales o negativos.</div></div></div>
       <div class="chart-box" id="chart-meta-reaction-council"></div>
+    </section>
+    <div class="intro panel"><h2>Qué funciona en redes (análisis estadístico)</h2><p>Todas las cifras de esta sección usan <b>alcance relativo</b>: las interacciones de cada publicación divididas por la mediana de su propia cuenta. 1,0× es una publicación típica de esa cuenta y 2,0× el doble de lo habitual. Así una cuenta grande no aplasta a una pequeña. Entre paréntesis, cuántas publicaciones hay detrás de cada barra (todas las cuentas / Carlos). Las publicaciones con likes ocultos no se cuentan.</p><p class="reading" id="read-insights"></p></div>
+    <section class="grid2">
+      <div class="panel"><div class="panel-head"><h2>¿Qué formato rinde más?</h2><span class="hint">reel, carrusel, imagen, video, trino</span></div><div class="chart-box tall"><div id="chart-ins-format"></div></div></div>
+      <div class="panel"><div class="panel-head"><h2>¿Importa el día?</h2><span class="hint">hora Bogotá</span></div><div class="chart-box tall"><div id="chart-ins-weekday"></div></div></div>
+    </section>
+    <section class="grid2">
+      <div class="panel"><div class="panel-head"><h2>¿Importa la franja horaria?</h2><span class="hint">madrugada, mañana, tarde, noche</span></div><div class="chart-box tall"><div id="chart-ins-hour"></div></div></div>
+      <div class="panel"><div class="panel-head"><h2>Ritmo de publicación</h2><span class="hint">publicaciones por semana, por cuenta y red</span></div><div class="chart-box tall" id="chart-ins-cadence"></div></div>
+    </section>
+    <section class="panel">
+      <div class="panel-head"><div><h2>Interacciones por publicación, semana a semana</h2><div class="hint">Mediana semanal de Carlos Arias frente a la mediana del resto de cuentas monitoreadas. La mediana no se deja arrastrar por un solo reel viral.</div></div></div>
+      <div class="chart-box xl"><div id="chart-ins-weekly"></div></div>
     </section>
     <section class="panel" id="meta-narrative-panel" style="display:none">
       <div class="panel-head"><div><h2>Análisis y estrategia</h2><div class="hint" id="meta-narrative-date"></div></div></div>
@@ -408,6 +360,17 @@
       <div class="panel-head"><div><h2>Volumen contra positividad: ¿quién habla mucho y bien?</h2><div class="hint">Cada punto es un candidato. A la derecha, quienes más se mencionan; arriba, quienes mejor imagen tienen. El cuadrante ideal es arriba a la derecha: mucho volumen y buena imagen.</div></div></div>
       <p class="reading" id="read-quadrant"></p>
       <div class="chart-box xl"><div id="chart-quadrant"></div></div>
+    </section>
+
+    <section class="panel big">
+      <div class="panel-head"><div><h2>¿Qué parte de la conversación es de Carlos, semana a semana?</h2><div class="hint">Porcentaje de todas las menciones de candidatos que corresponden a Carlos Arias en cada semana (share of voice). Últimas 8 semanas como mínimo.</div></div></div>
+      <p class="reading" id="read-conversation"></p>
+      <div class="chart-box xl"><div id="chart-sov"></div></div>
+    </section>
+
+    <section class="panel big">
+      <div class="panel-head"><div><h2>Sentimiento neto de Carlos, con su margen</h2><div class="hint">% positivas menos % negativas en cada semana (de −100 a +100). La franja es el rango plausible al 95%: cuanto más ancha, menos menciones hubo y menos se puede concluir.</div></div></div>
+      <div class="chart-box xl"><div id="chart-net"></div></div>
     </section>
 
     <h3 class="section-title">Temas — de qué se habla</h3>
@@ -477,36 +440,12 @@
             <option value="neutral">Neutral</option>
             <option value="positive">Positivo</option>
           </select>
-          <select id="city-f-emotion" aria-label="Filtrar por emoción">
-            <option value="">Toda emoción</option>
-            <option value="ira">Ira</option>
-            <option value="miedo">Miedo</option>
-            <option value="asco">Asco / repulsión</option>
-            <option value="tristeza">Tristeza</option>
-            <option value="felicidad">Felicidad</option>
-            <option value="sorpresa">Sorpresa</option>
-            <option value="sin emoción marcada">Sin emoción marcada</option>
-          </select>
-          <select id="city-f-category" aria-label="Filtrar por tema">
-            <option value="">Todos los temas</option>
-            <option value="seguridad">Seguridad</option>
-            <option value="movilidad y transporte">Movilidad y transporte</option>
-            <option value="terremoto y reconstrucción">Terremoto y reconstrucción</option>
-            <option value="servicios públicos">Servicios públicos</option>
-            <option value="salud">Salud</option>
-            <option value="educación">Educación</option>
-            <option value="empleo y economía">Empleo y economía</option>
-            <option value="vivienda">Vivienda</option>
-            <option value="medio ambiente y clima">Medio ambiente y clima</option>
-            <option value="cultura y eventos">Cultura y eventos</option>
-            <option value="deporte">Deporte</option>
-            <option value="corrupción y gobierno">Corrupción y gobierno</option>
-            <option value="política y elecciones">Política y elecciones</option>
-            <option value="orden público y protestas">Orden público y protestas</option>
-            <option value="infraestructura y obras">Infraestructura y obras</option>
-            <option value="animales">Animales</option>
-            <option value="otro">Otro</option>
-          </select>
+          <select id="city-f-emotion" data-fill="emotions" aria-label="Filtrar por emoción">
+              <option value="">Toda emoción</option>
+            </select>
+          <select id="city-f-category" data-fill="categories" aria-label="Filtrar por tema">
+              <option value="">Todos los temas</option>
+            </select>
         </div>
       </div>
       <div id="city-feed" class="feed"></div>
@@ -514,26 +453,43 @@
   </div>
 
   <div id="tab-historico" class="tabpane">
-    <p class="hint" style="margin:0 2px 14px">Compara el período elegido arriba contra el período inmediatamente anterior de la misma duración — qué creció, qué bajó y qué es enteramente nuevo en la conversación de la ciudad.</p>
-    <section class="kpis" id="hist-kpis"></section>
-    <section class="panel big">
-      <div class="panel-head"><div><h2>¿Qué cambió respecto al período anterior?</h2><div class="hint">% de variación en menciones por tema. Verde = creció, rojo = bajó. "Nuevo" = no tenía menciones en el período anterior.</div></div></div>
-      <div class="chart-box xl"><div id="chart-hist-trend"></div></div>
-    </section>
-    <section class="panel big">
-      <div class="panel-head"><div><h2>Detalle por tema</h2><div class="hint">Menciones actuales vs. período anterior, tema por tema.</div></div></div>
-      <div id="hist-table"></div>
-    </section>
+    <nav class="sub-nav">
+      <button class="subtab active" data-subtab="hist-ciudad">Cali 2008 a hoy</button>
+      <button class="subtab" data-subtab="hist-alcaldias">Alcaldías: proyectos y deuda</button>
+      <button class="subtab" data-subtab="hist-conversacion">Conversación: período vs. anterior</button>
+    </nav>
 
-    <h3 class="section-title">Las últimas 4 alcaldías de Cali — proyectos y deuda</h3>
-    <p class="hint" style="margin:0 2px 14px">Investigación documental (prensa, fuentes oficiales, un estudio académico) sobre qué se hizo, qué quedó sin terminar y cómo evolucionó la deuda pública distrital en cada administración. Cada dato tiene su fuente citada — toca "fuente" para verificarlo. Donde la fuente es un editorial de opinión, se marca explícitamente: es un señalamiento de ese medio, no un hallazgo verificado de forma independiente.</p>
+    <div id="subtab-hist-ciudad" class="subtabpane active">
+      <div class="intro panel">
+        <h2>Cali de 2008 a hoy, alcaldía por alcaldía</h2>
+        <p>Economía, condiciones sociales, seguridad, salud y transporte en las cinco alcaldías desde 2008 (Ospina, Guerrero, Armitage, Ospina y Eder, esta última en curso). Cada cifra enlaza su fuente oficial o su consolidación en <b>Cali Cómo Vamos</b>; los años sin dato verificable quedan vacíos en lugar de estimarse. Cada alcaldía se evalúa entre lo que recibió (el dato del año anterior a su posesión) y lo que entregó.</p>
+      </div>
+      <section class="kpis" id="city-hist-kpis"></section>
+      <nav class="sub-nav wrap" id="city-hist-nav" role="tablist" aria-label="Frentes del histórico"></nav>
+      <div id="city-hist-body"></div>
+    </div>
 
-    <section class="panel big">
-      <div class="panel-head"><div><h2>¿Cómo ha crecido la deuda pública del Distrito?</h2><div class="hint">Cifras con fuente citada únicamente; los períodos sin cifra verificable no aparecen en la gráfica.</div></div></div>
-      <div class="chart-box xl"><div id="chart-hist-debt"></div></div>
-    </section>
+    <div id="subtab-hist-alcaldias" class="subtabpane">
+      <p class="hint" style="margin:0 2px 14px">Investigación documental (prensa, fuentes oficiales, un estudio académico) sobre qué se hizo, qué quedó sin terminar y cómo evolucionó la deuda pública distrital en cada administración. Cada dato tiene su fuente citada; toca "fuente" para verificarlo. Donde la fuente es un editorial de opinión, se marca explícitamente: es un señalamiento de ese medio, no un hallazgo verificado de forma independiente. Las fuentes marcadas "por verificar" apuntan a una página general y deben reemplazarse por la nota específica.</p>
+      <section class="panel big">
+        <div class="panel-head"><div><h2>¿Cómo ha crecido la deuda pública del Distrito?</h2><div class="hint">Cifras con fuente citada únicamente; los períodos sin cifra verificable no aparecen en la gráfica.</div></div></div>
+        <div class="chart-box xl"><div id="chart-hist-debt"></div></div>
+      </section>
+      <section id="hist-admins" class="grid2" style="align-items:start"></section>
+    </div>
 
-    <section id="hist-admins" class="grid2" style="align-items:start"></section>
+    <div id="subtab-hist-conversacion" class="subtabpane">
+      <p class="hint" style="margin:0 2px 14px">Compara el período elegido arriba contra el período inmediatamente anterior de la misma duración: qué creció, qué bajó y qué es enteramente nuevo en la conversación de la ciudad. Un cambio solo se marca como significativo si supera la variación normal esperable (prueba binomial, 5%); con menos de 10 menciones entre los dos períodos se marca "muestra chica".</p>
+      <section class="kpis" id="hist-kpis"></section>
+      <section class="panel big">
+        <div class="panel-head"><div><h2>¿Qué cambió respecto al período anterior?</h2><div class="hint">% de variación en menciones por tema. Verde = creció, rojo = bajó, gris = el cambio no es concluyente.</div></div></div>
+        <div class="chart-box xl"><div id="chart-hist-trend"></div></div>
+      </section>
+      <section class="panel big">
+        <div class="panel-head"><div><h2>Detalle por tema</h2><div class="hint">Menciones actuales vs. período anterior, tema por tema.</div></div></div>
+        <div id="hist-table"></div>
+      </section>
+    </div>
   </div>
 
   <div id="tab-agenda" class="tabpane">
@@ -571,7 +527,7 @@
     </div>
     <section class="panel">
       <div class="filters">
-        <select id="rep-date" aria-label="Elegir fecha del reporte"></select>
+        <select id="rep-date" aria-label="Fecha del reporte"></select>
         <button id="rep-generate">Generar el de hoy</button>
         <button id="rep-pdf">Descargar PDF</button>
       </div>
@@ -579,7 +535,7 @@
     <div id="rep-body"></div>
   </div>
 
-  <footer id="status"></footer>
+  <footer id="status" aria-live="polite"></footer>
 </main>
 </div>
 </div>

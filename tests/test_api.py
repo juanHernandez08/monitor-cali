@@ -4,6 +4,8 @@ from fastapi.testclient import TestClient
 from src.api import create_app
 from src.models import Candidate, Source, SourceType, Mention
 
+CSRF = {"X-Requested-With": "monitor"}  # el dashboard la manda en todo POST (src/security.py)
+
 
 @pytest.fixture
 def client(db_session):
@@ -47,32 +49,36 @@ def test_json_routes(client):
     assert client.get("/api/social/reach").json() == []
     assert client.get("/api/social/reaction").json() == []
     hist = client.get("/api/institutional-history").json()
-    assert len(hist["administrations"]) == 4
+    assert len(hist["administrations"]) == 5
     assert len(hist["debt_timeline"]) == 2
+    city = client.get("/api/city-history").json()
+    assert city["years"][0] == 2008 and len(city["periods"]) == 5 and city["strategies"]
+    assert client.get("/api/social/insights").json()["posts_total"] == 0
+    assert client.get("/api/conversation/weekly").json()["candidate"] == "Carlos Arias"
 
 
 def test_refresh_returns_202(client, monkeypatch):
     import src.api as m
     monkeypatch.setattr(m, "run_everything", lambda: None)
-    assert client.post("/api/refresh").status_code == 202
+    assert client.post("/api/refresh", headers=CSRF).status_code == 202
 
 
 def test_investigate_requires_a_real_instagram_or_facebook_url(client, monkeypatch):
     import src.api as m
     monkeypatch.setattr(m.config, "APIFY_TOKEN", "fake-token")
-    r = client.get("/api/investigate", params={"url": "https://example.com/x", "platform": "instagram"})
+    r = client.post("/api/investigate", json={"url": "https://example.com/x", "platform": "instagram"}, headers=CSRF)
     assert r.status_code == 400
 
 
 def test_investigate_requires_apify_token_configured(client, monkeypatch):
     import src.api as m
     monkeypatch.setattr(m.config, "APIFY_TOKEN", None)
-    r = client.get("/api/investigate", params={"url": "https://www.instagram.com/unrival/", "platform": "instagram"})
+    r = client.post("/api/investigate", json={"url": "https://www.instagram.com/unrival/", "platform": "instagram"}, headers=CSRF)
     assert r.status_code == 400
 
 
 def test_reports_generate_list_get_and_pdf(client):
-    r = client.post("/api/reports/generate")
+    r = client.post("/api/reports/generate", headers=CSRF)
     assert r.status_code == 200
     date = r.json()["date"]
 
@@ -97,7 +103,7 @@ def test_investigate_returns_live_stats_for_a_profile(client, monkeypatch):
          "published_at": "2026-09-10T00:00:00", "likes": 40, "comments": 5, "views": 0, "engagement": 45},
     ]
     monkeypatch.setattr(m, "investigate_profile", lambda token, url, platform, **k: fake_posts)
-    r = client.get("/api/investigate", params={"url": "https://www.instagram.com/unrival/", "platform": "instagram"})
+    r = client.post("/api/investigate", json={"url": "https://www.instagram.com/unrival/", "platform": "instagram"}, headers=CSRF)
     assert r.status_code == 200
     body = r.json()
     assert body["total_posts"] == 2

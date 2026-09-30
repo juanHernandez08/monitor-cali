@@ -73,9 +73,12 @@ class Mention(Base):
     fetched_at = Column(DateTime, default=dt.datetime.utcnow, nullable=False)
     raw = Column(JSON, default=dict)
 
-    candidate = relationship("Candidate", back_populates="mentions")
-    source = relationship("Source", back_populates="mentions")
-    sentiment = relationship("SentimentScore", back_populates="mention", uselist=False)
+    # lazy="selectin": las consultas del dashboard recorren cientos de menciones y leen su
+    # sentimiento, candidato y fuente. Con la carga perezosa por defecto eso era una consulta SQL
+    # por mención (N+1: 1.254 consultas para /api/summary a 90 días); así son 3 o 4 por lote.
+    candidate = relationship("Candidate", back_populates="mentions", lazy="selectin")
+    source = relationship("Source", back_populates="mentions", lazy="selectin")
+    sentiment = relationship("SentimentScore", back_populates="mention", uselist=False, lazy="selectin")
 
     __table_args__ = (
         UniqueConstraint("source_id", "external_id", name="uq_mention_source_external"),

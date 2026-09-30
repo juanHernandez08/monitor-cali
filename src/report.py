@@ -40,7 +40,7 @@ Con las cifras REALES de abajo (ventana de {days} días en redes), escribe un an
 
 REGLA IMPORTANTE sobre la sección "temas sin cubrir" de abajo: mide solo los últimos {city_days} días. NUNCA la redactes como si fuera una ausencia total o permanente ("Carlos no habla de X", "nunca ha tocado Y") -- el candidato puede haber cubierto ese tema semanas antes, fuera de esta ventana. Escribe siempre "en los últimos {city_days} días" o "en este corte" al mencionar un tema sin cubrir.
 
-## Alcance por candidato o concejal (likes+comentarios promedio por publicación, ritmo de publicación, tendencia entre la primera y la segunda mitad del período)
+## Alcance por candidato o concejal (likes+comentarios por publicación: mediana con su intervalo de confianza y promedio; ritmo de publicación; tendencia de la mediana entre la primera y la segunda mitad del período). Usa la mediana para comparar: el promedio lo infla un solo post viral. Si dos intervalos se cruzan, no afirmes que uno supera al otro.
 {reach}
 
 ## Cómo reacciona la gente en los comentarios de las publicaciones de cada quien (solo comentarios en su propia publicación)
@@ -65,10 +65,14 @@ def _fmt_reach(rows: list[dict]) -> str:
         return "Sin publicaciones suficientes de nadie en este período."
     lines = []
     for r in rows:
-        trend = (f"tendencia {r['trend_pct']:+d}% entre la primera y la segunda mitad del período"
-                 if r["trend_pct"] is not None else "sin tendencia calculable (pocas publicaciones)")
+        t = r.get("median_trend_pct", r["trend_pct"])
+        trend = (f"la mediana varió {t:+d}% entre la primera y la segunda mitad del período"
+                 if t is not None and r["posts"] >= 6 else "sin tendencia confiable (menos de 6 publicaciones)")
+        med = r.get("median_engagement", r["avg_engagement"])
+        ci = r.get("median_ci")
         lines.append(f"- {r['candidate']}: {r['posts']} publicaciones ({r['posts_per_week']}/semana), "
-                     f"alcance promedio {r['avg_engagement']} (likes+comentarios) por publicación, {trend}.")
+                     f"alcance típico (mediana) {med}" + (f" [IC 95%: {ci[0]} a {ci[1]}]" if ci else "") +
+                     f", promedio {r['avg_engagement']} (likes+comentarios) por publicación, {trend}.")
     return "\n".join(lines)
 
 
@@ -233,8 +237,8 @@ def report_to_pdf(report: dict) -> bytes:
 
     h("Alcance promedio por publicación (candidatos y concejales)")
     reach = report.get("reach_comparison", [])
-    bar_chart([r["candidate"] for r in reach], [r["avg_engagement"] for r in reach])
-    bullets([f"{r['candidate']}: {r['avg_engagement']} de alcance promedio, {r['posts']} publicaciones "
+    bar_chart([r["candidate"] for r in reach], [r.get("median_engagement", r["avg_engagement"]) for r in reach])
+    bullets([f"{r['candidate']}: {r.get('median_engagement', r['avg_engagement'])} de alcance típico (mediana), {r['posts']} publicaciones "
              f"({r['posts_per_week']}/semana)" + (f", tendencia {r['trend_pct']:+d}%" if r["trend_pct"] is not None else "")
              for r in reach])
 

@@ -6,7 +6,7 @@ from collections import Counter, defaultdict
 
 from sqlalchemy import func, or_
 
-from src import config
+from src import config, stats
 from src.urlnorm import normalize_url
 from src.models import (
     ApiUsage, Candidate, Mention, Run, SentimentLabel, SentimentScore, Source, SourceType,
@@ -97,6 +97,8 @@ def summary(session, days: int = 7) -> list[dict]:
             "negative": counts.get(SentimentLabel.NEGATIVE, 0),
             "neutral": counts.get(SentimentLabel.NEUTRAL, 0),
             "pending": sum(1 for m in current if not m.sentiment),
+            "positive_ci": stats.wilson(counts.get(SentimentLabel.POSITIVE, 0), sum(counts.values())),
+            "change": stats.count_change_test(len(current), previous),
         })
     rows.sort(key=lambda r: (r["name"] != CARLOS, -r["mentions"]))
     return rows
@@ -338,21 +340,66 @@ def feed(session, candidate_id: int | None = None, source_type: str | None = Non
 
 # ---------- Meta y redes: publicaciones de Instagram/Facebook/X con métricas de alcance ----------
 
+def _num(value) -> int | None:
+    """Número de un campo del scraper: None si falta o no es numérico ("1,234" también sirve)."""
+    if value is None or isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)):
+        return int(value)
+    try:
+        return int(str(value).replace(",", "").replace(".", ""))
+    except ValueError:
+        return None
+
+
+def _first(*values):
+    return next((v for v in values if v is not None), None)
+
+
+# Formato de la publicación, igual para los dos scrapers (Apify: productType/type; Bright Data:
+# content_type) -- sirve para comparar qué formato rinde más.
+_FORMAT = {"clips": "reel", "reel": "reel", "igtv": "reel", "video": "video", "carousel_container": "carrusel",
+           "sidecar": "carrusel", "carousel": "carrusel", "feed": "imagen", "image": "imagen", "photo": "imagen",
+           "post": "imagen"}
+
+
 def _social_metrics(m: Mention) -> dict:
-    """Likes/comentarios/vistas desde el registro crudo del scraper -- el nombre del campo
-    cambia por plataforma (Instagram: likesCount/videoPlayCount; Facebook: likes/viewsCount)."""
+    """Likes/comentarios/vistas/compartidos desde el registro crudo del scraper.
+
+    El nombre del campo cambia por plataforma Y por proveedor. Auditoría estadística 2026-09-29:
+    antes solo se leían los campos de Apify, así que (1) las 17 publicaciones de Instagram que
+    trajo Bright Data (campo `likes`, no `likesCount`) contaban con 0 likes -- entre ellas los reels
+    de Carlos de septiembre, lo que fabricaba una "caída" de su alcance --, (2) X nunca sumaba likes
+    (`likeCount`) y (3) Instagram devuelve likesCount = -1 cuando la cuenta oculta los likes, y se
+    restaba como si fuera un dato. Ahora un like oculto queda marcado (`likes_hidden`) y esas
+    publicaciones no entran en los promedios de alcance, porque su cifra real es desconocida."""
     raw = m.raw or {}
     rec = raw.get("record") or {}
     platform = raw.get("platform")
+    shares = None
     if platform == "instagram":
-        likes = rec.get("likesCount")
-        views = rec.get("videoPlayCount") or rec.get("videoViewCount")
+        likes = _num(_first(rec.get("likesCount"), rec.get("likes")))
+        views = _num(_first(rec.get("videoPlayCount"), rec.get("videoViewCount"), rec.get("video_view_count"),
+                            rec.get("video_play_count"), rec.get("views")))
+        fmt = _FORMAT.get(str(rec.get("productType") or rec.get("content_type") or rec.get("type") or "").lower(), "otro")
     elif platform == "facebook":
-        likes = rec.get("likes") or rec.get("reactionLikeCount")
-        views = rec.get("viewsCount") or rec.get("videoPostViewCount")
+        likes = _num(_first(rec.get("likes"), rec.get("reactionLikeCount")))
+        views = _num(_first(rec.get("viewsCount"), rec.get("videoPostViewCount")))
+        shares = _num(rec.get("shares"))
+        fmt = "video" if rec.get("isVideo") else "imagen"
+    elif platform == "x":
+        likes = _num(_first(rec.get("likeCount"), raw.get("likes")))
+        views = _num(rec.get("viewCount"))
+        shares = _num(_first(rec.get("retweetCount"), raw.get("reposts")))
+        fmt = "trino"
     else:
         likes = views = None
-    return {"likes": likes or 0, "comments": raw.get("num_comments") or 0, "views": views or 0}
+        fmt = "otro"
+    hidden = likes is not None and likes < 0
+    comments = _num(raw.get("num_comments")) or 0
+    return {"likes": 0 if (likes is None or hidden) else likes, "comments": max(comments, 0),
+            "views": views if (views and views > 0) else 0, "shares": shares if (shares and shares > 0) else 0,
+            "likes_hidden": hidden, "format": fmt}
 
 
 def social_posts(session, days: int = 30, candidate_id: int | None = None, platform: str | None = None,
@@ -402,28 +449,33 @@ def social_kpis(session, days: int = 30) -> dict:
 
 
 def social_strong_posts(session, days: int = 7, multiplier: float = 3.0, min_history: int = 2,
-                        min_engagement: int = 30) -> list[dict]:
-    """Publicaciones (de cualquier candidato o concejal) cuyo alcance dispara muy por encima del
-    propio promedio reciente de esa cuenta -- alerta de actividad fuerte en redes sin depender de
-    un umbral fijo igual para una cuenta grande que para una chica. Necesita al menos
-    `min_history` publicaciones ANTERIORES de esa misma cuenta para tener con qué comparar; una
-    cuenta recién agregada no dispara alerta en su primera publicación."""
+                        min_engagement: int = 30, window: int = 10) -> list[dict]:
+    """Publicaciones (de cualquier candidato o concejal) cuyo alcance dispara muy por encima de lo
+    habitual en esa MISMA cuenta -- alerta de actividad fuerte en redes sin un umbral fijo igual
+    para una cuenta grande que para una chica.
+
+    Lo habitual es la MEDIANA de las últimas `window` publicaciones anteriores (antes era el
+    promedio de todo el historial: un solo reel viral inflaba la base y escondía los siguientes
+    picos, y lo muy viejo pesaba igual que lo reciente). Necesita al menos `min_history`
+    publicaciones previas; las de likes ocultos no cuentan como base ni se alertan."""
     since = _since(days).isoformat()
     by_account: dict[tuple[str, str], list[dict]] = defaultdict(list)
     for p in social_posts(session, days=365, limit=10000, sort="recent"):
-        by_account[(p["candidate"], p["platform"])].append(p)
+        if not p["likes_hidden"]:
+            by_account[(p["candidate"], p["platform"])].append(p)
     strong = []
     for posts in by_account.values():
         posts.sort(key=lambda p: p["published_at"])
         for i, p in enumerate(posts):
-            history = posts[:i]
+            history = posts[max(0, i - window):i]
             if len(history) < min_history or p["published_at"] < since:
                 continue
-            baseline = sum(h["engagement"] for h in history) / len(history)
-            if baseline <= 0:
+            baseline = stats.median([h["engagement"] for h in history])
+            if not baseline or baseline <= 0:
                 continue
             if p["engagement"] >= max(min_engagement, baseline * multiplier):
-                strong.append({**p, "baseline": round(baseline), "multiplier": round(p["engagement"] / baseline, 1)})
+                strong.append({**p, "baseline": round(baseline), "multiplier": round(p["engagement"] / baseline, 1),
+                               "robust_z": stats.robust_z(p["engagement"], [h["engagement"] for h in history])})
     strong.sort(key=lambda p: -p["multiplier"])
     return strong
 
@@ -439,12 +491,20 @@ def social_candidates(session) -> list[dict]:
 
 
 def candidate_reach_comparison(session, days: int = 30, min_posts: int = 2) -> list[dict]:
-    """Alcance real por cuenta: promedio de interacción por publicación, ritmo de publicación y
-    tendencia (mitad reciente del período vs. la mitad anterior) -- la base numérica para explicar
-    por qué a Carlos le va mejor o peor que a sus rivales en redes, no solo cuánto publicó."""
+    """Alcance real por cuenta: interacción por publicación (mediana y promedio), ritmo de
+    publicación y tendencia (mitad reciente del período vs. la mitad anterior) -- la base numérica
+    para explicar por qué a Carlos le va mejor o peor que a sus rivales en redes.
+
+    Se ordena por MEDIANA: el promedio lo mueve un solo reel viral (en los datos reales, un reel
+    de Carlos con 11.321 interacciones triplicaba su promedio). Las publicaciones con likes
+    ocultos se excluyen (su alcance real es desconocido) y se informan en `hidden_likes_posts`."""
     posts = social_posts(session, days=days, limit=10000, sort="recent")
     by_cand: dict[str, list[dict]] = defaultdict(list)
+    hidden: Counter = Counter()
     for p in posts:
+        if p["likes_hidden"]:
+            hidden[p["candidate"]] += 1
+            continue
         by_cand[p["candidate"]].append(p)
 
     rows = []
@@ -453,19 +513,30 @@ def candidate_reach_comparison(session, days: int = 30, min_posts: int = 2) -> l
             continue
         ps.sort(key=lambda p: p["published_at"])
         n = len(ps)
-        avg_engagement = round(sum(p["engagement"] for p in ps) / n)
+        eng = [p["engagement"] for p in ps]
+        avg_engagement = round(sum(eng) / n)
         half = n // 2
         first, second = ps[:half], ps[half:]
         avg_first = sum(p["engagement"] for p in first) / len(first) if first else None
         avg_second = sum(p["engagement"] for p in second) / len(second) if second else None
         trend_pct = (round((avg_second - avg_first) / avg_first * 100)
                     if avg_first and avg_second is not None else None)
+        med_first = stats.median([p["engagement"] for p in first]) if first else None
+        med_second = stats.median([p["engagement"] for p in second]) if second else None
+        ci = stats.bootstrap_median_ci(eng)
+        with_views = [p for p in ps if p["views"]]
         rows.append({
             "candidate": cand, "posts": n, "posts_per_week": round(n / (days / 7), 1),
-            "avg_engagement": avg_engagement, "total_engagement": sum(p["engagement"] for p in ps),
-            "trend_pct": trend_pct,
+            "avg_engagement": avg_engagement, "median_engagement": round(stats.median(eng)),
+            "median_ci": [round(ci[0]), round(ci[1])] if ci else None,
+            "total_engagement": sum(eng), "trend_pct": trend_pct,
+            "median_trend_pct": (round((med_second - med_first) / med_first * 100)
+                                 if med_first and med_second is not None else None),
+            "engagement_per_view_pct": (round(stats.median([p["engagement"] / p["views"] * 100 for p in with_views]), 1)
+                                        if len(with_views) >= 3 else None),
+            "hidden_likes_posts": hidden.get(cand, 0),
         })
-    rows.sort(key=lambda r: -r["avg_engagement"])
+    rows.sort(key=lambda r: -r["median_engagement"])
     return rows
 
 
@@ -496,7 +567,10 @@ def candidate_comment_reaction(session, days: int = 30, min_comments: int = 3) -
         out.append({"candidate": cand, "comments": n,
                     "positive_pct": pct(c.get(SentimentLabel.POSITIVE, 0), n),
                     "neutral_pct": pct(c.get(SentimentLabel.NEUTRAL, 0), n),
-                    "negative_pct": pct(c.get(SentimentLabel.NEGATIVE, 0), n)})
+                    "negative_pct": pct(c.get(SentimentLabel.NEGATIVE, 0), n),
+                    # Con pocos comentarios, "100% positivo" puede ser 60%: el intervalo lo dice.
+                    "positive_ci": stats.wilson(c.get(SentimentLabel.POSITIVE, 0), n),
+                    "negative_ci": stats.wilson(c.get(SentimentLabel.NEGATIVE, 0), n)})
     out.sort(key=lambda r: -r["comments"])
     return out
 
@@ -573,8 +647,11 @@ def city_topics(session, days: int = 7, samples_per: int = 3, subtopics_per: int
         comments = [m for m in ms if (m.raw or {}).get("kind") == "comment"]
         pool = comments or ms
         samples = sorted(pool, key=lambda m: -abs(m.sentiment.score))[:samples_per]
+        change = stats.count_change_test(len(ms), prev)
         rows.append({
             "category": cat, "count": len(ms), "previous": prev, "trend_pct": trend,
+            "trend_significant": change["significant"], "trend_p": change["p_value"],
+            "small_sample": change["small_sample"],
             "positive": labels.get(SentimentLabel.POSITIVE, 0), "neutral": labels.get(SentimentLabel.NEUTRAL, 0),
             "negative": labels.get(SentimentLabel.NEGATIVE, 0),
             "subtopics": [{"topic": t, "count": n} for t, n in sub.most_common(subtopics_per)],
@@ -912,3 +989,130 @@ def council_overview(session, days: int = 30) -> dict:
     parties = sorted(by_party.values(), key=lambda p: (-p["mentions"], -p["members"]))
     rows.sort(key=lambda r: (r["name"] != CARLOS, -r["mentions"]))
     return {"members": rows, "parties": parties}
+
+
+# ---------- Análisis estadístico de redes (auditoría 2026-09-29) ----------
+
+_WEEKDAYS = ["lun", "mar", "mié", "jue", "vie", "sáb", "dom"]
+_HOUR_BLOCKS = [("madrugada", 0, 6), ("mañana", 6, 12), ("tarde", 12, 18), ("noche", 18, 24)]
+
+
+def _local(ts_iso: str) -> dt.datetime:
+    return dt.datetime.fromisoformat(ts_iso).replace(tzinfo=dt.timezone.utc).astimezone(BOGOTA)
+
+
+def _hour_block(h: int) -> str:
+    return next(name for name, a, b in _HOUR_BLOCKS if a <= h < b)
+
+
+def social_insights(session, days: int = 90, candidate: str = CARLOS, min_n: int = 5) -> dict:
+    """Qué le funciona a cada cuenta, medido con ALCANCE RELATIVO: interacción de la publicación
+    dividida por la mediana de SU propia cuenta. Así se puede juntar a una cuenta de 600 mil
+    seguidores con una de 20 mil sin que la grande domine (1,0 = una publicación típica de esa
+    cuenta; 2,0 = el doble de lo habitual).
+
+    Devuelve, para el conjunto de candidatos y concejales y para `candidate`:
+      * por formato (reel, carrusel, imagen, video, trino),
+      * por día de la semana y por franja horaria (hora Bogotá),
+      * por largo del texto,
+      * evolución semanal de la mediana de interacción de `candidate` vs. la del resto,
+      * ritmo de publicación semanal por cuenta.
+    Toda celda trae su n; con menos de `min_n` publicaciones la UI la marca como no concluyente."""
+    posts = [p for p in social_posts(session, days=days, limit=100000, sort="recent") if not p["likes_hidden"]]
+    by_account: dict[tuple, list[dict]] = defaultdict(list)
+    for p in posts:
+        by_account[(p["candidate"], p["platform"])].append(p)
+    for (_, _), ps in by_account.items():
+        base = stats.median([p["engagement"] for p in ps]) or 0
+        for p in ps:
+            p["rel"] = (p["engagement"] / base) if base > 0 else None
+
+    def group(rows: list[dict], key) -> list[dict]:
+        g: dict[str, list[float]] = defaultdict(list)
+        for p in rows:
+            if p.get("rel") is not None:
+                g[key(p)].append(p["rel"])
+        out = []
+        for k, vals in g.items():
+            q = stats.quantiles(vals)
+            out.append({"key": k, "n": len(vals), "median_rel": round(q["median"], 2), "q1": round(q["q1"], 2),
+                        "q3": round(q["q3"], 2), "conclusive": len(vals) >= min_n})
+        return out
+
+    def length_bucket(p):
+        n = len(p["text"] or "")
+        return "corto (<100)" if n < 100 else "medio (100-300)" if n < 300 else "largo (300-800)" if n < 800 else "muy largo (800+)"
+
+    mine = [p for p in posts if p["candidate"] == candidate]
+    order_days = {d: i for i, d in enumerate(_WEEKDAYS)}
+    order_blocks = {b[0]: i for i, b in enumerate(_HOUR_BLOCKS)}
+    order_len = {"corto (<100)": 0, "medio (100-300)": 1, "largo (300-800)": 2, "muy largo (800+)": 3}
+
+    def dims(rows):
+        return {
+            "format": sorted(group(rows, lambda p: p["format"]), key=lambda r: -r["median_rel"]),
+            "weekday": sorted(group(rows, lambda p: _WEEKDAYS[_local(p["published_at"]).weekday()]),
+                              key=lambda r: order_days[r["key"]]),
+            "hour_block": sorted(group(rows, lambda p: _hour_block(_local(p["published_at"]).hour)),
+                                 key=lambda r: order_blocks[r["key"]]),
+            "length": sorted(group(rows, length_bucket), key=lambda r: order_len[r["key"]]),
+        }
+
+    # Semana a semana: mediana de interacción de la cuenta vs. mediana del resto de candidatos.
+    weekly: dict[str, dict[str, list[int]]] = defaultdict(lambda: {"mine": [], "others": []})
+    for p in posts:
+        wk = _local(p["published_at"]).strftime("%G-S%V")
+        weekly[wk]["mine" if p["candidate"] == candidate else "others"].append(p["engagement"])
+    weeks = sorted(weekly)
+    cadence = []
+    for (cand, platform), ps in by_account.items():
+        cadence.append({"candidate": cand, "platform": platform, "posts": len(ps),
+                        "posts_per_week": round(len(ps) / (days / 7), 1)})
+    cadence.sort(key=lambda r: -r["posts_per_week"])
+    views = [p for p in mine if p["views"]]
+    return {
+        "candidate": candidate, "days": days, "posts_total": len(posts), "posts_candidate": len(mine),
+        "all": dims(posts), "candidate_dims": dims(mine),
+        "weekly": {"weeks": weeks,
+                   "mine": [stats.median(weekly[w]["mine"]) for w in weeks],
+                   "mine_n": [len(weekly[w]["mine"]) for w in weeks],
+                   "others": [stats.median(weekly[w]["others"]) for w in weeks]},
+        "cadence": cadence,
+        "engagement_per_view_pct": round(stats.median([p["engagement"] / p["views"] * 100 for p in views]), 1) if len(views) >= 3 else None,
+    }
+
+
+def weekly_conversation(session, days: int = 90, candidate: str = CARLOS) -> dict:
+    """Semana a semana: participación de `candidate` en la conversación sobre los candidatos (share
+    of voice) y su sentimiento neto con intervalo de confianza.
+
+    Sentimiento neto = % positivas − % negativas sobre las menciones clasificadas de esa semana. El
+    intervalo sale de Wilson aplicado a positivas y negativas (conservador); con pocas menciones es
+    ancho a propósito: dice que esa semana no permite concluir nada."""
+    since = _since(days)
+    rows = (session.query(Mention).outerjoin(SentimentScore).join(Candidate)
+            .filter(WHEN >= since, Mention.relevant.is_(True), Candidate.kind == "candidate").all())
+    total: Counter = Counter()
+    mine: Counter = Counter()
+    labels: dict[str, Counter] = defaultdict(Counter)
+    for m in rows:
+        wk = _when(m).replace(tzinfo=dt.timezone.utc).astimezone(BOGOTA).strftime("%G-S%V")
+        total[wk] += 1
+        if m.candidate.name == candidate:
+            mine[wk] += 1
+            if m.sentiment:
+                labels[wk][m.sentiment.label] += 1
+    weeks = sorted(total)
+    out = []
+    for w in weeks:
+        c = labels[w]
+        n = sum(c.values())
+        pos, neg = c.get(SentimentLabel.POSITIVE, 0), c.get(SentimentLabel.NEGATIVE, 0)
+        net = round((pos - neg) / n * 100) if n else None
+        pci, nci = stats.wilson(pos, n), stats.wilson(neg, n)
+        out.append({"week": w, "mentions": mine[w], "all_mentions": total[w],
+                    "share_pct": round(mine[w] / total[w] * 100, 1) if total[w] else 0,
+                    "scored": n, "net_sentiment": net,
+                    "net_low": round(pci[0] - nci[1]) if n else None,
+                    "net_high": round(pci[1] - nci[0]) if n else None})
+    return {"candidate": candidate, "weeks": out}

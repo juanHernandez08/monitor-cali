@@ -18,6 +18,42 @@ horas de investigación si se necesita más profundidad.
 
 ADMINISTRATIONS = [
     {
+        "mayor": "Jorge Iván Ospina Hernández",
+        "period": "2008-2011",
+        "party": "Movimiento independiente (con apoyo del Polo Democrático y otros sectores)",
+        "status": "completado",
+        "summary": (
+            "Primera alcaldía de Ospina. Arranca el MIO (marzo de 2009) y se aprueba el plan de 21 "
+            "Megaobras financiado por valorización. En seguridad, los homicidios subieron de 1.490 "
+            "(2007) a 1.820 (2011), y la tasa pasó de 70,5 a 84,4 por 100 mil habitantes."
+        ),
+        "debt": None,  # no se encontró una cifra de deuda verificable para este período
+        "metrics": [
+            {
+                "label": "Tasa de homicidios (por 100.000 hab.)",
+                "start": 70.5, "start_year": 2007, "end": 84.4, "end_year": 2011, "change_pct": 20,
+                "note": "De 1.490 homicidios en 2007 a 1.820 en 2011 (CIMCE, Observatorio de Seguridad de Cali).",
+                "source": {"name": "Cali Cómo Vamos, ICV 2025, Seguridad (serie 2005-2024)",
+                          "url": "https://www.calicomovamos.org.co/_files/ugd/ba6905_58e6f0efd57f429fafa22eaf837e7b3c.pdf"},
+            },
+        ],
+        "projects": [
+            {"name": "Inicio de operación del MIO", "category": "movilidad y transporte", "status": "completado",
+             "description": "El sistema de transporte masivo empezó a operar en marzo de 2009 (25,3 millones de "
+                            "pasajeros ese año; 97,3 millones en 2011). La cobertura prevista originalmente "
+                            "nunca se completó en las administraciones siguientes.",
+             "source": {"name": "Cali Cómo Vamos, ICV 2011, Movilidad (Metro Cali)",
+                       "url": "https://www.calicomovamos.org.co/_files/ugd/ba6905_90dbdd446d1344f387fc3486fd4424e3.pdf"}},
+            {"name": "Plan 21 Megaobras por valorización (Acuerdo 241 de 2008)", "category": "infraestructura y obras",
+             "status": "incompleto",
+             "description": "Plan de 21 obras viales financiado con cobro de valorización. Años después seguían "
+                            "obras sin terminar; el editorial citado lo califica con dureza, lo que debe leerse "
+                            "como postura de un medio de opinión.",
+             "source": {"name": "Caliescribe (Editorial), \"21 Megaobras, valorización Cali, todo un fraude\"",
+                       "url": "https://historico.caliescribe.com/21-megaobras-valorizacion-cali-todo-un-fraude"}},
+        ],
+    },
+    {
         "mayor": "Rodrigo Guerrero Velasco",
         "period": "2012-2015",
         "party": "Partido Liberal (coalición)",
@@ -32,11 +68,12 @@ ADMINISTRATIONS = [
         "metrics": [
             {
                 "label": "Tasa de homicidios (por 100.000 hab.)",
-                "start": 80.4, "start_year": 2012, "end": 58.1, "end_year": 2015,
-                "change_pct": -28,
-                "note": "6.743 homicidios en Cali entre 2012 y 2015, según el estudio.",
-                "source": {"name": "CIDOB / Fandiño-Losada et al. 2017, \"Efecto del control del crimen organizado sobre la violencia\"",
-                          "url": "https://www.cidob.org"},
+                "start": 84.4, "start_year": 2011, "end": 61.9, "end_year": 2015,
+                "change_pct": -27,
+                "note": "De 1.820 homicidios en 2011 a 1.353 en 2015; el pico fue 2013 (1.942). Cifras CIMCE "
+                        "(Observatorio de Seguridad de Cali), consolidadas por Cali Cómo Vamos.",
+                "source": {"name": "Cali Cómo Vamos, ICV 2025, Seguridad (serie 2005-2024)",
+                          "url": "https://www.calicomovamos.org.co/_files/ugd/ba6905_58e6f0efd57f429fafa22eaf837e7b3c.pdf"},
             },
         ],
         "projects": [
@@ -44,8 +81,8 @@ ADMINISTRATIONS = [
              "description": "Programa de prevención de violencia con enfoque epidemiológico (vigilancia de "
                             "muertes violentas, restricción de horarios de venta de alcohol y porte de armas, "
                             "intervención social focalizada). Reconocido internacionalmente como caso de estudio.",
-             "source": {"name": "BBC Mundo, \"Epidemiología para combatir asesinatos: la receta que le funcionó a Cali\"",
-                       "url": "https://www.bbc.com/mundo/noticias/2014/10"}},
+             "source": {"name": "BID, \"Programa Desarrollo, Seguridad y Paz, DESEPAZ de la ciudad de Cali\"",
+                       "url": "https://publications.iadb.org/publications/spanish/document/Programa_Desarrollo_seguridad_y_paz_DESEPAZ_de_la_ciudad_de_Cali.pdf"}},
             {"name": "Recuperación de la malla vial", "category": "infraestructura y obras", "status": "en curso",
              "description": "La administración reportó avances en la recuperación de vías, sin cifra oficial "
                             "de cobertura final verificada por esta investigación.",
@@ -206,6 +243,14 @@ ADMINISTRATIONS = [
         ],
     },
 ]
+
+
+def needs_verification(source: dict) -> bool:
+    """Fuente que apunta a la portada de un sitio (p. ej. "https://www.cali.gov.co") o a un resumen
+    de buscador: no permite comprobar el dato y debe reemplazarse por la nota específica."""
+    url = (source or {}).get("url", "")
+    path = url.split("://", 1)[-1].split("/", 1)[1] if "/" in url.split("://", 1)[-1] else ""
+    return not path.strip("/") or "resumen de Google" in (source or {}).get("name", "")
 
 
 def status_counts(admin: dict) -> dict:

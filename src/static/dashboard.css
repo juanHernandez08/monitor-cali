@@ -250,3 +250,73 @@ footer { color: var(--muted); font-size: 12px; line-height: 1.7; }
 .agenda-card .quote .who { color: var(--muted); font-size: 12px; margin-top: 3px; }
 .rank { background: var(--brand-soft); color: var(--brand); border-radius: 8px; padding: 2px 8px; font-weight: 700; font-size: 12px; }
 .pcard { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: start; border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
+
+/* ================= auditoría front-end 2026-09-29 ================= */
+/* Foco visible para quien navega con teclado (antes no había ningún estilo de foco). */
+:focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; border-radius: 6px; }
+button:focus:not(:focus-visible) { outline: none; }
+.skip-link { position: absolute; left: -999px; top: 8px; z-index: 100; background: var(--ink); color: #fff; padding: 8px 14px; border-radius: 8px; }
+.skip-link:focus { left: 8px; }
+main:focus { outline: none; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+}
+/* Aviso flotante para errores de carga y respuestas del servidor (429, 401). */
+.toast { position: fixed; right: 16px; bottom: 16px; z-index: 90; max-width: min(420px, calc(100vw - 32px)); padding: 12px 16px;
+  border-radius: var(--radius-sm); background: var(--ink); color: #fff; box-shadow: var(--shadow); font-size: 13px;
+  opacity: 0; transform: translateY(8px); pointer-events: none; transition: opacity .2s, transform .2s; }
+.toast.show { opacity: 1; transform: none; pointer-events: auto; }
+.toast.error { background: var(--neg); }
+/* Mientras una pestaña carga, se atenúa sin bloquear la lectura. */
+.tabpane[aria-busy="true"] { opacity: .6; transition: opacity .2s; }
+.sub-nav.wrap { flex-wrap: wrap; width: auto; }
+.tag.linklike { cursor: pointer; border: 1px solid var(--line); background: var(--soft); color: var(--brand-2); font: inherit; font-size: 12px; }
+.tag.linklike:hover { background: var(--brand-soft); }
+
+/* ---------- Histórico 2008 a hoy ---------- */
+.hist-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 520px), 1fr)); gap: 16px; align-items: start; }
+.hist-ind .chart-box { height: 270px; }
+.hist-overall { font-size: 13px; color: var(--ink-soft, #52514e); text-align: right; }
+.table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.hist-table { width: 100%; border-collapse: collapse; font-size: 12.5px; margin: 6px 0 4px; }
+.hist-table th, .hist-table td { padding: 7px 8px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+.hist-table thead th { color: var(--muted); font-weight: 600; font-size: 11.5px; text-transform: uppercase; letter-spacing: .02em; }
+.hist-table tbody th { font-weight: 600; white-space: nowrap; }
+.scorecard td { text-align: center; font-size: 12px; min-width: 96px; }
+.scorecard td span { color: var(--muted); font-size: 11px; }
+.scorecard tr.group th { background: var(--soft); text-transform: uppercase; font-size: 11px; letter-spacing: .04em; color: var(--muted); }
+.scorecard .v-mejoro { background: #e6f5e6; color: #0b6b0b; }
+.scorecard .v-empeoro { background: #fbe9e9; color: #9e2626; }
+.scorecard .v-estable { background: #f2f2ee; }
+.scorecard .v-none { color: var(--muted); }
+.scorecard td.partial { background-image: repeating-linear-gradient(135deg, transparent 0 6px, rgba(0,0,0,.035) 6px 12px); }
+.timeline-list { margin: 0; padding-left: 18px; line-height: 1.6; }
+.timeline-list li { margin-bottom: 6px; }
+ul.method { margin: 10px 0 0; padding-left: 18px; }
+.concl { display: grid; grid-template-columns: 110px 1fr; gap: 12px; align-items: start; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.concl p { margin: 0; }
+.strategy-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 14px; }
+.strategy { border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 14px 16px; background: var(--panel); }
+.strategy h3 { margin: 0 0 8px; font-size: 15px; display: flex; gap: 8px; align-items: center; }
+.strategy p { margin: 6px 0; }
+.strategy ul { margin: 4px 0 8px; padding-left: 18px; }
+@media (max-width: 640px) {
+  .concl { grid-template-columns: 1fr; gap: 4px; }
+  .hist-overall { text-align: left; }
+  .toast { left: 16px; right: 16px; }
+}
+/* Impresión: el equipo imprime o guarda en PDF pestañas completas para reuniones. */
+@media print {
+  .sidebar, .top .controls, .sub-nav, .toast, .skip-link, button.toggle { display: none !important; }
+  .shell { display: block; } .main-col { margin: 0; }
+  .panel, .kpi, .hero { box-shadow: none; break-inside: avoid; }
+  .subtabpane:not(.active), .tabpane:not(.active) { display: none !important; }
+  a[href^="http"]::after { content: " (" attr(href) ")"; font-size: 10px; color: #555; word-break: break-all; }
+}
+/* Sub-pestañas: en pantallas angostas se desplazan en horizontal en vez de ensanchar la página. */
+.sub-nav { max-width: 100%; overflow-x: auto; scrollbar-width: thin; }
+.sub-nav .subtab { white-space: nowrap; flex: 0 0 auto; }
+.sub-nav.wrap { overflow-x: visible; }
+/* Un hijo flex no se encoge por debajo de su contenido sin min-width: 0 (una tabla ancha
+   ensanchaba toda la columna en móvil). */
+.main-col, main, .tabpane, .subtabpane, .panel { min-width: 0; }
