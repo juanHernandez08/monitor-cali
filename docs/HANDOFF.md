@@ -395,6 +395,51 @@ reproducible al reintentar). Por eso `deploy.sh` ahora verifica el binding real 
 `127.0.0.1:`, lo recrea solo y aborta el script con error si sigue mal -- nunca vuelve a quedar
 expuesto en silencio, cada despliegue se autoverifica.
 
+## Crisis de saldo (2026-09-30) -- clasificación movida a Ollama, costo cero
+
+El cliente avisó que quedaban USD 5 en la cuenta de Anthropic y que el proyecto no era viable sin
+bajar el costo mucho más. En orden, lo que se hizo:
+
+1. **Se encontró que la clasificación corría en Sonnet 5, no en Haiku** (lo cotizado y aprobado en
+   `docs/cotizacion.md`) -- error de configuración, costaba ~2× lo presupuestado. Corregido
+   primero (`SentimentEngine.classify_model`, separado de `model` que sigue usando Sonnet solo
+   para el análisis narrativo del reporte, 1 vez/día, donde el volumen no pesa).
+2. Aun con Haiku + caché (~$0,0008/clasificación, ~985/día reales), el saldo no alcanzaba para
+   llegar a fin de octubre (~6 días, no ~31). El VPS (1 vCPU, 3,8 GB RAM, sin GPU) no puede correr
+   Ollama localmente -- ni el modelo grande (14b) por RAM, ni uno chico sin arriesgar volver lento
+   el sitio (comparte el único núcleo con todo lo demás).
+3. **Decisión del cliente: la clasificación se hace en SU PC** (Ollama, `qwen2.5:14b`, gratis, ya
+   la usaba en desarrollo local) **por un túnel SSH inverso** -- costo cero mientras la PC esté
+   prendida y conectada. Trade-off aceptado explícitamente: si la PC se apaga, las menciones
+   nuevas se acumulan sin clasificar hasta que vuelva a estar en línea (el sitio y el dashboard
+   siguen funcionando igual para el equipo, solo se atrasa la clasificación).
+
+**Cómo quedó armado** (`scripts/ollama_tunnel.ps1`, instalado como Tarea Programada de Windows
+`MonitorCaliOllamaTunnel` que arranca sola al iniciar sesión en la PC del cliente, reintenta cada
+10s si se corta):
+
+- El túnel (`ssh -R 172.17.0.1:11500:127.0.0.1:11434 deploy@...`) escucha en **172.17.0.1** (la IP
+  del puente de Docker en el VPS), **no en 127.0.0.1**. Costó dos vueltas encontrarlo: el
+  contenedor NO alcanza el 127.0.0.1 del host (127.0.0.1 dentro de un contenedor es su propio
+  loopback) -- lo alcanza por la interfaz del puente Docker, que es una IP distinta aunque esté en
+  la misma máquina física.
+- Bindear a esa IP (que no es loopback) exigió cambiar `GatewayPorts no` → `GatewayPorts
+  clientspecified` en `/etc/ssh/sshd_config` del VPS (por defecto sshd fuerza cualquier
+  reenvío remoto a loopback, sin importar qué pida el cliente).
+- Hizo falta además una regla de `ufw allow from 172.17.0.0/16 to any port 11500 proto tcp`: por
+  defecto ufw bloquea todo lo que no sea el 22, **incluido el tráfico que viene de los propios
+  contenedores Docker del servidor** -- no es automático solo porque "es del mismo servidor".
+- `deploy.sh` usa `--add-host=host.docker.internal:host-gateway` para que el contenedor resuelva
+  ese nombre a la IP del puente, y se autoverifica igual que con el puerto 8000 (`recreate_if_needed`).
+- Producción: `SENTIMENT_BACKEND=ollama`, `OLLAMA_URL=http://host.docker.internal:11500`.
+- Verificado con `curl` desde afuera del servidor: el puerto 11500 **no** responde -- solo lo
+  alcanzan el propio VPS y sus contenedores, nunca internet.
+
+**Si en el futuro se recupera el saldo de Claude** y se quiere volver a la nube (más confiable que
+depender de que la PC esté prendida): cambiar `SENTIMENT_BACKEND=claude` en el `.env` de
+producción, recrear el contenedor -- el código de `SentimentEngine` (Haiku para clasificar, Sonnet
+solo para el reporte) sigue ahí, listo, no hay que deshacer nada del túnel.
+
 `docs/cotizacion.md` tiene el plan ya costeado y aprobado: **Escenario B** (VPS + SQLite + Claude
 Haiku, ~USD 41/mes ≈ $132.000 COP, cabe cómodo en el presupuesto aprobado de 200.000 COP/mes).
 `docs/despliegue.md` quedó desactualizado (recomienda Railway + Postgres, un plan anterior) --

@@ -26,8 +26,12 @@ docker run --rm -v /opt/monitor-cali/data:/data busybox chown -R 10001:10001 /da
 start_container() {
   # --add-host: si SENTIMENT_BACKEND=ollama (2026-09-30, saldo de Claude casi agotado -- clasifica
   # la PC del cliente por un túnel SSH inverso, ver scripts/ollama_tunnel.ps1), OLLAMA_URL usa
-  # host.docker.internal -- 127.0.0.1 DENTRO del contenedor es su propio loopback, no el del host,
-  # así que sin esto nunca alcanzaría el túnel que escucha en el 127.0.0.1 del servidor.
+  # host.docker.internal -- 127.0.0.1 DENTRO del contenedor es su propio loopback, no el del host.
+  # El túnel escucha en 172.17.0.1 (el puente de Docker), NO en 127.0.0.1: el contenedor llega por
+  # esa interfaz, no por loopback -- son direcciones distintas aunque estén en la misma máquina.
+  # También hizo falta abrir el puerto 11500 en ufw SOLO para 172.17.0.0/16 (ver ollama_tunnel.ps1
+  # y `sudo ufw status` -- por defecto ufw bloquea todo lo que no sea el 22, sin importar que el
+  # tráfico venga de un contenedor propio).
   docker run -d --name monitor-cali \
     --restart unless-stopped \
     -p 127.0.0.1:8000:8000 \
