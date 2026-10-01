@@ -481,6 +481,7 @@ function renderFeedList(sel, rows, { showCandidate = false } = {}) {
     </div>
     <div class="side">
       ${r.kind === "comments" ? `<span class="hint">solo comentarios</span>` : sentTag(r)}
+      ${(r.likes || r.views) ? `<div class="hint" style="margin-top:6px">${r.likes ? `❤️ ${fmtNum(r.likes)}` : ""}${r.views ? ` · 👁 ${fmtNum(r.views)}` : ""}</div>` : ""}
       ${commentsBlock(r, i)}
     </div>
   </article>`).join("") || `<div class="empty">Sin publicaciones con esos filtros.</div>`;
@@ -510,6 +511,7 @@ async function loadFeedTab(feedSel, filterPrefix, sourceType) {
   if ($(`#${filterPrefix}-label`)?.value) p.set("label", $(`#${filterPrefix}-label`).value);
   if ($(`#${filterPrefix}-emotion`)?.value) p.set("emotion", $(`#${filterPrefix}-emotion`).value);
   if ($(`#${filterPrefix}-category`)?.value) p.set("category", $(`#${filterPrefix}-category`).value);
+  if ($(`#${filterPrefix}-sort`)?.value) p.set("sort", $(`#${filterPrefix}-sort`).value);
   renderFeedList(feedSel, await j(`/api/feed?${p}`), { showCandidate: true });
 }
 function loadFeed() { return loadFeedTab("#feed", "f", "prensa"); }
@@ -1103,10 +1105,10 @@ document.querySelectorAll("select[data-fill='categories']").forEach((sel) => {
 document.querySelectorAll("select[data-fill='emotions']").forEach((sel) => {
   sel.insertAdjacentHTML("beforeend", EMOTION_OPTIONS.map(([v, l]) => `<option value="${esc(v)}">${esc(l)}</option>`).join(""));
 });
-["#f-candidate", "#f-label", "#f-emotion", "#f-category"].forEach((id) => $(id).addEventListener("change", loadFeed));
+["#f-candidate", "#f-label", "#f-emotion", "#f-category", "#f-sort"].forEach((id) => $(id).addEventListener("change", loadFeed));
 ["#yt-f-candidate", "#yt-f-label", "#yt-f-emotion", "#yt-f-category"].forEach((id) => $(id).addEventListener("change", loadFeedYoutube));
 ["#meta-f-candidate", "#meta-f-platform", "#meta-f-sort"].forEach((id) => $(id).addEventListener("change", loadMeta));
-["#city-f-source", "#city-f-label", "#city-f-emotion", "#city-f-category"].forEach((id) => $(id).addEventListener("change", loadCityFeed));
+["#city-f-source", "#city-f-label", "#city-f-emotion", "#city-f-category", "#city-f-sort"].forEach((id) => $(id).addEventListener("change", loadCityFeed));
 $("#refresh").addEventListener("click", async () => {
   const b = $("#refresh"); b.disabled = true; b.textContent = "Actualizando…";
   const clickedAt = Date.now();
@@ -1250,6 +1252,7 @@ async function loadCityFeed() {
   if ($("#city-f-label").value) p.set("label", $("#city-f-label").value);
   if ($("#city-f-emotion").value) p.set("emotion", $("#city-f-emotion").value);
   if ($("#city-f-category").value) p.set("category", $("#city-f-category").value);
+  if ($("#city-f-sort").value) p.set("sort", $("#city-f-sort").value);
   renderFeedList("#city-feed", await j(`/api/feed?${p}`), { showCandidate: false });
 }
 

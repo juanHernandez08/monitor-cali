@@ -108,6 +108,45 @@ def test_feed_groups_comments_under_their_publication(db_session):
     assert rows[2]["comments_summary"]["total"] == 0 and rows[2]["comments"] == []
 
 
+def test_feed_sort_by_engagement_and_views(db_session):
+    """Filtro de orden pedido por el cliente 2026-10-01 ("Más alcance, Más visto y Más reciente")
+    para las pestañas de Prensa y Ciudad -- reutiliza el mismo cálculo de likes/vistas que ya usa
+    Meta y redes (_social_metrics); una nota de prensa sin esos datos simplemente queda en 0 y cae
+    al final, no rompe el orden."""
+    from src.queries import feed
+    carlos = Candidate(name="Carlos Arias", aliases=[])
+    ig = Source(type=SourceType.SOCIAL, name="IG")
+    gn = Source(type=SourceType.GOOGLE_NEWS, name="Google News")
+    db_session.add_all([carlos, ig, gn])
+    db_session.commit()
+    now = dt.datetime.utcnow()
+
+    def add(src, ext, text, raw, when):
+        m = Mention(candidate_id=carlos.id, source_id=src.id, external_id=ext, text=text,
+                    url=f"https://x/{ext}", raw=raw, published_at=when, fetched_at=when)
+        db_session.add(m)
+        db_session.flush()
+        db_session.add(SentimentScore(mention_id=m.id, label=SentimentLabel.NEUTRAL, score=0.0, topic="t", model="f"))
+
+    add(ig, "ig:post:low", "poco alcance", {"kind": "post", "platform": "instagram",
+        "record": {"likesCount": 10}}, now - dt.timedelta(hours=3))
+    add(ig, "ig:post:high", "mucho alcance", {"kind": "post", "platform": "instagram",
+        "record": {"likesCount": 500, "videoViewCount": 9000}}, now - dt.timedelta(hours=2))
+    add(gn, "g1", "nota de prensa reciente", {}, now - dt.timedelta(minutes=5))
+    db_session.commit()
+
+    by_engagement = feed(db_session, days=7, sort="engagement")
+    assert [r["text"] for r in by_engagement[:2]] == ["mucho alcance", "poco alcance"]
+    assert by_engagement[0]["likes"] == 500
+
+    by_views = feed(db_session, days=7, sort="views")
+    assert by_views[0]["text"] == "mucho alcance" and by_views[0]["views"] == 9000
+    assert all(r["views"] == 0 for r in by_views[1:])  # prensa y el post de bajo alcance no tienen vistas
+
+    by_recent = feed(db_session, days=7, sort="recent")
+    assert by_recent[0]["text"] == "nota de prensa reciente"
+
+
 def test_feed_label_filter_keeps_publication_with_matching_comments(db_session):
     from src.queries import feed
     carlos = Candidate(name="Carlos Arias", aliases=[])

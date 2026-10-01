@@ -333,7 +333,7 @@ def _week_bounds(week: str) -> tuple[dt.datetime, dt.datetime]:
 def feed(session, candidate_id: int | None = None, source_type: str | None = None,
          label: str | None = None, emotion: str | None = None, category: str | None = None,
          city: bool = False, days: int = 30, limit: int = 100, offset: int = 0,
-         day: str | None = None, week: str | None = None) -> list[dict]:
+         day: str | None = None, week: str | None = None, sort: str = "recent") -> list[dict]:
     """Filas = publicaciones (post, video, nota); los comentarios cuelgan de su publicación.
 
     Los filtros se aplican a las menciones; una publicación aparece si ella o alguno de sus
@@ -343,7 +343,11 @@ def feed(session, candidate_id: int | None = None, source_type: str | None = Non
 
     `day` (YYYY-MM-DD) o `week` (YYYY-Sww) acotan a esa fecha exacta EN VEZ del rango relativo
     `days` (no además de él: si no, una semana fuera de los últimos `days` días no traería nada).
-    """
+
+    `sort`: "recent" (default, por última actividad incl. comentarios nuevos), "engagement"
+    (likes + comentarios del scraper, el mismo cálculo de Meta y redes) o "views". Likes/vistas
+    solo existen para publicaciones de Instagram/Facebook/X (ver _social_metrics) -- una nota de
+    prensa o un video de YouTube simplemente queda en 0 y cae al final, no es un error."""
     q = (session.query(Mention).outerjoin(SentimentScore).join(Source).join(Candidate)
          .filter(Mention.relevant.is_(True)))
     if week:
@@ -389,6 +393,9 @@ def feed(session, candidate_id: int | None = None, source_type: str | None = Non
             row["kind"] = raw.get("kind") or "news"
             row["thumbnail"] = _thumbnail(m)
             row["comments"], row["comments_summary"] = [], _summary_of([])
+            metrics = _social_metrics(m)
+            row["likes"], row["views"] = metrics["likes"], metrics["views"]
+            row["engagement"] = metrics["likes"] + metrics["comments"]
             rows[key] = row
             order.append(key)
 
@@ -401,6 +408,7 @@ def feed(session, candidate_id: int | None = None, source_type: str | None = Non
             raw = first.raw or {}
             title = raw.get("video_title") or raw.get("post_title") or "(publicación)"
             url = f"https://www.youtube.com/watch?v={raw['video_id']}" if raw.get("video_id") else first.url
+            metrics = _social_metrics(first)
             rows[key] = {
                 "id": None, "kind": "comments", "candidate": first.candidate.name,
                 "candidate_id": first.candidate_id, "source": first.source.name,
@@ -410,6 +418,7 @@ def feed(session, candidate_id: int | None = None, source_type: str | None = Non
                 "emotion_nuance": None, "apalancador": None,
                 "thumbnail": _thumbnail(first),
                 "comments": [], "comments_summary": _summary_of([]),
+                "likes": metrics["likes"], "views": metrics["views"], "engagement": metrics["likes"] + metrics["comments"],
             }
             order.append(key)
         shown = matching if (label or emotion or category) else comments
@@ -420,7 +429,12 @@ def feed(session, candidate_id: int | None = None, source_type: str | None = Non
     result = [rows[k] for k in order]
     for r in result:
         r.setdefault("last_activity", r["published_at"])  # una publicación con actividad reciente sube
-    result.sort(key=lambda r: r["last_activity"], reverse=True)
+    if sort == "engagement":
+        result.sort(key=lambda r: (r["engagement"], r["last_activity"]), reverse=True)
+    elif sort == "views":
+        result.sort(key=lambda r: (r["views"], r["last_activity"]), reverse=True)
+    else:
+        result.sort(key=lambda r: r["last_activity"], reverse=True)
     return result[offset:offset + limit]
 
 
