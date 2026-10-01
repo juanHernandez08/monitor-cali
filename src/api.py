@@ -308,9 +308,15 @@ def create_app(session_factory=None, start_jobs: bool = True, cf_verifier=None) 
             return queries.candidate_topic_map(s, name, days=days)
 
     @app.get("/api/candidate/emotions")
-    def api_candidate_emotions(days: int = Query(30, ge=1, le=365)):
+    def api_candidate_emotions(days: int = Query(30, ge=1, le=365), kind: Literal["candidate", "councilor"] = "candidate"):
         with session() as s:
-            return queries.candidate_emotions(s, days=days)
+            return queries.candidate_emotions(s, days=days, kind=kind)
+
+    @app.get("/api/candidate/emotion-samples")
+    def api_candidate_emotion_samples(name: str = Query(..., max_length=120), emotion: str = Query(..., max_length=40),
+                                      days: int = Query(30, ge=1, le=365)):
+        with session() as s:
+            return queries.candidate_emotion_samples(s, candidate_name=name, emotion=emotion, days=days)
 
     @app.get("/api/city/kpis")
     def api_city_kpis(days: int = Query(7, ge=1, le=365)):

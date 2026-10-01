@@ -310,6 +310,49 @@ def test_report_scope_counts_publications_comments_platforms_and_accounts(db_ses
     assert scope["account_count"] == 2
 
 
+def test_candidate_emotions_can_filter_by_councilor_kind(db_session):
+    """Pedido del cliente 2026-10-01: la pestaña Concejales también debe tener su propio mapa de
+    calor candidato x emoción -- antes candidate_emotions() solo miraba kind="candidate" y los
+    concejales quedaban afuera por completo."""
+    from src.queries import candidate_emotions
+    concejal = Candidate(name="Audry María Toro Echavarría", aliases=[], kind="councilor")
+    candidato = Candidate(name="Carlos Arias", aliases=[], kind="candidate")
+    src = Source(type=SourceType.GOOGLE_NEWS, name="Google News")
+    db_session.add_all([concejal, candidato, src])
+    db_session.commit()
+    for cand, ext in [(concejal, "a"), (candidato, "b")]:
+        m = Mention(candidate_id=cand.id, source_id=src.id, external_id=ext, text=ext, url=f"https://x/{ext}",
+                    raw={}, fetched_at=dt.datetime.utcnow())
+        db_session.add(m)
+        db_session.flush()
+        db_session.add(SentimentScore(mention_id=m.id, label=SentimentLabel.POSITIVE, score=0.5, topic="t",
+                                      model="f", category="otro", emotion="felicidad"))
+    db_session.commit()
+
+    councilors = candidate_emotions(db_session, kind="councilor")
+    assert {r["candidate"] for r in councilors} == {"Audry María Toro Echavarría"}
+    candidates = candidate_emotions(db_session, kind="candidate")
+    assert {r["candidate"] for r in candidates} == {"Carlos Arias"}
+
+
+def test_candidate_emotion_samples_shows_the_apalancador(db_session):
+    from src.queries import candidate_emotion_samples
+    carlos = Candidate(name="Carlos Arias", aliases=[])
+    src = Source(type=SourceType.SOCIAL, name="Instagram / Facebook (cuentas)")
+    db_session.add_all([carlos, src])
+    db_session.commit()
+    m = Mention(candidate_id=carlos.id, source_id=src.id, external_id="a", text="a", url="https://x/a",
+               raw={}, fetched_at=dt.datetime.utcnow())
+    db_session.add(m)
+    db_session.flush()
+    db_session.add(SentimentScore(mention_id=m.id, label=SentimentLabel.POSITIVE, score=0.6, topic="t",
+                                  model="f", category="otro", emotion="felicidad", apalancador="anuncio de obra"))
+    db_session.commit()
+
+    samples = candidate_emotion_samples(db_session, candidate_name="Carlos Arias", emotion="felicidad")
+    assert samples[0]["apalancador"] == "anuncio de obra"
+
+
 def test_summary_includes_avatar_from_instagram_posts(db_session, monkeypatch):
     from src import queries
     monkeypatch.setattr(queries.config, "SOCIAL_ACCOUNTS", [

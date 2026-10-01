@@ -674,11 +674,15 @@ $("#inv-url").addEventListener("keydown", (e) => { if (e.key === "Enter") invest
 /* ---------- tema por tema (genérico: perfil de candidato y detalle de ciudad) ---------- */
 function topicCard(t, i, prefix) {
   const subtopics = (t.subtopics || []).filter((s) => s.topic !== t.topic.toLowerCase());
+  // Apalancadores (qué dispara la emoción) sacados directo de las muestras ya traídas -- visibles
+  // sin tener que tocar "ver comentarios de ejemplo" (pedido del cliente 2026-10-01: "ya están
+  // [las emociones] pero faltan sus apalancadores").
+  const apalancadores = [...new Set((t.samples || []).map((s) => s.apalancador).filter(Boolean))].slice(0, 2);
   return `<div class="topic-card" id="${prefix}-card-${i}">
       <div class="head"><h3>${esc(t.topic)}</h3><div>${t.count} menciones · <span class="tag ${t.positive_pct >= 60 ? "positive" : t.positive_pct <= 30 ? "negative" : ""}">${t.positive_pct}% a favor</span></div></div>
       <div class="subs"><span class="tag positive">${t.positive} positivas</span><span class="tag">${t.neutral} neutrales</span><span class="tag negative">${t.negative} negativas</span>
         ${Object.entries(mergedSources(t.sources)).map(([label, n]) => `<span class="tag">${esc(label)} · ${n}</span>`).join("")}</div>
-      ${t.dominant_emotion ? `<div class="topic">siente, sobre todo: ${esc(t.dominant_emotion)}</div>` : ""}
+      ${t.dominant_emotion ? `<div class="topic">siente, sobre todo: ${esc(t.dominant_emotion)}${apalancadores.length ? ` — por: ${apalancadores.map(esc).join("; ")}` : ""}</div>` : ""}
       ${subtopics.length ? `<div class="subs">${subtopics.map((s) => `<span class="tag">${esc(s.topic)} · ${s.count}</span>`).join("")}</div>` : ""}
       <button class="toggle" data-topic-idx="${i}" data-topic-prefix="${prefix}">▸ ver ${t.samples.length} comentario${t.samples.length === 1 ? "" : "s"} de ejemplo</button>
     </div>`;
@@ -792,11 +796,15 @@ function loadCandidatesTab(rows) {
 
 /* Mapa de calor candidato x emoción -- misma idea que "¿qué emoción transmite cada tema?" de
    Ciudad, pero por candidato (pedido del cliente 2026-10-01). */
-async function loadCandidateEmotions() {
-  if (!$("#chart-cand-emotions")) return;
-  const rows = (await j(`/api/candidate/emotions?days=${days()}`)).slice(0, 12);
-  chart("#chart-cand-emotions", {
-    chart: { type: "heatmap", height: Math.max(220, rows.length * 34) },
+async function loadCandidateEmotionsFor(chartId, detailId, kind) {
+  if (!$(chartId)) return;
+  const rows = (await j(`/api/candidate/emotions?days=${days()}&kind=${kind}`)).slice(0, 21);
+  chart(chartId, {
+    chart: { type: "heatmap", height: Math.max(220, rows.length * 34),
+      events: { dataPointSelection: (e, ctx, cfg) => {
+        const cand = rows[cfg.seriesIndex]?.candidate, emo = EMOTIONS_ORDER[cfg.dataPointIndex];
+        if (cand && emo) loadCandidateEmotionDetail(detailId, cand, emo);
+      } } },
     series: rows.map((r) => ({ name: cap(r.candidate), data: EMOTIONS_ORDER.map((e) => ({ x: cap(e), y: r.emotions[e] || 0 })) })),
     colors: [BLUE],
     plotOptions: { heatmap: { colorScale: { ranges: [{ from: 0, to: 0, color: GRID }] } } },
@@ -804,6 +812,21 @@ async function loadCandidateEmotions() {
     xaxis: { labels: { style: { colors: MUTED } } },
     legend: { show: false },
   });
+  $(chartId).style.cursor = "pointer";
+}
+function loadCandidateEmotions() { return loadCandidateEmotionsFor("#chart-cand-emotions", "#cand-heatmap-detail", "candidate"); }
+function loadCouncilEmotions() { return loadCandidateEmotionsFor("#chart-council-emotions", "#council-heatmap-detail", "councilor"); }
+
+/* Clic en una celda candidato/concejal x emoción: el apalancador concreto detrás de esa
+   combinación -- sin esto una celda es solo un número (pedido del cliente 2026-10-01). */
+async function loadCandidateEmotionDetail(detailId, candidate, emotion) {
+  const el = $(detailId);
+  if (!el) return;
+  el.innerHTML = `<div class="empty">Cargando…</div>`;
+  el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  const rows = await j(`/api/candidate/emotion-samples?name=${encodeURIComponent(candidate)}&emotion=${encodeURIComponent(emotion)}&days=${days()}`);
+  el.innerHTML = `<div class="topic-card"><div class="head"><h3>${esc(candidate)} · ${esc(cap(emotion))}</h3><div>${rows.length} ejemplo${rows.length === 1 ? "" : "s"}</div></div>` +
+    (rows.length ? rows.map(quote).join("") : `<div class="empty">Sin ejemplos de muestra para esta combinación.</div>`) + `</div>`;
 }
 
 /* ---------- carga por pestaña ----------
@@ -819,7 +842,8 @@ function ensureSummary(force = false) {
 const TAB_LOADERS = {
   resumen: async () => { await ensureSummary(true); await Promise.all([loadAlerts(), loadSocialStrong()]); },
   candidatos: async () => { const rows = await ensureSummary(); loadCandidatesTab(rows);
-    await Promise.all([loadTopics(), loadPositivityCI(rows), loadCandidateEmotions(), (typeof loadCouncil === "function" ? loadCouncil() : null)]); },
+    await Promise.all([loadTopics(), loadPositivityCI(rows), loadCandidateEmotions(), loadCouncilEmotions(),
+      (typeof loadCouncil === "function" ? loadCouncil() : null)]); },
   publicaciones: async () => { await ensureSummary(); await Promise.all([loadFeed(), loadFeedYoutube(), loadMeta()]); },
   meta: () => Promise.all([loadMeta(), loadMetaAnalytics(), loadMetaInsights()]),
   analisis: async () => { const rows = await ensureSummary(); loadQuadrant(rows);

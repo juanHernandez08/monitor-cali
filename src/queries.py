@@ -848,13 +848,13 @@ def city_topic_emotion_samples(session, category: str, emotion: str, days: int =
     return [_mention_dict(m) for m in matches[:limit]]
 
 
-def candidate_emotions(session, days: int = 30) -> list[dict]:
-    """Cruce candidato x emoción: para cada candidato, cuántas menciones de cada emoción -- para
-    el mapa de calor "qué emoción transmite la cobertura de cada candidato" (pedido del cliente
-    2026-10-01, pestaña Candidatos)."""
+def candidate_emotions(session, days: int = 30, kind: str = "candidate") -> list[dict]:
+    """Cruce candidato x emoción: para cada candidato (o concejal, con kind="councilor"), cuántas
+    menciones de cada emoción -- para el mapa de calor "qué emoción transmite la cobertura de cada
+    candidato" (pedido del cliente 2026-10-01, pestañas Candidatos y Concejales)."""
     since = _since(days)
     rows = (session.query(Mention).join(SentimentScore).join(Candidate)
-            .filter(WHEN >= since, Mention.relevant.is_(True), Candidate.kind == "candidate").all())
+            .filter(WHEN >= since, Mention.relevant.is_(True), Candidate.kind == kind).all())
     by_cand: dict[str, Counter] = defaultdict(Counter)
     for m in rows:
         emo = m.sentiment.emotion or "sin emoción marcada"
@@ -863,6 +863,18 @@ def candidate_emotions(session, days: int = 30) -> list[dict]:
            for name, counter in by_cand.items()]
     out.sort(key=lambda r: (r["candidate"] != CARLOS, -r["total"]))
     return out
+
+
+def candidate_emotion_samples(session, candidate_name: str, emotion: str, days: int = 30, limit: int = 6) -> list[dict]:
+    """Qué está generando concretamente una emoción en la cobertura de un candidato -- el
+    apalancador (clic en una celda del mapa de calor candidato x emoción). Mismo principio que
+    city_topic_emotion_samples, pedido del cliente 2026-10-01."""
+    since = _since(days)
+    rows = (session.query(Mention).join(SentimentScore).join(Candidate)
+            .filter(WHEN >= since, Mention.relevant.is_(True), Candidate.name == candidate_name).all())
+    matches = [m for m in rows if (m.sentiment.emotion or "sin emoción marcada") == emotion]
+    matches.sort(key=lambda m: (m.source.type in (SourceType.GOOGLE_NEWS, SourceType.RSS), -abs(m.sentiment.score)))
+    return [_mention_dict(m) for m in matches[:limit]]
 
 
 def _cluster_topics(by_topic: dict[str, list[Mention]], min_overlap: float = 0.4) -> dict[str, list[Mention]]:
