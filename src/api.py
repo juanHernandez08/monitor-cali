@@ -276,6 +276,12 @@ def create_app(session_factory=None, start_jobs: bool = True, cf_verifier=None) 
         with session() as s:
             return queries.city_emotion_by_topic(s, days=days)
 
+    @app.get("/api/city/topic-emotion-samples")
+    def api_city_topic_emotion_samples(category: str = Query(..., max_length=60), emotion: str = Query(..., max_length=40),
+                                       days: int = Query(7, ge=1, le=365)):
+        with session() as s:
+            return queries.city_topic_emotion_samples(s, category=category, emotion=emotion, days=days)
+
     @app.get("/api/city/opportunities")
     def api_city_opportunities(days: int = Query(7, ge=1, le=365)):
         with session() as s:

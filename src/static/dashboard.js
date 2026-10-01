@@ -629,10 +629,10 @@ async function loadMetaAnalytics() {
     $("#meta-narrative-date").textContent = `del análisis diario del ${latest.date} — ver el reporte completo en la pestaña Reporte`;
     $("#meta-narrative").innerHTML = `
       <p class="reading">${esc(n.resumen_ejecutivo)}</p>
-      <p>${esc(n.analisis)}</p>
+      <p>${esc(n.factores_hipotesis)}</p>
       ${n.limitaciones ? `<div class="limitations"><span class="label">Qué NO se puede determinar con estos datos</span>${esc(n.limitaciones)}</div>` : ""}
-      <h3 style="margin:14px 0 6px">Estrategia recomendada</h3>
-      <div class="alerts"><ul>${n.estrategia.map((s) => `<li>${esc(s)}</li>`).join("") || `<li class="empty">Sin recomendaciones en este corte.</li>`}</ul></div>`;
+      <h3 style="margin:14px 0 6px">Plan de 72 horas</h3>
+      <div class="alerts"><ul>${(n.plan_72h || []).map((it) => `<li><b>${esc(it.dia)}:</b> ${esc(it.accion)}</li>`).join("") || `<li class="empty">Sin plan generado en este corte.</li>`}</ul></div>`;
   }
 }
 
@@ -882,14 +882,27 @@ async function loadReporte() {
   else $("#rep-body").innerHTML = `<div class="empty">Aún no se ha generado ningún reporte. Tocá "Generar el de hoy".</div>`;
 }
 
+/* "otro" desagregado en sus subtemas reales -- un cajón de sastre sin abrir no dice nada
+   (pedido del cliente 2026-10-01). */
+function repTopicLabel(t) {
+  if (t.category !== "otro" || !t.subtopics?.length) return cap(t.category);
+  return `Otro -- ${t.subtopics.slice(0, 3).map((s) => s.topic).join(", ")}`;
+}
+function repNoPresence(n) {
+  return n === 0 ? "no se detectaron publicaciones clasificadas sobre este tema en las cuentas y la ventana revisadas" : `${n} menciones`;
+}
+
 async function showReport(date) {
   const r = await j(`/api/reports/${date}`);
   if (r.error) { $("#rep-body").innerHTML = `<div class="empty">${esc(r.error)}</div>`; return; }
   const k = r.social_kpis;
   const n = r.narrative;
+  const scope = r.method_scope || {};
+  const changes = r.changes_vs_previous;
   const reach = r.reach_comparison || [];
   const reaction = r.comment_reaction || [];
   const gaps = r.topic_gaps || [];
+  const convEmotions = r.conversation_emotions || [];
   const trendRows = reach.filter((c) => c.trend_pct !== null);
 
   $("#rep-body").innerHTML = `
@@ -903,27 +916,36 @@ async function showReport(date) {
     <section class="intro panel">
       <h2>Resumen ejecutivo</h2>
       <p>${esc(n.resumen_ejecutivo)}</p>
-    </section>
-    <section class="panel">
-      <div class="panel-head"><h2>Por qué el alcance de Carlos es el que es</h2><span class="hint">análisis basado en las cifras de este corte, últimos ${r.comparison_window_days} días</span></div>
-      <p class="reading">${esc(n.analisis)}</p>
-      ${n.limitaciones ? `<div class="limitations"><span class="label">Qué NO se puede determinar con estos datos</span>${esc(n.limitaciones)}</div>` : ""}
     </section>` : `
     <section class="intro panel">
       <h2>Análisis narrativo no disponible en este corte</h2>
       <p>El motor de análisis no respondió al generar este reporte. Las cifras y gráficas de abajo son reales e íntegras igual.</p>
     </section>`}
     <section class="panel">
-      <div class="panel-head"><div><h2>Alcance promedio por publicación</h2><div class="hint">likes + comentarios por publicación, candidatos y concejales con al menos 2 posts en ${r.comparison_window_days} días. Carlos en azul.</div></div></div>
+      <div class="panel-head"><div><h2>Método y alcance</h2><div class="hint">Generado el ${esc(scope.generado || "—")}. "Alcance" = likes + comentarios por publicación (no reproducciones ni "personas alcanzadas", que las plataformas no entregan por scraping). Se usa la mediana porque un solo post viral infla el promedio.</div></div></div>
+      <p>En los últimos ${r.city_window_days} días se revisaron <b>${scope.publicaciones_revisadas_7d || 0} publicaciones</b> y <b>${scope.comentarios_revisados_7d || 0} comentarios</b>, de ${scope.cuentas_y_medios_revisados || 0} cuentas/medios (${(scope.plataformas || []).join(", ") || "sin datos"}).</p>
+    </section>
+    <section class="panel">
+      <div class="panel-head"><h2>Cambios frente al informe anterior</h2></div>
+      ${!changes ? `<p class="hint">No hay un reporte anterior guardado con el cual comparar (primer corte).</p>` : `
+      <p class="hint">Comparado con el reporte del ${esc(changes.informe_anterior)}:</p>
+      ${changes.aparecio.length ? `<b>Apareció:</b> <div class="subs">${changes.aparecio.map((c) => `<span class="tag positive">${esc(cap(c))}</span>`).join("")}</div>` : ""}
+      ${changes.cambio.length ? `<b>Cambió:</b><ul>${changes.cambio.map((c) => `<li>${esc(cap(c.category))}: ${c.antes} → ${c.ahora} menciones (${c.variacion_pct >= 0 ? "+" : ""}${c.variacion_pct}%)</li>`).join("")}</ul>` : ""}
+      ${changes.persiste.length ? `<b>Persiste:</b> <div class="subs">${changes.persiste.map((c) => `<span class="tag">${esc(cap(c))}</span>`).join("")}</div>` : ""}
+      ${changes.no_se_pudo_volver_a_comprobar.length ? `<b>No se pudo volver a comprobar en esta ventana:</b> <div class="subs">${changes.no_se_pudo_volver_a_comprobar.map((c) => `<span class="tag pending">${esc(cap(c))}</span>`).join("")}</div>` : ""}`}
+    </section>
+    <h3 class="section-title">Métricas y comparación entre cuentas</h3>
+    <section class="panel">
+      <div class="panel-head"><div><h2>Alcance típico por publicación (mediana)</h2><div class="hint">likes + comentarios por publicación, candidatos y concejales con al menos 2 posts en ${r.comparison_window_days} días. Carlos en azul.</div></div></div>
       <div class="chart-box" id="chart-rep-reach"></div>
     </section>
     ${trendRows.length ? `
     <section class="panel">
-      <div class="panel-head"><div><h2>Tendencia de alcance</h2><div class="hint">variación entre la primera y la segunda mitad del período -- verde sube, rojo baja</div></div></div>
+      <div class="panel-head"><div><h2>Tendencia de alcance</h2><div class="hint">variación de la mediana entre la primera y la segunda mitad del período -- verde sube, rojo baja</div></div></div>
       <div class="chart-box" id="chart-rep-trend"></div>
     </section>` : ""}
     <section class="panel">
-      <div class="panel-head"><div><h2>Reacción ciudadana en comentarios propios</h2><div class="hint">solo comentarios dejados en la publicación de cada quien, mínimo 3 comentarios</div></div></div>
+      <div class="panel-head"><div><h2>Reacción ciudadana en comentarios propios</h2><div class="hint">solo comentarios dejados en la publicación de cada quien, mínimo 3 comentarios -- quien comenta ahí no es una muestra de toda Cali, es la audiencia que ya sigue esa cuenta.</div></div></div>
       <div class="chart-box" id="chart-rep-reaction"></div>
     </section>
     <section class="panel">
@@ -942,20 +964,38 @@ async function showReport(date) {
       <div class="chart-box" id="chart-rep-topics"></div>
     </section>
     <section class="panel alerts">
-      <div class="panel-head"><h2>Temas de ciudad de los que Carlos no ha hablado</h2><span class="hint">categorías con conversación real en la ciudad, sin ninguna publicación de Carlos</span></div>
-      <ul>${gaps.length ? gaps.map((g) => `<li><b>${esc(cap(g.category))}</b>: ${g.count} menciones en la ciudad, 0 de Carlos</li>`).join("") : `<li class="empty">Carlos tiene al menos una mención en todas las categorías activas.</li>`}</ul>
+      <div class="panel-head"><h2>Temas de ciudad sin cobertura de Carlos en esta ventana</h2><span class="hint">categorías con conversación real en la ciudad, sin publicación clasificada de Carlos en los últimos ${r.city_window_days} días</span></div>
+      <ul>${gaps.length ? gaps.map((g) => `<li><b>${esc(cap(g.category))}</b>: ${g.count} menciones en la ciudad -- ${repNoPresence(0)}</li>`).join("") : `<li class="empty">Carlos tiene al menos una mención en todas las categorías activas.</li>`}</ul>
     </section>
     <section class="panel alerts">
       <div class="panel-head"><h2>Novedades donde Carlos podría hablar</h2></div>
-      <ul>${r.city_opportunities.novedades.length ? r.city_opportunities.novedades.map((t) => `<li><b>${esc(cap(t.topic))}</b> <span class="hint">(${esc(cap(t.category))})</span>: ${t.count} menciones · Carlos: ${t.carlos_mentions === 0 ? "sin presencia" : `${t.carlos_mentions} menciones`}</li>`).join("") : `<li class="empty">Sin novedades sin presencia de Carlos en el período.</li>`}</ul>
+      <ul>${r.city_opportunities.novedades.length ? r.city_opportunities.novedades.map((t) => `<li><b>${esc(cap(t.topic))}</b> <span class="hint">(${esc(cap(t.category))})</span>: ${t.count} menciones · Carlos: ${repNoPresence(t.carlos_mentions)}</li>`).join("") : `<li class="empty">Sin novedades sin presencia de Carlos en el período.</li>`}</ul>
+    </section>
+    <h3 class="section-title">Conversación y emociones</h3>
+    <section class="panel">
+      <div class="panel-head"><div><h2>Qué situación concreta hay detrás de cada tema</h2><div class="hint">Emoción predominante y su apalancador -- qué está generando concretamente esa emoción, no solo cuánto se habla del tema.</div></div></div>
+      ${convEmotions.length ? convEmotions.map((ce) => `<div class="topic-card">
+        <div class="head"><h3>${esc(repTopicLabel({category: ce.category, subtopics: []}))}</h3><div>${ce.count} menciones · siente, sobre todo: ${esc(ce.dominant_emotion || "sin emoción marcada")}</div></div>
+        ${ce.apalancadores.length ? `<p>Lo que más dispara esta emoción: <b>${ce.apalancadores.map(esc).join("; ")}</b></p>` : ""}
+        ${ce.evidencia.map((ev) => `<div class="quote">"${esc(clip(ev.text, 200))}"<div class="who">${esc(ev.source || "")}${ev.url ? ` · <a href="${safeUrl(ev.url)}" target="_blank" rel="noopener">ver ↗</a>` : ""}</div></div>`).join("")}
+      </div>`).join("") : `<div class="empty">Sin suficientes menciones clasificadas en esta ventana.</div>`}
     </section>
     ${n ? `
+    <section class="panel">
+      <div class="panel-head"><h2>Activación y respuesta factual</h2></div>
+      <p class="reading">${esc(n.activacion_respuesta)}</p>
+    </section>
+    <section class="panel">
+      <div class="panel-head"><h2>Factores observados e hipótesis por comprobar</h2><span class="hint">correlaciones observadas en los datos de este corte, últimos ${r.comparison_window_days} días -- no causas demostradas</span></div>
+      <p class="reading">${esc(n.factores_hipotesis)}</p>
+      ${n.limitaciones ? `<div class="limitations"><span class="label">Qué NO se puede determinar con estos datos</span>${esc(n.limitaciones)}</div>` : ""}
+    </section>
     <section class="panel alerts">
-      <div class="panel-head"><h2>Estrategia recomendada</h2></div>
-      <ul>${n.estrategia.map((s) => `<li>${esc(s)}</li>`).join("") || `<li class="empty">Sin recomendaciones en este corte.</li>`}</ul>
+      <div class="panel-head"><h2>Plan de 72 horas</h2></div>
+      <ul>${(n.plan_72h || []).map((it) => `<li><b>${esc(it.dia)}:</b> ${esc(it.accion)}${it.dato_necesario ? ` <span class="hint">— dato necesario: ${esc(it.dato_necesario)}; fuente: ${esc(it.fuente)}; condición para publicar: ${esc(it.condicion_para_publicar)}</span>` : ""}</li>`).join("") || `<li class="empty">Sin plan generado en este corte.</li>`}</ul>
     </section>` : ""}
     <section class="panel">
-      <div class="panel-head"><h2>Pendiente de análisis</h2><span class="hint">${r.pending_review.total} menciones totales sin clasificar aún, algunas de muestra abajo</span></div>
+      <div class="panel-head"><h2>Fuentes, límites y pendientes</h2><span class="hint">${r.pending_review.total} menciones totales sin clasificar aún, algunas de muestra abajo -- lo que digan no está reflejado en las cifras de arriba todavía</span></div>
       <div class="feed">${r.pending_review.samples.length ? r.pending_review.samples.map((s) => `<article class="item">
         <div class="body">
           <div class="meta"><span class="cand">${esc(s.candidate)}</span><span class="tag src">${esc(s.source)}</span>${s.url ? `<a href="${safeUrl(s.url)}" target="_blank" rel="noopener">ver original ↗</a>` : ""}</div>
@@ -967,8 +1007,8 @@ async function showReport(date) {
   const byCand = k.by_candidate;
   hbar("#chart-rep-candidates", byCand.map((c) => c.candidate), byCand.map((c) => c.count),
     byCand.map((c) => c.candidate === CARLOS ? BLUE : CARLOS_GRAY));
-  hbar("#chart-rep-topics", r.city_topics.map((t) => cap(t.category)), r.city_topics.map((t) => t.count), BLUE);
-  hbar("#chart-rep-reach", reach.map((c) => c.candidate), reach.map((c) => c.avg_engagement),
+  hbar("#chart-rep-topics", r.city_topics.map(repTopicLabel), r.city_topics.map((t) => t.count), BLUE);
+  hbar("#chart-rep-reach", reach.map((c) => c.candidate), reach.map((c) => c.median_engagement ?? c.avg_engagement),
     reach.map((c) => c.candidate === CARLOS ? BLUE : CARLOS_GRAY));
   if (trendRows.length) {
     hbar("#chart-rep-trend", trendRows.map((c) => c.candidate), trendRows.map((c) => c.trend_pct),
@@ -1101,7 +1141,7 @@ function renderCityOpps() {
   const strong = cityOpportunities.carlos_strong.filter((t) => !cat || t.category === cat);
   $("#city-opps").innerHTML = `
     <div class="opp hot"><h3>Novedades donde Carlos podría hablar</h3>
-      ${novedades.length ? `<ul>${novedades.map((t) => `<li><b>${esc(cap(t.topic))}</b> <span class="hint">(${esc(cap(t.category))})</span>: ${t.count} menciones${t.is_new ? " · tema nuevo" : ` · ${t.trend_pct}% más que el período anterior`} · ${pct(t.positive, t.count)}% a favor, ${pct(t.negative, t.count)}% molestia · Carlos: ${t.carlos_mentions === 0 ? "sin presencia" : `${t.carlos_mentions} menciones`}</li>`).join("")}</ul>` : `<div class="empty">No hay temas nuevos ni en alza sin presencia de Carlos en el período${cat ? " en esta categoría" : ""}.</div>`}</div>
+      ${novedades.length ? `<ul>${novedades.map((t) => `<li><b>${esc(cap(t.topic))}</b> <span class="hint">(${esc(cap(t.category))})</span>: ${t.count} menciones${t.is_new ? " · tema nuevo" : ` · ${t.trend_pct}% más que el período anterior`} · ${pct(t.positive, t.count)}% a favor, ${pct(t.negative, t.count)}% molestia · Carlos: ${t.carlos_mentions === 0 ? "sin cobertura detectada en esta ventana" : `${t.carlos_mentions} menciones`}</li>`).join("")}</ul>` : `<div class="empty">No hay temas nuevos ni en alza sin cobertura de Carlos en el período${cat ? " en esta categoría" : ""}.</div>`}</div>
     <div class="opp strong"><h3>Temas donde Carlos ya suma</h3>
       ${strong.length ? `<ul>${strong.map((t) => `<li><b>${esc(cap(t.category))}</b>: ${t.carlos_mentions} menciones de Carlos, ${t.carlos_positive_pct}% positivas · la ciudad habló ${t.city_count} veces del tema</li>`).join("")}</ul>` : `<div class="empty">Aún no hay temas con presencia positiva sostenida de Carlos en el período${cat ? " en esta categoría" : ""}.</div>`}</div>`;
 }
@@ -1148,17 +1188,34 @@ async function loadCity() {
   renderTopicCards("#city-detail", null, normalized, "city-t", 6);
 
   if ($("#chart-city-heatmap")) {
-    const rows = emoByTopic.slice(0, 12);
+    const heatRows = emoByTopic.slice(0, 12);
     chart("#chart-city-heatmap", {
-      chart: { type: "heatmap", height: Math.max(220, rows.length * 34) },
-      series: rows.map((r) => ({ name: cap(r.category), data: EMOTIONS_ORDER.map((e) => ({ x: cap(e), y: r.emotions[e] || 0 })) })),
+      chart: { type: "heatmap", height: Math.max(220, heatRows.length * 34),
+        events: { dataPointSelection: (e, ctx, cfg) => {
+          const cat = heatRows[cfg.seriesIndex]?.category, emo = EMOTIONS_ORDER[cfg.dataPointIndex];
+          if (cat && emo) loadCityHeatmapDetail(cat, emo);
+        } } },
+      series: heatRows.map((r) => ({ name: cap(r.category), data: EMOTIONS_ORDER.map((e) => ({ x: cap(e), y: r.emotions[e] || 0 })) })),
       colors: [BLUE],
       plotOptions: { heatmap: { colorScale: { ranges: [{ from: 0, to: 0, color: GRID }] } } },
       dataLabels: { enabled: true, style: { colors: [INK] } },
       xaxis: { labels: { style: { colors: MUTED } } },
       legend: { show: false },
     });
+    $("#chart-city-heatmap").style.cursor = "pointer";
   }
+}
+
+/* Clic en una celda del mapa de calor tema x emoción: qué está generando concretamente esa
+   emoción (el apalancador) -- sin esto una celda es solo un número (pedido del cliente 2026-10-01,
+   "es lo que permite instrumentalizar la lectura que se hace"). */
+async function loadCityHeatmapDetail(category, emotion) {
+  const el = $("#city-heatmap-detail");
+  el.innerHTML = `<div class="empty">Cargando…</div>`;
+  el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  const rows = await j(`/api/city/topic-emotion-samples?category=${encodeURIComponent(category)}&emotion=${encodeURIComponent(emotion)}&days=${days()}`);
+  el.innerHTML = `<div class="topic-card"><div class="head"><h3>${esc(cap(category))} · ${esc(cap(emotion))}</h3><div>${rows.length} ejemplo${rows.length === 1 ? "" : "s"}</div></div>` +
+    (rows.length ? rows.map(quote).join("") : `<div class="empty">Sin ejemplos de muestra para esta combinación.</div>`) + `</div>`;
 }
 
 /* ---------- Ciudad: feed completo de todo lo que pasa en Cali ---------- */

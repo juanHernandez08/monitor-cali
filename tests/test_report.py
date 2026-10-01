@@ -8,8 +8,10 @@ class FakeNarrativeEngine:
     def __init__(self, payload=None, raise_error=False):
         self.payload = payload or {
             "resumen_ejecutivo": "Resumen de prueba.",
-            "analisis": "Análisis de prueba.",
-            "estrategia": ["Acción 1", "Acción 2"],
+            "factores_hipotesis": "Factores de prueba.",
+            "activacion_respuesta": "Activación de prueba.",
+            "plan_72h": [{"dia": "Día 1", "accion": "Acción 1", "dato_necesario": "Dato 1",
+                         "fuente": "Fuente 1", "condicion_para_publicar": "Condición 1"}],
         }
         self.raise_error = raise_error
         self.prompts = []
@@ -86,14 +88,18 @@ def test_build_report_with_engine_includes_narrative_grounded_in_real_numbers(db
 
     assert report["narrative"] == {
         "resumen_ejecutivo": "Resumen de prueba.",
-        "analisis": "Análisis de prueba.",
+        "factores_hipotesis": "Factores de prueba.",
+        "activacion_respuesta": "Activación de prueba.",
         "limitaciones": "",
-        "estrategia": ["Acción 1", "Acción 2"],
+        "plan_72h": [{"dia": "Día 1", "accion": "Acción 1", "dato_necesario": "Dato 1",
+                     "fuente": "Fuente 1", "condicion_para_publicar": "Condición 1"}],
     }
     # el prompt real que se le mandó al LLM debe tener las cifras calculadas, no solo pedirle que opine
     assert "Clara Luz Roldán" in engine.prompts[0]
     assert "Carlos Arias" in engine.prompts[0]
     assert "alcance típico (mediana)" in engine.prompts[0]
+    # regla anti-inconsistencia de números (reporte del cliente: +17% en un lado, +20% en otro)
+    assert "nunca" in engine.prompts[0].lower() and "número" in engine.prompts[0].lower()
 
 
 def test_narrative_includes_limitaciones_when_the_llm_returns_it(db_session):
@@ -105,9 +111,9 @@ def test_narrative_includes_limitaciones_when_the_llm_returns_it(db_session):
     db_session.add(carlos)
     db_session.commit()
     engine = FakeNarrativeEngine(payload={
-        "resumen_ejecutivo": "Resumen.", "analisis": "Análisis.",
+        "resumen_ejecutivo": "Resumen.", "factores_hipotesis": "Factores.", "activacion_respuesta": "Activación.",
         "limitaciones": "No se puede determinar si el alcance depende de pauta paga o del tamaño de audiencia.",
-        "estrategia": ["Acción 1"],
+        "plan_72h": [],
     })
     report = build_report(db_session, date="2026-09-28", engine=engine)
     assert "pauta paga" in report["narrative"]["limitaciones"]
@@ -183,6 +189,74 @@ def test_report_to_pdf_with_real_city_topics_and_social_data(db_session):
     assert report["city_topics"][0]["category"] == "movilidad y transporte"
     pdf_bytes = report_to_pdf(report)
     assert pdf_bytes[:4] == b"%PDF"
+
+
+def test_build_report_includes_method_scope_and_conversation_emotions(db_session):
+    """Pedido del cliente 2026-10-01: ventana y metodología claras (qué se revisó, de dónde, en
+    qué ventana) y conversación con emoción + apalancador, no solo volumen por tema."""
+    from src.report import build_report
+    carlos = Candidate(name="Carlos Arias", aliases=[])
+    cali = Candidate(name="Cali (ciudad)", aliases=[], kind="city")
+    src = Source(type=SourceType.GOOGLE_NEWS, name="Google News")
+    db_session.add_all([carlos, cali, src])
+    db_session.commit()
+    now = dt.datetime.utcnow()
+    m = Mention(candidate_id=cali.id, source_id=src.id, external_id="c1", text="partido del América",
+               url="https://x/c1", raw={}, published_at=now, fetched_at=now, relevant=True)
+    db_session.add(m)
+    db_session.flush()
+    db_session.add(SentimentScore(mention_id=m.id, label=SentimentLabel.POSITIVE, score=0.6,
+                                  topic="futbol", category="deporte", model="f",
+                                  emotion="felicidad", apalancador="triunfo del América"))
+    db_session.commit()
+
+    report = build_report(db_session, date="2026-09-28")
+    scope = report["method_scope"]
+    assert scope["publicaciones_revisadas_7d"] >= 1
+    assert "google_news" in scope["plataformas"]
+    assert "ventanas" in scope and set(scope["ventanas"]) == {"actividad_redes", "conversacion_ciudad", "comparacion_cuentas"}
+
+    ce = next(c for c in report["conversation_emotions"] if c["category"] == "deporte")
+    assert ce["dominant_emotion"] == "felicidad"
+    assert "triunfo del América" in ce["apalancadores"]
+
+
+def test_changes_vs_previous_diffs_against_the_last_stored_report(db_session):
+    """Pedido del cliente 2026-10-01: tabla de qué apareció, qué persiste, qué cambió y qué no se
+    pudo volver a comprobar frente al corte anterior -- "la tendencia de una métrica no reemplaza
+    esta comparación"."""
+    from src.report import build_report
+    cali = Candidate(name="Cali (ciudad)", aliases=[], kind="city")
+    src = Source(type=SourceType.GOOGLE_NEWS, name="Google News")
+    db_session.add_all([cali, src])
+    db_session.commit()
+    now = dt.datetime.utcnow()
+
+    def _add(ext, cat, score, ago):
+        m = Mention(candidate_id=cali.id, source_id=src.id, external_id=ext, text=ext, url=f"https://x/{ext}",
+                    raw={}, published_at=now - dt.timedelta(days=ago), fetched_at=now - dt.timedelta(days=ago), relevant=True)
+        db_session.add(m)
+        db_session.flush()
+        db_session.add(SentimentScore(mention_id=m.id, label=SentimentLabel.NEUTRAL, score=0.0, topic="t",
+                                      category=cat, model="f"))
+
+    _add("a", "seguridad y convivencia", 0.0, 2)
+    db_session.commit()
+    from src.models import Report
+    # informe anterior guardado directo (sin motor de sentimiento real): solo "seguridad"
+    db_session.add(Report(date="2026-09-27", data=build_report(db_session, date="2026-09-27")))
+    db_session.commit()
+
+    _add("b", "seguridad y convivencia", 0.0, 1)  # persiste
+    _add("c", "seguridad y convivencia", 0.0, 1)
+    _add("d", "cultura y eventos", 0.0, 1)  # apareció
+    db_session.commit()
+
+    report = build_report(db_session, date="2026-09-28")
+    changes = report["changes_vs_previous"]
+    assert changes["informe_anterior"] == "2026-09-27"
+    assert "cultura y eventos" in changes["aparecio"]
+    assert "seguridad y convivencia" in changes["persiste"]
 
 
 def test_report_to_pdf_without_narrative_still_works(db_session):

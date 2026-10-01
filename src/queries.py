@@ -228,6 +228,25 @@ def topics(session, days: int = 7, limit: int = 10, kind: str | None = None) -> 
     return [{"topic": t, "count": n} for t, n in rows]
 
 
+def report_scope(session, days: int) -> dict:
+    """Qué tan amplia fue la revisión en los últimos `days` días: cuántas publicaciones y
+    comentarios se capturaron, de cuántas cuentas/medios distintos y en qué plataformas. Para la
+    sección "Método y alcance" del reporte diario -- ventana y alcance explícitos en vez de mezclar
+    "últimos 3 días" y "últimos 7 días" sin decir cuál aplica a qué (reporte del cliente 2026-10-01)."""
+    since = _since(days)
+    rows = (session.query(Mention).join(Source)
+            .filter(Mention.relevant.is_(True), WHEN >= since).all())
+    is_comment = lambda m: (m.raw or {}).get("kind") == "comment"
+    publications = sum(1 for m in rows if not is_comment(m))
+    comments = sum(1 for m in rows if is_comment(m))
+    platforms = sorted({(m.raw or {}).get("platform") or m.source.type.value for m in rows})
+    accounts = sorted({m.source.name for m in rows})
+    return {
+        "days": days, "publications": publications, "comments": comments,
+        "platforms": platforms, "accounts": accounts, "account_count": len(accounts),
+    }
+
+
 def status(session) -> dict:
     total = session.query(Mention).count()
     scored = session.query(SentimentScore).count()
@@ -718,6 +737,31 @@ def _city_rows(session, since: dt.datetime, until: dt.datetime | None = None) ->
     return q.all()
 
 
+def _diverse_samples(ms: list[Mention], k: int) -> list[Mention]:
+    """Elige las muestras evitando que todas vengan de la misma red -- antes, si YouTube tenía los
+    comentarios con el puntaje más intenso, las citas de ejemplo de un tema terminaban siendo
+    TODAS de YouTube, dando la impresión de que solo se había leído esa red aunque hubiera prensa
+    o Instagram con el mismo tema (reporte del cliente 2026-10-01: "genera la duda si la lectura
+    solo la hizo de YouTube"). Sigue prefiriendo redes sobre prensa y más intenso sobre menos."""
+    ranked = sorted(ms, key=lambda m: (m.source.type in (SourceType.GOOGLE_NEWS, SourceType.RSS), -abs(m.sentiment.score)))
+    chosen: list[Mention] = []
+    seen_platforms: set[str] = set()
+    for m in ranked:  # primera pasada: como mucho una por plataforma, la mejor de cada una
+        if len(chosen) == k:
+            break
+        plat = (m.raw or {}).get("platform") or m.source.type.value
+        if plat not in seen_platforms:
+            chosen.append(m)
+            seen_platforms.add(plat)
+    if len(chosen) < k:  # no hubo suficientes plataformas distintas -- rellena con lo que quede
+        for m in ranked:
+            if len(chosen) == k:
+                break
+            if m not in chosen:
+                chosen.append(m)
+    return chosen
+
+
 def _dominant_emotion(ms: list[Mention]) -> str:
     """Emoción más frecuente de un grupo de menciones -- para mostrarla directo en la tarjeta del
     tema sin tener que abrir los comentarios de ejemplo (pedido del cliente 2026-10-01). Prefiere
@@ -746,7 +790,7 @@ def city_topics(session, days: int = 7, samples_per: int = 3, subtopics_per: int
         # prefiere la de redes como muestra -- ahí sí se puede ver cómo reacciona la gente en los
         # comentarios, cosa que una nota de prensa no trae (pedido del cliente 2026-09-30). La
         # prensa se sigue capturando y contando igual, solo pasa a segunda opción como muestra.
-        samples = sorted(ms, key=lambda m: (m.source.type in (SourceType.GOOGLE_NEWS, SourceType.RSS), -abs(m.sentiment.score)))[:samples_per]
+        samples = _diverse_samples(ms, samples_per)
         change = stats.count_change_test(len(ms), prev)
         rows.append({
             "category": cat, "count": len(ms), "previous": prev, "trend_pct": trend,
@@ -771,9 +815,7 @@ def city_emotions(session, days: int = 7, samples_per: int = 2) -> list[dict]:
         by_emotion[m.sentiment.emotion or "sin emoción marcada"].append(m)
     rows = []
     for emotion, ms in by_emotion.items():
-        comments = [m for m in ms if (m.raw or {}).get("kind") == "comment"]
-        pool = comments or ms
-        samples = sorted(pool, key=lambda m: -abs(m.sentiment.score))[:samples_per]
+        samples = _diverse_samples(ms, samples_per)
         rows.append({"emotion": emotion, "count": len(ms), "samples": [_mention_dict(m) for m in samples]})
     rows.sort(key=lambda r: -r["count"])
     return rows
@@ -791,6 +833,19 @@ def city_emotion_by_topic(session, days: int = 7) -> list[dict]:
     rows = [{"category": cat, "emotions": dict(counter), "total": sum(counter.values())} for cat, counter in by_cat.items()]
     rows.sort(key=lambda r: -r["total"])
     return rows
+
+
+def city_topic_emotion_samples(session, category: str, emotion: str, days: int = 7, limit: int = 6) -> list[dict]:
+    """Qué está generando concretamente una emoción dentro de un tema -- el apalancador, no solo
+    el conteo. Pedido del cliente 2026-10-01: "si en deporte felicidad es lo más fuerte, debería
+    poder ver qué es lo que está generando esa felicidad" (clic en una celda del mapa de calor
+    tema x emoción). Es lo más valioso del reconocimiento de emociones, porque es lo que permite
+    instrumentalizar la lectura -- sin esto una celda del mapa de calor es solo un número."""
+    current = _city_rows(session, _since(days))
+    matches = [m for m in current if (m.sentiment.category or "otro") == category
+               and (m.sentiment.emotion or "sin emoción marcada") == emotion]
+    matches.sort(key=lambda m: (m.source.type in (SourceType.GOOGLE_NEWS, SourceType.RSS), -abs(m.sentiment.score)))
+    return [_mention_dict(m) for m in matches[:limit]]
 
 
 def candidate_emotions(session, days: int = 30) -> list[dict]:
@@ -900,7 +955,7 @@ def city_opportunities(session, days: int = 7, carlos_max: int = 0, min_count: i
         carlos_n = mentions_covering_topic(topic, carlos_keywords)
         if (is_new or is_rising) and carlos_n <= carlos_max:
             labels = Counter(m.sentiment.label for m in ms)
-            samples = sorted(ms, key=lambda m: (m.source.type in (SourceType.GOOGLE_NEWS, SourceType.RSS), -abs(m.sentiment.score)))[:2]
+            samples = _diverse_samples(ms, 2)
             novedades.append({
                 "topic": topic, "category": category, "count": count, "is_new": is_new, "trend_pct": trend,
                 "positive": labels.get(SentimentLabel.POSITIVE, 0), "neutral": labels.get(SentimentLabel.NEUTRAL, 0),
@@ -1056,14 +1111,12 @@ def candidate_topic_map(session, candidate_name: str, days: int = 30, samples_pe
         labels = Counter(m.sentiment.label for m in ms)
         pos, neg, neu = (labels.get(SentimentLabel.POSITIVE, 0), labels.get(SentimentLabel.NEGATIVE, 0),
                          labels.get(SentimentLabel.NEUTRAL, 0))
-        comments = [m for m in ms if (m.raw or {}).get("kind") == "comment"]
-        pool = comments or ms
         out.append({
             "topic": topic, "count": len(ms),
             "positive": pos, "negative": neg, "neutral": neu, "positive_pct": pct(pos, len(ms)),
             "dominant_emotion": _dominant_emotion(ms),
             "sources": dict(Counter(((m.raw or {}).get("platform") or m.source.type.value) for m in ms)),
-            "samples": [_mention_dict(m) for m in sorted(pool, key=lambda m: -abs(m.sentiment.score))[:samples_per]],
+            "samples": [_mention_dict(m) for m in _diverse_samples(ms, samples_per)],
         })
     out.sort(key=lambda r: -r["count"])
     return out

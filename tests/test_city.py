@@ -112,6 +112,40 @@ def test_city_topics_with_trend_perception_subtopics_and_samples(db_session):
     assert "cultura y eventos" in rows and "Carlos Arias" not in str(rows)  # solo ciudad
 
 
+def test_city_topics_diversifies_samples_across_platforms(db_session):
+    """Reporte del cliente 2026-10-01: "los comentarios que muestra, todos son de YouTube, lo que
+    genera la duda si la lectura solo la hizo de YouTube" -- si YouTube tiene los comentarios con
+    el puntaje mas intenso, las muestras ya no deben ser todas de esa misma plataforma cuando hay
+    alternativas de otras redes para el mismo tema."""
+    from src.queries import city_topics
+    city = Candidate(name=CITY_NAME, kind="city", aliases=[])
+    yt = Source(type=SourceType.YOUTUBE, name="YouTube Cali", config={"city": True})
+    ig = Source(type=SourceType.SOCIAL, name="Instagram (cuentas)")
+    db_session.add_all([city, yt, ig])
+    db_session.commit()
+    now = dt.datetime.utcnow()
+    # las 3 de YouTube tienen el score mas intenso -- sin diversificar, ganarian las 3 muestras
+    rows = [
+        (yt, "y1", -0.95, {"kind": "comment", "platform": "youtube"}),
+        (yt, "y2", -0.90, {"kind": "comment", "platform": "youtube"}),
+        (yt, "y3", -0.85, {"kind": "comment", "platform": "youtube"}),
+        (ig, "i1", -0.40, {"kind": "comment", "platform": "instagram"}),
+    ]
+    for src, ext, score, raw in rows:
+        m = Mention(candidate_id=city.id, source_id=src.id, external_id=ext, text=ext, url=f"https://x/{ext}",
+                    raw=raw, author="u", published_at=now, fetched_at=now)
+        db_session.add(m)
+        db_session.flush()
+        db_session.add(SentimentScore(mention_id=m.id, label=SentimentLabel.NEGATIVE, score=score,
+                                      topic="t", model="f", category="seguridad y convivencia"))
+    db_session.commit()
+
+    rows = city_topics(db_session, days=7, samples_per=2)
+    sec = next(r for r in rows if r["category"] == "seguridad y convivencia")
+    platforms = {s["platform"] for s in sec["samples"]}
+    assert platforms == {"youtube", "instagram"}, f"se esperaba diversidad de plataformas, salió: {platforms}"
+
+
 def test_city_topics_prefers_social_samples_over_press_even_with_lower_score(db_session):
     """Pedido del cliente 2026-09-30: si el mismo hecho tiene nota de prensa Y publicación en
     redes, prefiere la de redes como muestra -- ahí sí se puede evaluar la reacción de la gente en
@@ -170,6 +204,35 @@ def test_city_topics_includes_dominant_emotion_visible_without_a_click(db_sessio
     rows = city_topics(db_session, days=7)
     sec = next(r for r in rows if r["category"] == "seguridad y convivencia")
     assert sec["dominant_emotion"] == "felicidad"
+
+
+def test_city_topic_emotion_samples_shows_the_apalancador(db_session):
+    """Pedido del cliente 2026-10-01: si en el mapa de calor "deporte x felicidad" es lo más
+    fuerte, debe poder verse qué es lo que está generando esa felicidad -- el apalancador es lo
+    más valioso del reconocimiento de emociones, porque permite instrumentalizar la lectura."""
+    from src.queries import city_topic_emotion_samples
+    city = Candidate(name=CITY_NAME, kind="city", aliases=[])
+    feed = Source(type=SourceType.RSS, name="Q'hubo", config={"feed_url": "x", "city": True})
+    db_session.add_all([city, feed])
+    db_session.commit()
+    now = dt.datetime.utcnow()
+    rows = [
+        ("a", "deporte", "felicidad", "triunfo del América de Cali"),
+        ("b", "deporte", "felicidad", "ascenso del Cali a primera división"),
+        ("c", "deporte", "ira", "pelea en las graderías"),
+        ("d", "seguridad y convivencia", "felicidad", "no debe salir, es otro tema"),
+    ]
+    for ext, cat, emo, apalancador in rows:
+        m = Mention(candidate_id=city.id, source_id=feed.id, external_id=ext, text=ext, url=f"https://x/{ext}",
+                    raw={}, author="u", published_at=now, fetched_at=now)
+        db_session.add(m)
+        db_session.flush()
+        db_session.add(SentimentScore(mention_id=m.id, label=SentimentLabel.POSITIVE, score=0.5, topic="t",
+                                      model="f", category=cat, emotion=emo, apalancador=apalancador))
+    db_session.commit()
+
+    samples = city_topic_emotion_samples(db_session, category="deporte", emotion="felicidad", days=7)
+    assert {s["apalancador"] for s in samples} == {"triunfo del América de Cali", "ascenso del Cali a primera división"}
 
 
 def test_city_opportunities_carlos_strong_topics(db_session):

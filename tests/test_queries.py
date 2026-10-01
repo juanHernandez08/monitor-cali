@@ -283,6 +283,33 @@ def test_candidate_emotions_cross_tab(db_session):
     assert rows[0]["candidate"] == "Carlos Arias"  # Carlos siempre primero
 
 
+def test_report_scope_counts_publications_comments_platforms_and_accounts(db_session):
+    """Pedido del cliente 2026-10-01: "Método y alcance" explícito -- cuántas publicaciones y
+    comentarios se revisaron, de qué plataformas y cuántas cuentas, en vez de mezclar ventanas sin
+    decir cuál aplica a qué."""
+    from src.queries import report_scope
+    carlos = Candidate(name="Carlos Arias", aliases=[])
+    ig = Source(type=SourceType.SOCIAL, name="Instagram Carlos")
+    yt = Source(type=SourceType.YOUTUBE, name="YouTube")
+    db_session.add_all([carlos, ig, yt])
+    db_session.commit()
+    now = dt.datetime.utcnow()
+    rows = [
+        (ig, "a", {"platform": "instagram", "kind": "post"}),
+        (ig, "b", {"platform": "instagram", "kind": "comment"}),
+        (yt, "c", {"kind": "post"}),
+    ]
+    for src, ext, raw in rows:
+        db_session.add(Mention(candidate_id=carlos.id, source_id=src.id, external_id=ext, text=ext,
+                               url=f"https://x/{ext}", raw=raw, fetched_at=now, published_at=now))
+    db_session.commit()
+
+    scope = report_scope(db_session, days=7)
+    assert scope["publications"] == 2 and scope["comments"] == 1
+    assert scope["platforms"] == ["instagram", "youtube"]
+    assert scope["account_count"] == 2
+
+
 def test_summary_includes_avatar_from_instagram_posts(db_session, monkeypatch):
     from src import queries
     monkeypatch.setattr(queries.config, "SOCIAL_ACCOUNTS", [
