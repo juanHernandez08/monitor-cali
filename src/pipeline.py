@@ -21,12 +21,32 @@ TITLE_DEDUP_DAYS = 14  # ventana para detectar la misma nota repetida (un ciclo 
 _HANDLE = re.compile(r"@[\w.]+")
 _TITLE_JUNK = re.compile(r"[^a-z0-9 ]")
 _PRESS_TYPES = (SourceType.GOOGLE_NEWS, SourceType.RSS)
+_CITY_NAME_RE = re.compile(r"\bcali\b|\bcaleñ", re.IGNORECASE)  # "Cali" o "caleño/a(s)"
 
 
 def is_bare_mention(text: str) -> bool:
     """True si el comentario es solo etiquetas a otras cuentas ("@a @b"), sin ningún otro texto."""
     stripped = _HANDLE.sub("", text or "").strip()
     return bool(_HANDLE.search(text or "")) and stripped == ""
+
+
+def _city_relevance_text(item) -> str:
+    """Texto contra el que se evalúa si algo es conversación de Cali. Un comentario casi nunca
+    repite el nombre de la ciudad (p. ej. "qué belleza" o "bendiciones") aunque esté respondiendo
+    a un video o post que sí es de Cali -- lo relevante ahí es el video/post al que responde, no
+    el comentario suelto."""
+    raw = item.raw or {}
+    if raw.get("kind") == "comment":
+        return raw.get("video_title") or raw.get("post_title") or item.text
+    return item.text
+
+
+def mentions_city(item) -> bool:
+    """Un medio local o regional también publica notas nacionales o de otros municipios (Buga,
+    Tolima, Cauca...) que no tienen nada que ver con Cali -- que la CUENTA sea local no basta,
+    hay que exigir que la nota misma nombre la ciudad (pedido del cliente 2026-10-01: "el filtro
+    debe hacerlo en cualquier noticia que mencione a Cali")."""
+    return bool(_CITY_NAME_RE.search(_city_relevance_text(item) or ""))
 
 
 def _title_key(text: str) -> str:
@@ -89,9 +109,12 @@ def ingest(session, source, connector: Connector, max_age_days: int = MAX_AGE_DA
             if candidate is not None and is_excluded(item.text, candidate):
                 continue
             if candidate is None:
-                candidate = city  # fuente de ciudad: lo que no nombra a nadie es conversación de Cali
-            if candidate is None:
-                continue
+                # fuente de ciudad: lo que no nombra a nadie SOLO es conversación de Cali si
+                # nombra la ciudad -- si no, es ruido de otro municipio o nacional (ver mentions_city)
+                if city is not None and mentions_city(item):
+                    candidate = city
+                else:
+                    continue
             if source.type in _PRESS_TYPES:
                 title_key = _title_key(item.text)
                 if len(title_key) > 15 and title_key in seen_titles.get(candidate.id, ()):

@@ -37,12 +37,51 @@ def test_city_source_items_without_candidate_go_to_city_and_with_candidate_to_ca
     assert ingest(db_session, other, ListConnector([RawItem(external_id="c", text="Clima en Cali", url="https://x/c")])) == 0
 
 
+def test_city_source_discards_items_that_dont_name_the_city(db_session):
+    """Un medio local/regional también publica notas de otros municipios o nacionales -- que la
+    CUENTA sea de ciudad no basta, la nota misma debe nombrar a Cali (o "caleño/a") para contar
+    como conversación de ciudad. Pedido del cliente 2026-10-01: "el filtro debe hacerlo en
+    cualquier noticia que mencione a Cali" (antes entraba cualquier cosa sin candidato nombrado,
+    incluida la cobertura de Buga, Tolima o noticias nacionales de medios con desk en Cali)."""
+    city = Candidate(name=CITY_NAME, kind="city", aliases=[])
+    feed = Source(type=SourceType.RSS, name="90 Minutos", config={"feed_url": "x", "city": True})
+    db_session.add_all([city, feed])
+    db_session.commit()
+    n = ingest(db_session, feed, ListConnector([
+        RawItem(external_id="a", text="Feria de empleo en Buga: conoce cómo participar", url="https://x/a"),
+        RawItem(external_id="b", text="Bruce Mac Master renuncia a la presidencia de la ANDI", url="https://x/b"),
+        RawItem(external_id="c", text="Alcaldía de Cali abre convocatorias del Programa de Estímulos", url="https://x/c"),
+        RawItem(external_id="d", text="Los caleños celebran el festival de música", url="https://x/d"),
+    ]))
+    assert n == 2
+    kept = {m.external_id for m in db_session.query(Mention).all()}
+    assert kept == {"c", "d"}
+
+
+def test_city_source_comment_inherits_relevance_from_its_post_not_its_own_text(db_session):
+    """Un comentario rara vez repite el nombre de la ciudad ("qué belleza", "bendiciones") aunque
+    esté respondiendo a un post o video que sí es de Cali -- lo que decide es el post/video al que
+    responde (raw.post_title / raw.video_title), no el texto suelto del comentario."""
+    city = Candidate(name=CITY_NAME, kind="city", aliases=[])
+    social = Source(type=SourceType.SOCIAL, name="Instagram / Facebook (cuentas)", config={"city": True})
+    db_session.add_all([city, social])
+    db_session.commit()
+    n = ingest(db_session, social, ListConnector([
+        RawItem(external_id="a", text="qué belleza, bendiciones",
+                raw={"kind": "comment", "post_title": "Alcaldía de Cali anuncia nueva obra"}, url="https://x/a"),
+        RawItem(external_id="b", text="qué belleza, bendiciones",
+                raw={"kind": "comment", "post_title": "Feria de empleo en Buga"}, url="https://x/b"),
+    ]))
+    assert n == 1
+    assert db_session.query(Mention).one().external_id == "a"
+
+
 def test_city_items_are_scored_with_city_prompt_and_store_category(db_session):
     city = Candidate(name=CITY_NAME, kind="city", aliases=[])
     feed = Source(type=SourceType.RSS, name="Q'hubo", config={"feed_url": "x", "city": True})
     db_session.add_all([city, feed])
     db_session.commit()
-    ingest(db_session, feed, ListConnector([RawItem(external_id="a", text="Vecinos protestan por falta de agua", url="https://x/a")]))
+    ingest(db_session, feed, ListConnector([RawItem(external_id="a", text="Vecinos de Cali protestan por falta de agua", url="https://x/a")]))
 
     class Engine:
         def __init__(self): self.calls = []
