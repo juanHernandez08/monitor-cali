@@ -177,12 +177,14 @@ SOCIAL_ACCOUNTS = [
     {"platform": "instagram", "url": "https://www.instagram.com/tpnoticias_/", "candidate": None},  # Telepacífico Noticias
     {"platform": "instagram", "url": "https://www.instagram.com/cali_informa/", "candidate": None},  # Cali Informa
     {"platform": "instagram", "url": "https://www.instagram.com/diariooccidente/", "candidate": None},  # Diario Occidente
-    {"platform": "instagram", "url": "https://www.instagram.com/caracolradio/", "candidate": None},  # Caracol Radio (nacional, sin desk propio de Cali)
-    {"platform": "instagram", "url": "https://www.instagram.com/bluradio/", "candidate": None},  # Blu Radio (nacional)
-    {"platform": "instagram", "url": "https://www.instagram.com/noticiasrcn/", "candidate": None},  # Noticias RCN (nacional)
-    {"platform": "instagram", "url": "https://www.instagram.com/noticiascaracol/", "candidate": None},  # Noticias Caracol TV (nacional)
     {"platform": "instagram", "url": "https://www.instagram.com/elvallunomedios/", "candidate": None},  # El Valluno Medios
-    {"platform": "instagram", "url": "https://www.instagram.com/lafmoficial/", "candidate": None},  # La FM (nacional)
+    # Caracol Radio, Blu Radio, Noticias RCN, Noticias Caracol TV y La FM se evaluaron y se
+    # excluyeron a propósito: son medios NACIONALES sin desk propio de Cali -- su cuenta de
+    # Instagram mezcla noticias de todo el país y, como las cuentas de redes comparten una sola
+    # fuente "de ciudad", cualquier post suyo sin candidato nombrado caía en la conversación de
+    # Cali aunque fuera de Bogotá, Medellín, etc. (reporte cliente 2026-09-30: "me trae datos de
+    # otras ciudades"). Sus notas de prensa SÍ se cubren vía Google News con el filtro de
+    # candidato normal, que no tiene este problema.
     # Confianza media (no se pudo verificar en el sitio propio, solo por búsqueda cruzada) --
     # confirmar con el cliente si el contenido que traen no encaja.
     {"platform": "instagram", "url": "https://www.instagram.com/alertacalidad/", "candidate": None},  # Alerta (Calidad, RCN)

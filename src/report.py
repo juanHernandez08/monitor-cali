@@ -278,63 +278,158 @@ def generate_and_store(session, date: str | None = None, engine=None) -> Report:
 
 def report_to_pdf(report: dict) -> bytes:
     """Arma un PDF legible del reporte, con el mismo análisis y gráficas que la pestaña, para
-    bajar y reenviar por fuera del dashboard. Estructura pedida por el cliente 2026-10-01:
-    resumen → método y alcance → cambios frente al informe anterior → métricas y comparación entre
-    cuentas → conversación y emociones → activación y respuesta factual → plan de 72 horas →
-    fuentes, límites y pendientes."""
+    bajar y reenviar por fuera del dashboard. Formato ejecutivo pedido por el cliente 2026-09-30:
+    secciones numeradas, tipografía serif, tablas numeradas en vez de texto en forma de lista, y
+    gráficas con pie de figura -- resumen → método y alcance → cambios frente al informe anterior →
+    métricas y comparación entre cuentas → conversación y emociones → activación y respuesta
+    factual → plan de 72 horas → fuentes, límites y pendientes."""
     from reportlab.lib.pagesizes import letter
     from reportlab.lib.units import cm
     from reportlab.lib.colors import HexColor
-    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, ListFlowable, ListItem, Table, TableStyle
-    from reportlab.lib.styles import getSampleStyleSheet
+    from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
     from reportlab.graphics.shapes import Drawing
     from reportlab.graphics.charts.barcharts import HorizontalBarChart
+    from reportlab.pdfgen.canvas import Canvas
 
-    BLUE = HexColor("#2a78d6")
+    BLUE = "#2a78d6"
+    RED = "#b0432e"
     MUTED = HexColor("#6e6d66")
-    styles = getSampleStyleSheet()
+    INK = HexColor("#1a1a16")
+    HEAD_BG = HexColor("#eef2f8")
+    GRID = HexColor("#d8d8d0")
+
+    base = getSampleStyleSheet()
+    styles = {
+        "title": ParagraphStyle("RTitle", parent=base["Title"], fontName="Times-Bold", fontSize=17,
+                                 alignment=TA_CENTER, spaceAfter=3),
+        "subtitle": ParagraphStyle("RSubtitle", parent=base["Normal"], fontName="Times-Italic", fontSize=11,
+                                    textColor=MUTED, alignment=TA_CENTER, spaceAfter=2),
+        "meta": ParagraphStyle("RMeta", parent=base["Normal"], fontName="Times-Roman", fontSize=9.5,
+                                textColor=MUTED, alignment=TA_CENTER),
+        "h1": ParagraphStyle("RH1", parent=base["Heading1"], fontName="Times-Bold", fontSize=13,
+                              spaceBefore=16, spaceAfter=6, textColor=INK),
+        "h2": ParagraphStyle("RH2", parent=base["Heading2"], fontName="Times-Bold", fontSize=10.5,
+                              spaceBefore=10, spaceAfter=4, textColor=INK),
+        "body": ParagraphStyle("RBody", parent=base["Normal"], fontName="Times-Roman", fontSize=10,
+                                leading=14, alignment=TA_JUSTIFY, spaceAfter=5),
+        "note": ParagraphStyle("RNote", parent=base["Normal"], fontName="Times-Italic", fontSize=8.5,
+                                leading=11, textColor=MUTED, spaceAfter=7),
+        "caption": ParagraphStyle("RCaption", parent=base["Normal"], fontName="Times-Italic", fontSize=8.5,
+                                   textColor=MUTED, spaceBefore=2, spaceAfter=12),
+        "cell": ParagraphStyle("RCell", parent=base["Normal"], fontName="Times-Roman", fontSize=8.5, leading=11),
+        "cellhead": ParagraphStyle("RCellHead", parent=base["Normal"], fontName="Times-Bold", fontSize=8.5,
+                                    leading=11, textColor=INK),
+        "quote": ParagraphStyle("RQuote", parent=base["Normal"], fontName="Times-Italic", fontSize=9.5,
+                                 leading=13, leftIndent=10, textColor=INK, spaceAfter=4),
+    }
+
+    class _NumberedCanvas(Canvas):
+        """Pie de página con 'Página X de Y' -- requiere dos pasadas (patrón estándar de reportlab:
+        la cuenta total de páginas solo se sabe al final, así que se guarda el estado de cada
+        página y se dibuja el pie recién al cerrar el documento)."""
+        def __init__(self, *args, **kwargs):
+            Canvas.__init__(self, *args, **kwargs)
+            self._saved = []
+
+        def showPage(self):
+            self._saved.append(dict(self.__dict__))
+            self._startPage()
+
+        def save(self):
+            total = len(self._saved)
+            for state in self._saved:
+                self.__dict__.update(state)
+                self.setFont("Times-Italic", 8)
+                self.setFillColor(MUTED)
+                self.drawString(2 * cm, 1.3 * cm, "Monitor de Sentimiento -- Alcaldía de Cali 2027 -- uso interno de campaña")
+                self.drawRightString(letter[0] - 2 * cm, 1.3 * cm, f"Página {self._pageNumber} de {total}")
+                Canvas.showPage(self)
+            Canvas.save(self)
+
     buf = io.BytesIO()
-    doc = SimpleDocTemplate(buf, pagesize=letter, topMargin=2 * cm, bottomMargin=2 * cm)
-    story = [Paragraph("Reporte diario -- Monitor Alcaldía de Cali 2027", styles["Title"]),
-             Paragraph(f"{report['date']}", styles["Normal"]), Spacer(1, 14)]
+    doc = SimpleDocTemplate(buf, pagesize=letter, topMargin=2 * cm, bottomMargin=2.3 * cm)
+    counters = {"section": 0, "sub": 0, "table": 0, "fig": 0}
+    story = [
+        Paragraph("Monitor de Sentimiento -- Alcaldía de Cali 2027", styles["title"]),
+        Paragraph("Informe diario de monitoreo de opinión pública", styles["subtitle"]),
+        Paragraph(f"Candidato: Carlos Arias (Partido de la U) &nbsp;|&nbsp; Fecha de corte: {report['date']}",
+                   styles["meta"]),
+        Spacer(1, 8), HRFlowable(width="100%", thickness=0.75, color=GRID), Spacer(1, 12),
+    ]
 
     def h(text):
-        story.append(Spacer(1, 10))
-        story.append(Paragraph(text, styles["Heading2"]))
+        counters["section"] += 1
+        counters["sub"] = 0
+        story.append(Paragraph(f"{counters['section']}. {text}", styles["h1"]))
 
     def h3(text):
-        story.append(Spacer(1, 4))
-        story.append(Paragraph(text, styles["Heading3"]))
+        counters["sub"] += 1
+        story.append(Paragraph(f"{counters['section']}.{counters['sub']} {text}", styles["h2"]))
 
     def p(text):
-        story.append(Paragraph(text, styles["Normal"]))
+        story.append(Paragraph(text, styles["body"]))
 
     def note(text):
-        story.append(Paragraph(f"<i>{text}</i>", styles["Normal"]))
+        story.append(Paragraph(text, styles["note"]))
 
-    def bullets(items):
-        if not items:
-            story.append(Paragraph("Sin novedades en este punto.", styles["Normal"]))
-            return
-        story.append(ListFlowable([ListItem(Paragraph(i, styles["Normal"])) for i in items], bulletType="bullet"))
+    def quote(text):
+        story.append(Paragraph(f"“{text}”", styles["quote"]))
 
-    def bar_chart(labels, values, width=460, height=180, color=BLUE, value_fmt="%d"):
-        if not labels:
-            story.append(Paragraph("Sin datos para graficar.", styles["Normal"]))
+    def table(headers, rows, col_widths=None, caption=None):
+        if not rows:
+            p("Sin datos para esta tabla en el período revisado.")
             return
-        pairs = list(zip(labels, values))[:12]
+        data = [[Paragraph(str(hd), styles["cellhead"]) for hd in headers]]
+        for r in rows:
+            data.append([Paragraph(str(c), styles["cell"]) for c in r])
+        t = Table(data, colWidths=col_widths, repeatRows=1, hAlign="LEFT")
+        t.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), HEAD_BG),
+            ("GRID", (0, 0), (-1, -1), 0.5, GRID),
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("TOPPADDING", (0, 0), (-1, -1), 4),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [HexColor("#ffffff"), HexColor("#faf9f6")]),
+        ]))
+        story.append(t)
+        if caption:
+            counters["table"] += 1
+            story.append(Paragraph(f"Tabla {counters['table']}. {caption}", styles["caption"]))
+        else:
+            story.append(Spacer(1, 10))
+
+    def chart(labels, series_list, series_names=None, hexcolors=(BLUE, RED), width=460, height=180, caption=None):
+        """series_list: una o varias listas de valores alineadas con labels (varias = barras
+        agrupadas, p. ej. positivos vs. negativos por candidato)."""
+        if not labels or not any(series_list):
+            p("Sin datos para graficar.")
+            return
+        n = min(12, len(labels))
+        labels_c, series_c = labels[:n], [s[:n] for s in series_list]
         d = Drawing(width, height)
-        chart = HorizontalBarChart()
-        chart.x, chart.y, chart.width, chart.height = 150, 10, width - 170, height - 20
-        chart.data = [[v for _, v in pairs]]
-        chart.categoryAxis.categoryNames = [str(lbl)[:26] for lbl, _ in pairs]
-        chart.categoryAxis.labels.fontSize = 7
-        chart.bars[0].fillColor = color
-        chart.barLabels.nudge = 7
-        chart.barLabelFormat = value_fmt
-        chart.barLabels.fontSize = 7
-        d.add(chart)
+        c = HorizontalBarChart()
+        c.x, c.y, c.width, c.height = 150, 10, width - 170, height - 20
+        c.data = series_c
+        c.categoryAxis.categoryNames = [str(lbl)[:26] for lbl in labels_c]
+        c.categoryAxis.labels.fontSize = 7
+        c.barLabels.nudge = 7
+        c.barLabelFormat = "%d"
+        c.barLabels.fontSize = 7
+        for i, hexcol in enumerate(hexcolors[:len(series_c)]):
+            c.bars[i].fillColor = HexColor(hexcol)
+        d.add(c)
         story.append(d)
+        if series_names and len(series_c) > 1:
+            legend = "&nbsp;&nbsp;&nbsp;".join(
+                f'<font color="{hexcolors[i]}">■</font> {name}' for i, name in enumerate(series_names))
+            story.append(Paragraph(legend, styles["note"]))
+        if caption:
+            counters["fig"] += 1
+            story.append(Paragraph(f"Figura {counters['fig']}. {caption}", styles["caption"]))
+        else:
+            story.append(Spacer(1, 10))
 
     def _no_presence(topic_count: int) -> str:
         return ("no se detectaron publicaciones clasificadas sobre este tema en las cuentas y la ventana revisadas"
@@ -360,8 +455,11 @@ def report_to_pdf(report: dict) -> bytes:
     h("Método y alcance")
     scope = report.get("method_scope") or {}
     p(f"Generado el {scope.get('generado', '—')}.")
-    for w in (scope.get("ventanas") or {}).values():
-        p(f"• {w['proposito'].capitalize()}: del {w['inicio']} al {w['fin']} ({w['days']} días).")
+    windows = list((scope.get("ventanas") or {}).values())
+    table(["Ventana temporal", "Período", "Días"],
+          [[w["proposito"].capitalize(), f"{w['inicio']} a {w['fin']}", w["days"]] for w in windows],
+          col_widths=[6.5 * cm, 7 * cm, 2 * cm],
+          caption="Ventanas de tiempo usadas para cada análisis de este informe.")
     p(f"En los últimos {report.get('city_window_days', CITY_WINDOW_DAYS)} días se revisaron "
       f"{scope.get('publicaciones_revisadas_7d', 0)} publicaciones y {scope.get('comentarios_revisados_7d', 0)} "
       f"comentarios, de {scope.get('cuentas_y_medios_revisados', 0)} cuentas/medios distintos "
@@ -380,74 +478,99 @@ def report_to_pdf(report: dict) -> bytes:
         p("No hay un reporte anterior guardado con el cual comparar (primer corte).")
     else:
         p(f"Comparado con el reporte del {changes['informe_anterior']}:")
-        if changes["aparecio"]:
-            h3("Apareció")
-            bullets(changes["aparecio"])
-        if changes["cambio"]:
-            h3("Cambió")
-            bullets([f"{c['category']}: {c['antes']} → {c['ahora']} menciones ({c['variacion_pct']:+d}%)" for c in changes["cambio"]])
-        if changes["persiste"]:
-            h3("Persiste")
-            bullets(changes["persiste"])
-        if changes["no_se_pudo_volver_a_comprobar"]:
-            h3("No se pudo volver a comprobar en esta ventana")
-            bullets(changes["no_se_pudo_volver_a_comprobar"])
+        table(["Categoría", "Antes", "Ahora", "Variación"],
+              [[c["category"], c["antes"], c["ahora"], f"{c['variacion_pct']:+d}%"] for c in changes["cambio"]],
+              col_widths=[7 * cm, 2.5 * cm, 2.5 * cm, 3.5 * cm],
+              caption="Categorías de conversación de ciudad con cambio de volumen frente al informe anterior.")
+        otras = ([("Apareció", cat) for cat in changes["aparecio"]]
+                 + [("Persiste", cat) for cat in changes["persiste"]]
+                 + [("No se pudo volver a comprobar", cat) for cat in changes["no_se_pudo_volver_a_comprobar"]])
+        table(["Estado", "Categoría"], [[estado, cat] for estado, cat in otras],
+              col_widths=[6 * cm, 9.5 * cm],
+              caption="Otras novedades frente al informe anterior (sin cifra comparable directa).")
 
     # ---------- Métricas y comparación entre cuentas ----------
     h("Métricas y comparación entre cuentas")
     h3("Alcance típico por publicación (mediana) -- candidatos y concejales")
     reach = report.get("reach_comparison", [])
-    bar_chart([r["candidate"] for r in reach], [r.get("median_engagement", r["avg_engagement"]) for r in reach])
-    bullets([f"{r['candidate']}: {r.get('median_engagement', r['avg_engagement'])} de alcance típico (mediana)" +
-             (f" [IC 95%: {r['median_ci'][0]} a {r['median_ci'][1]}]" if r.get("median_ci") else "") +
-             f", {r['posts']} publicaciones ({r['posts_per_week']}/semana)" +
-             (f", tendencia {r['trend_pct']:+d}%" if r["trend_pct"] is not None else "")
-             for r in reach])
+    reach_vals = [r.get("median_engagement", r["avg_engagement"]) for r in reach]
+    chart([r["candidate"] for r in reach], [reach_vals],
+          caption="Alcance típico por publicación (mediana de likes + comentarios), candidatos y concejales.")
+    table(["Candidato/concejal", "Alcance mediana", "IC 95%", "Publicaciones", "Por semana", "Tendencia"],
+          [[r["candidate"], r.get("median_engagement", r["avg_engagement"]),
+            f"{r['median_ci'][0]} a {r['median_ci'][1]}" if r.get("median_ci") else "—",
+            r["posts"], r["posts_per_week"], f"{r['trend_pct']:+d}%" if r["trend_pct"] is not None else "—"]
+           for r in reach],
+          col_widths=[4 * cm, 2.3 * cm, 2.7 * cm, 2.3 * cm, 2.2 * cm, 2 * cm],
+          caption="Detalle de alcance por publicación, candidatos y concejales.")
 
     h3("Reacción ciudadana en comentarios propios")
     reaction = report.get("comment_reaction", [])
     note("Solo comentarios de ciudadanos en las publicaciones PROPIAS de cada quien (no menciones de paso en otro "
          "lado) -- quien comenta en una cuenta no es una muestra representativa de toda Cali, es la audiencia que "
          "ya sigue a esa cuenta.")
-    bullets([f"{r['candidate']}: {r['comments']} comentarios clasificados en este corte -- "
-             f"{r['positive_pct']}% positivos, {r['negative_pct']}% negativos"
-             for r in reaction])
+    chart([r["candidate"] for r in reaction],
+          [[r["positive_pct"] for r in reaction], [r["negative_pct"] for r in reaction]],
+          series_names=["% positivos", "% negativos"],
+          caption="Reacción ciudadana (% positivos vs. % negativos) en comentarios propios.")
+    table(["Candidato/concejal", "Comentarios clasificados", "% positivos", "% negativos"],
+          [[r["candidate"], r["comments"], r["positive_pct"], r["negative_pct"]] for r in reaction],
+          col_widths=[5.5 * cm, 4 * cm, 3 * cm, 3 * cm],
+          caption="Detalle de reacción ciudadana en comentarios propios.")
 
     k = report["social_kpis"]
     h3("Actividad en redes (candidatos y concejales)")
-    bullets([f"{k['total_posts']} publicaciones · {k['total_likes']} likes · {k['total_comments']} comentarios"
-             f" en los últimos {report['social_window_days']} días."])
-    bar_chart([c["candidate"] for c in k["by_candidate"]], [c["count"] for c in k["by_candidate"]])
+    p(f"{k['total_posts']} publicaciones, {k['total_likes']} likes y {k['total_comments']} comentarios "
+      f"en los últimos {report['social_window_days']} días.")
+    chart([c["candidate"] for c in k["by_candidate"]], [[c["count"] for c in k["by_candidate"]]],
+          caption="Publicaciones por candidato o concejal en la ventana revisada.")
+    table(["Candidato/concejal", "Publicaciones"], [[c["candidate"], c["count"]] for c in k["by_candidate"]],
+          col_widths=[9 * cm, 6.5 * cm], caption="Detalle de publicaciones por candidato o concejal.")
 
     h3("Publicaciones con fuerza fuera de lo habitual")
-    bullets([f"{sp['candidate']} ({sp['platform']}): \"{sp['text'][:100]}\" -- {sp['engagement']} de alcance "
-             f"({sp['multiplier']}× su propio promedio de ~{sp['baseline']})" for sp in report["strong_social"]])
+    table(["Candidato/concejal", "Plataforma", "Publicación", "Alcance", "Veces su propio promedio"],
+          [[sp["candidate"], sp["platform"], sp["text"][:100], sp["engagement"], f"{sp['multiplier']}× (~{sp['baseline']})"]
+           for sp in report["strong_social"]],
+          col_widths=[2.8 * cm, 2 * cm, 6.2 * cm, 1.6 * cm, 2.3 * cm],
+          caption="Publicaciones con alcance muy por encima del promedio propio de cada cuenta.")
 
     h3("Temas de ciudad más mencionados")
     topics = report["city_topics"]
-    bar_chart([_topic_label(t["category"], t) for t in topics], [t["count"] for t in topics])
-    bullets([f"{_topic_label(t['category'], t)}: {t['count']} menciones" for t in topics])
+    chart([_topic_label(t["category"], t) for t in topics], [[t["count"] for t in topics]],
+          caption="Temas de ciudad con más menciones en la ventana revisada.")
+    table(["Tema", "Menciones"], [[_topic_label(t["category"], t), t["count"]] for t in topics],
+          col_widths=[11.5 * cm, 4 * cm], caption="Detalle de temas de ciudad por volumen de menciones.")
 
     h3("Temas de ciudad que Carlos no cubrió en esta ventana")
-    bullets([f"{g['category']}: {g['count']} menciones en la ciudad -- {_no_presence(0)}"
-             for g in report.get("topic_gaps", [])])
+    table(["Categoría", "Menciones en la ciudad", "Cobertura de Carlos"],
+          [[g["category"], g["count"], _no_presence(0)] for g in report.get("topic_gaps", [])],
+          col_widths=[5 * cm, 4 * cm, 6.5 * cm],
+          caption="Temas con conversación activa en Cali sin presencia detectada de Carlos.")
 
     h3("Novedades donde Carlos podría hablar")
-    bullets([f"{t['topic']} ({t['category']}): {t['count']} menciones, Carlos: {_no_presence(t['carlos_mentions'])}"
-             for t in report["city_opportunities"]["novedades"]])
+    table(["Tema", "Categoría", "Menciones", "Cobertura de Carlos"],
+          [[t["topic"], t["category"], t["count"], _no_presence(t["carlos_mentions"])]
+           for t in report["city_opportunities"]["novedades"]],
+          col_widths=[5 * cm, 4 * cm, 2.5 * cm, 4 * cm],
+          caption="Novedades de ciudad con oportunidad de pronunciamiento.")
 
     # ---------- Conversación y emociones ----------
     h("Conversación y emociones")
     note("Emoción y matiz vienen de la clasificación automática de cada mención (rueda de 6 emociones núcleo + "
          "\"sin emoción marcada\"); el apalancador es lo que el texto deja ver como disparador concreto de esa "
          "emoción -- es la parte más útil para decidir qué hacer, no solo el volumen.")
-    for ce in report.get("conversation_emotions", []):
-        h3(f"{_topic_label(ce['category'], {'subtopics': []})} ({ce['count']} menciones) -- emoción predominante: {ce['dominant_emotion'] or 'sin emoción marcada'}")
-        if ce["apalancadores"]:
-            p("Lo que más dispara esta emoción: " + "; ".join(ce["apalancadores"]))
-        for ev in ce["evidencia"]:
-            link = f' (<link href="{ev["url"]}">ver original</link>)' if ev.get("url") else ""
-            p(f"“{ev['text']}” -- {ev.get('source', '')}{link}")
+    conv = report.get("conversation_emotions", [])
+    table(["Tema", "Menciones", "Emoción predominante", "Apalancadores"],
+          [[_topic_label(ce["category"], {"subtopics": []}), ce["count"], ce["dominant_emotion"] or "sin emoción marcada",
+            "; ".join(ce["apalancadores"]) or "—"] for ce in conv],
+          col_widths=[3.5 * cm, 2 * cm, 3.5 * cm, 6.5 * cm],
+          caption="Emoción predominante y apalancadores por tema de conversación de ciudad.")
+    for ce in conv:
+        if ce["evidencia"]:
+            h3(f"Evidencia -- {_topic_label(ce['category'], {'subtopics': []})}")
+            for ev in ce["evidencia"]:
+                link = f' (<link href="{ev["url"]}">ver original</link>)' if ev.get("url") else ""
+                quote(f"{ev['text']} -- {ev.get('source', '')}{link}")
 
     # ---------- Activación y respuesta factual / Factores observados ----------
     if narrative:
@@ -462,18 +585,11 @@ def report_to_pdf(report: dict) -> bytes:
         if not plan:
             p("Sin plan generado en este corte.")
         else:
-            rows = [["Día", "Acción", "Dato necesario", "Fuente", "Condición para publicar"]]
-            for item in plan:
-                rows.append([Paragraph(item.get(k, ""), styles["Normal"]) for k in
-                            ("dia", "accion", "dato_necesario", "fuente", "condicion_para_publicar")])
-            t = Table(rows, colWidths=[2.2 * cm, 7.5 * cm, 5.5 * cm, 4 * cm, 5.5 * cm], repeatRows=1)
-            t.setStyle(TableStyle([
-                ("BACKGROUND", (0, 0), (-1, 0), HexColor("#eef2f8")),
-                ("GRID", (0, 0), (-1, -1), 0.5, HexColor("#d8d8d0")),
-                ("FONTSIZE", (0, 0), (-1, -1), 8),
-                ("VALIGN", (0, 0), (-1, -1), "TOP"),
-            ]))
-            story.append(t)
+            table(["Día", "Acción", "Dato necesario", "Fuente", "Condición para publicar"],
+                  [[item.get(k, "") for k in ("dia", "accion", "dato_necesario", "fuente", "condicion_para_publicar")]
+                   for item in plan],
+                  col_widths=[1.8 * cm, 4.8 * cm, 3.4 * cm, 2.5 * cm, 3.3 * cm],
+                  caption="Plan de acción recomendado para las próximas 72 horas.")
 
     # ---------- Fuentes, límites y pendientes ----------
     h("Fuentes, límites y pendientes")
@@ -487,8 +603,12 @@ def report_to_pdf(report: dict) -> bytes:
          f"cuenta no es una muestra de toda Cali; la misma noticia puede aparecer por más de un medio o plataforma "
          f"y contarse más de una vez pese al filtro de duplicados; la cobertura depende de qué cuentas y medios "
          f"están configurados hoy, no de todo lo que se publica en Cali.")
-    bullets([f"{s['candidate']} · {s['source']}: \"{s['text'][:100]}\"" + (f' (<link href="{s["url"]}">ver</link>)' if s.get("url") else "")
-             for s in pend["samples"]])
+    table(["Candidato/concejal", "Fuente", "Texto"],
+          [[s["candidate"], s["source"],
+            (f'<link href="{s["url"]}">{s["text"][:100]}</link>' if s.get("url") else s["text"][:100])]
+           for s in pend["samples"]],
+          col_widths=[3.5 * cm, 3 * cm, 9 * cm],
+          caption="Muestra de menciones capturadas aún sin clasificar.")
 
-    doc.build(story)
+    doc.build(story, canvasmaker=_NumberedCanvas)
     return buf.getvalue()
