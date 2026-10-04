@@ -73,6 +73,7 @@ def test_investigate_requires_a_real_instagram_or_facebook_url(client, monkeypat
 def test_investigate_requires_apify_token_configured(client, monkeypatch):
     import src.api as m
     monkeypatch.setattr(m.config, "APIFY_TOKEN", None)
+    monkeypatch.setattr(m.config, "INVESTIGATE_ENABLED", True)
     r = client.post("/api/investigate", json={"url": "https://www.instagram.com/unrival/", "platform": "instagram"}, headers=CSRF)
     assert r.status_code == 400
 
@@ -96,6 +97,7 @@ def test_reports_generate_list_get_and_pdf(client):
 def test_investigate_returns_live_stats_for_a_profile(client, monkeypatch):
     import src.api as m
     monkeypatch.setattr(m.config, "APIFY_TOKEN", "fake-token")
+    monkeypatch.setattr(m.config, "INVESTIGATE_ENABLED", True)
     fake_posts = [
         {"id": "1", "text": "post fuerte", "url": "https://www.instagram.com/p/1/", "author": "unrival",
          "published_at": "2026-09-20T00:00:00", "likes": 900, "comments": 100, "views": 0, "engagement": 1000},
@@ -109,3 +111,14 @@ def test_investigate_returns_live_stats_for_a_profile(client, monkeypatch):
     assert body["total_posts"] == 2
     assert body["total_likes"] == 940 and body["total_comments"] == 105
     assert body["top_post"]["text"] == "post fuerte"
+
+
+def test_investigate_is_disabled_by_default_to_protect_the_apify_budget(client, monkeypatch):
+    """Cada clic en «Investigar un perfil» gasta dinero de Apify: apagado salvo que se active expresamente."""
+    import src.api as m
+    monkeypatch.setattr(m.config, "APIFY_TOKEN", "fake-token")
+    monkeypatch.setattr(m.config, "INVESTIGATE_ENABLED", False)
+    called = []
+    monkeypatch.setattr(m, "investigate_profile", lambda *a, **k: called.append(1) or [])
+    r = client.post("/api/investigate", json={"url": "https://www.instagram.com/unrival/", "platform": "instagram"}, headers=CSRF)
+    assert r.status_code == 403 and not called

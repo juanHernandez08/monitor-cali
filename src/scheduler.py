@@ -9,7 +9,7 @@ from contextlib import contextmanager
 from apscheduler.schedulers.background import BackgroundScheduler
 from sqlalchemy.orm import sessionmaker
 
-from src import config
+from src import apify_budget, config
 from src.connectors.google_cse import GoogleCSEConnector, QuotaTracker
 from src.models import Mention
 from src.connectors.google_news import GoogleNewsConnector
@@ -40,6 +40,7 @@ class Combined:
     def __init__(self, connectors: list):
         self.connectors = [c for c in connectors if c is not None]
         self.source_name = "combined"
+        self.finish = None  # callback opcional (session) al terminar la vuelta: contabilidad del presupuesto
 
     def fetch(self, search_terms):
         items = []
@@ -110,30 +111,91 @@ def _build(source: Source, session):
         connectors = []
         x_accounts = [a for a in config.SOCIAL_ACCOUNTS if a["platform"] == "x"]
         ig_fb_accounts = [a for a in config.SOCIAL_ACCOUNTS if a["platform"] != "x"]
+        budget_run = None
+        if apify:
+            # Presupuesto en dólares: manda sobre todo lo demás (ver src/apify_budget.py). Si no se puede
+            # comprobar el saldo o no toca vuelta todavía, no se gasta nada.
+            budget_run = _apify_budget_run(session, source, apify, pending, last_dates)
+            if budget_run is None:
+                return None
+            x_accounts = [a for a in budget_run["accounts"] if a["platform"] == "x"]
+            ig_fb_accounts = [a for a in budget_run["accounts"] if a["platform"] != "x"]
         # Bright Data agotó sus créditos gratis el 2026-09-25 ("Customer is not active" en su
         # Marketplace); con token de Apify, Instagram/Facebook/X van por ahí. Bright Data queda
         # como respaldo solo si no hay token de Apify.
-        apify_credits = QuotaTracker(session, "apify", config.APIFY_MONTHLY_ITEMS, today=month) if apify else None
+        apify_credits = (budget_run["spend"] if budget_run else
+                         (QuotaTracker(session, "apify", config.APIFY_MONTHLY_ITEMS, today=month) if apify else None))
         if apify and x_accounts:
-            connectors.append(XApifyConnector(token=apify, accounts=x_accounts, window_days=config.SOCIAL_WINDOW_DAYS,
+            # Con presupuesto en dólares, una cuenta de X sin historial NO trae 60 días de golpe (un backfill
+            # llegó a costar USD 0,12 en una sola corrida) ni 200 respuestas por cuenta.
+            connectors.append(XApifyConnector(token=apify, accounts=x_accounts,
+                                              window_days=14 if budget_run else config.SOCIAL_WINDOW_DAYS,
+                                              max_posts=30 if budget_run else 100, max_replies=60 if budget_run else 200,
                                               known_last_dates=last_dates, known_post_texts=post_texts,
                                               credits=apify_credits))
         if apify and ig_fb_accounts:
             connectors.append(SocialApifyConnector(
                 token=apify, accounts=ig_fb_accounts, window_days=config.SOCIAL_WINDOW_DAYS, max_posts=config.SOCIAL_MAX_POSTS,
-                max_comments=config.SOCIAL_MAX_COMMENTS, comment_posts=config.SOCIAL_COMMENT_POSTS,
-                known_post_ids=known, pending_comment_posts=pending, known_last_dates=last_dates, credits=apify_credits))
+                max_comments=config.SOCIAL_MAX_COMMENTS,
+                comment_posts=budget_run["comment_posts"] if budget_run else config.SOCIAL_COMMENT_POSTS,
+                known_post_ids=known, pending_comment_posts=pending, known_last_dates=last_dates, credits=apify_credits,
+                comment_only_for=budget_run["carlos"] if budget_run else None))
         elif token and ig_fb_accounts:
             connectors.append(SocialAccountConnector(
                 api_token=token, accounts=ig_fb_accounts, window_days=config.SOCIAL_WINDOW_DAYS, max_posts=config.SOCIAL_MAX_POSTS,
                 max_comments=config.SOCIAL_MAX_COMMENTS, comment_posts=config.SOCIAL_COMMENT_POSTS,
                 known_post_ids=known, pending_comment_posts=pending, known_last_dates=last_dates,
                 credits=QuotaTracker(session, "brightdata", config.BRIGHTDATA_MONTHLY_CREDITS, today=month)))
-        return Combined(connectors) if connectors else None
+        if not connectors:
+            return None
+        combined = Combined(connectors)
+        if budget_run:
+            combined.finish = lambda s, b=budget_run: _finish_apify_job(s, b)
+        return combined
     if source.type == SourceType.SERP and os.environ.get("BRIGHTDATA_API_TOKEN"):
         from src.connectors.serp import SerpConnector
         return SerpConnector(api_token=os.environ["BRIGHTDATA_API_TOKEN"], site=cfg.get("site"))
     return None
+
+
+def _apify_budget_run(session, source: Source, token: str, pending: list[dict], last_dates: dict[str, str]) -> dict | None:
+    """Decide si hay vuelta de redes y cuánto puede gastar. None = no gastar nada (y avisar si corresponde)."""
+    from src import notify
+    from src.models import Candidate
+    from src.queries import CARLOS
+
+    last = session.query(func.max(Run.started_at)).filter(Run.source_id == source.id).scalar()
+    now = dt.datetime.utcnow()
+    if last is not None and now - last < dt.timedelta(hours=config.SOCIAL_MIN_HOURS):
+        log.info("social: la última vuelta fue hace %.1f h (mínimo %s h); no se gasta Apify", (now - last).total_seconds() / 3600,
+                 config.SOCIAL_MIN_HOURS)
+        return None
+    plan, status = apify_budget.current_plan(token)
+    if not plan.ok:
+        log.warning("social: sin presupuesto Apify: %s", plan.reason)
+        notify.notify_apify_blocked(session, plan.reason)
+        return None
+    kinds = {c.name: c.kind for c in session.query(Candidate)}
+    accounts, comment_posts, est = apify_budget.select_accounts(
+        config.SOCIAL_ACCOUNTS, kinds, last_dates, plan.job_budget, CARLOS, pending, config.SOCIAL_MAX_COMMENTS,
+        include_media=config.SOCIAL_INCLUDE_MEDIA)
+    if not accounts:
+        log.warning("social: el presupuesto de la vuelta ($%.3f) no alcanza ni para una cuenta", plan.job_budget)
+        return None
+    log.info("social: presupuesto de la vuelta $%.3f (disponible $%.2f, %d días); %d cuentas, comentarios de %d post(s), estimado $%.3f",
+             plan.job_budget, plan.available, plan.days_left, len(accounts), comment_posts, est)
+    return {"plan": plan, "status": status, "accounts": accounts, "comment_posts": comment_posts, "estimate": est,
+            "carlos": CARLOS, "spend": apify_budget.JobSpend(token, plan.job_budget, status.used)}
+
+
+def _finish_apify_job(session, run: dict) -> None:
+    """Cierra la vuelta: gasto real contra lo planeado, y aviso al soporte técnico."""
+    from src import notify
+    after = apify_budget.fetch_status(config.APIFY_TOKEN)
+    plan = run["plan"]
+    spent = max(0.0, after.used - run["status"].used) if after else None
+    notify.notify_apify_job(session, plan, spent, run["estimate"], len(run["accounts"]), run["comment_posts"],
+                            after.used if after else None)
 
 
 def _social_state(session, source: Source) -> tuple[dict[str, list[str]], list[dict], dict[str, str], dict[str, str]]:
@@ -211,6 +273,12 @@ def run_group(session, types: list[SourceType]) -> dict[str, int]:
                 return source.name, None
             n = ingest(s, source, connector)
             mark_comments_fetched(s, connector)
+            finish = getattr(connector, "finish", None)
+            if finish:
+                try:
+                    finish(s)
+                except Exception:
+                    log.exception("no se pudo cerrar la contabilidad de la vuelta de %s", source.name)
             return source.name, n
 
     results: dict[str, int] = {}
@@ -368,13 +436,13 @@ def start_scheduler() -> BackgroundScheduler:
     with get_session() as s:
         cse_next = _next_run(s, CSE_GROUP, dt.timedelta(hours=8))
         yt_next = _next_run(s, YT_GROUP, dt.timedelta(hours=12))
-        social_next = _next_run(s, SOCIAL_GROUP, dt.timedelta(hours=12))
+        social_next = _next_run(s, SOCIAL_GROUP, dt.timedelta(hours=config.SOCIAL_INTERVAL_HOURS))
     sched.add_job(job_fast, "interval", minutes=15, id="fast", max_instances=1, coalesce=True)
     sched.add_job(job_cse, "interval", hours=8, id="cse", max_instances=1, coalesce=True, next_run_time=cse_next)
     sched.add_job(job_youtube, "interval", hours=12, id="youtube", max_instances=1, coalesce=True,  # cuota: ~3.000 unidades/corrida
                   next_run_time=yt_next)
     # Bright Data: solo se pagan posts nuevos y comentarios pendientes; el contador mensual frena en el tope.
-    sched.add_job(job_social, "interval", hours=12, id="social", max_instances=1, coalesce=True, next_run_time=social_next)
+    sched.add_job(job_social, "interval", hours=config.SOCIAL_INTERVAL_HOURS, id="social", max_instances=1, coalesce=True, next_run_time=social_next)
     sched.add_job(job_score, "interval", minutes=2, id="score", max_instances=1, coalesce=True)
     # Reporte diario, lunes a viernes -- el cliente lo revisa al llegar en la mañana.
     sched.add_job(job_daily_report, "cron", day_of_week="mon-fri", hour=7, minute=0,

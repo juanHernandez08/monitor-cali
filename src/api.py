@@ -220,6 +220,9 @@ def create_app(session_factory=None, start_jobs: bool = True, cf_verifier=None) 
         host = (parsed.hostname or "").removeprefix("www.").removeprefix("m.")
         if parsed.scheme != "https" or host not in INVESTIGATE_HOSTS:
             return _bad_request("la URL debe ser https de instagram.com o facebook.com")
+        if not config.INVESTIGATE_ENABLED:
+            return _bad_request("«Investigar un perfil» está desactivado para cuidar el presupuesto de Apify "
+                                "(cada consulta gasta dinero)", status=403)
         if not config.APIFY_TOKEN:
             return _bad_request("falta APIFY_TOKEN en el servidor")
         ok, why = security.THROTTLE.try_start("investigate", config.INVESTIGATE_MIN_INTERVAL)
@@ -402,6 +405,23 @@ def create_app(session_factory=None, start_jobs: bool = True, cf_verifier=None) 
     def health():
         with session() as s:
             return queries.status(s)
+
+    budget_cache: dict = {"at": 0.0, "data": None}
+
+    @app.get("/api/budget")
+    def api_budget():
+        """Presupuesto de Apify del ciclo (ver src/apify_budget.py). Se cachea 10 min: cada consulta
+        es una llamada a Apify y el footer del tablero la pide en cada carga."""
+        import time
+        if budget_cache["data"] is not None and time.time() - budget_cache["at"] < 600:
+            return budget_cache["data"]
+        from src import apify_budget
+        plan, status = apify_budget.current_plan(config.APIFY_TOKEN)
+        data = {"ok": plan.ok, "reason": plan.reason, "used": status.used if status else None,
+                "ceiling": plan.ceiling, "reserve": plan.reserve, "available": plan.available,
+                "days_left": plan.days_left, "job_budget": plan.job_budget, "cycle_end": plan.cycle_end}
+        budget_cache.update(at=time.time(), data=data)
+        return data
 
     @app.post("/api/refresh", status_code=202)
     def refresh():

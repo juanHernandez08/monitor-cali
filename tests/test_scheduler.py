@@ -106,6 +106,14 @@ def test_city_sources_use_their_own_terms(db_session, monkeypatch):
     assert captured["terms"] == ["Cali"]
 
 
+def _fake_apify_balance(monkeypatch, used=5.0, cap=19.0, end="2026-10-28"):
+    """Los tests no deben llamar a Apify de verdad: el presupuesto lee el saldo de su API."""
+    import datetime as dt
+    from src import apify_budget
+    monkeypatch.setattr(apify_budget, "fetch_status", lambda token, timeout=20: apify_budget.Status(
+        used=used, cap=cap, cycle_start=dt.date(2026, 9, 29), cycle_end=dt.date.fromisoformat(end)))
+
+
 def test_social_connector_routes_everything_to_apify_when_token_present(db_session, monkeypatch):
     """Con token de Apify, IG/FB/X van todos por Apify y Bright Data no se usa (créditos agotados
     el 2026-09-25): un solo proveedor, más simple y sin gastar lo que ya no existe."""
@@ -117,6 +125,7 @@ def test_social_connector_routes_everything_to_apify_when_token_present(db_sessi
     monkeypatch.setattr(m.config, "SOCIAL_ACCOUNTS", [
         {"platform": "instagram", "url": "https://www.instagram.com/x/", "candidate": "Carlos Arias"},
         {"platform": "x", "url": "https://x.com/x", "candidate": "Carlos Arias"}])
+    _fake_apify_balance(monkeypatch)
     src = Source(type=SourceType.SOCIAL, name="IG")
     db_session.add(src)
     db_session.commit()

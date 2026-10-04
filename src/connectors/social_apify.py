@@ -57,7 +57,8 @@ class SocialApifyConnector:
     def __init__(self, token: str, accounts: list[dict], window_days: int = 60, max_posts: int = 40,
                  max_comments: int = 30, comment_posts: int = 4, known_post_ids: dict[str, list[str]] | None = None,
                  pending_comment_posts: list[dict] | None = None, credits=None,
-                 known_last_dates: dict[str, str] | None = None, timeout: int = 180):
+                 known_last_dates: dict[str, str] | None = None, timeout: int = 180,
+                 comment_only_for: str | None = None):
         self.token = token
         self.accounts = [a for a in accounts if a.get("platform") in ("instagram", "facebook")]
         self.window_days = window_days
@@ -70,6 +71,7 @@ class SocialApifyConnector:
         self.known_last_dates = known_last_dates or {}
         self.timeout = timeout
         self.comments_attempted: set[str] = set()
+        self.comment_only_for = comment_only_for  # pedir comentarios solo de posts de este candidato (presupuesto)
 
     def _remaining(self) -> int:
         return self.credits.remaining() if self.credits else 10**9
@@ -102,6 +104,8 @@ class SocialApifyConnector:
                 candidates_for_comments.extend(new_posts)
             except Exception:  # una cuenta caída no debe tumbar las demás
                 log.exception("Apify: cuenta %s falló", account.get("url"))
+        if self.comment_only_for:
+            candidates_for_comments = [p for p in candidates_for_comments if p.get("candidate") == self.comment_only_for]
         candidates_for_comments.sort(key=lambda p: -_to_int(p.get("num_comments")))
         for post in candidates_for_comments[: self.comment_posts]:
             if self._remaining() <= 0:

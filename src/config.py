@@ -244,6 +244,17 @@ BRIGHTDATA_MONTHLY_CREDITS = int(os.environ.get("BRIGHTDATA_MONTHLY_CREDITS", "4
 APIFY_TOKEN = os.environ.get("APIFY_TOKEN")
 APIFY_MONTHLY_ITEMS = int(os.environ.get("APIFY_MONTHLY_ITEMS", "10000"))
 
+# Presupuesto en DÓLARES de Apify (ver src/apify_budget.py). Presupuesto aprobado por el cliente: el techo
+# aplica solo al ciclo que termina en APIFY_CYCLE_BUDGET_END; al abrirse un ciclo nuevo no se gasta hasta
+# confirmar uno nuevo. Aumentarlo exige aprobación explícita del cliente.
+APIFY_CYCLE_BUDGET_USD = float(os.environ.get("APIFY_CYCLE_BUDGET_USD", "19"))
+APIFY_CYCLE_BUDGET_END = os.environ.get("APIFY_CYCLE_BUDGET_END", "2026-10-28")
+APIFY_RESERVE_USD = float(os.environ.get("APIFY_RESERVE_USD", "0.75"))      # intocable
+SOCIAL_INTERVAL_HOURS = int(os.environ.get("SOCIAL_INTERVAL_HOURS", "24"))  # vueltas de redes (antes 12)
+SOCIAL_MIN_HOURS = float(os.environ.get("SOCIAL_MIN_HOURS", "20"))          # mínimo entre vueltas, también para "Actualizar ahora"
+SOCIAL_INCLUDE_MEDIA = os.environ.get("SOCIAL_INCLUDE_MEDIA", "0") == "1"   # Instagram de medios: su prensa ya entra por RSS
+INVESTIGATE_ENABLED = os.environ.get("INVESTIGATE_ENABLED", "0") == "1"     # "Investigar un perfil" gasta Apify por clic
+
 # Concejo de Cali 2024-2027 (fuente: concejodecali.gov.co, publicación 60414).
 # Carlos Arias y Roberto Ortiz también son concejales, pero van en CANDIDATES (son candidatos);
 # el seed los marca con council=True. Alias: variantes sin tilde y forma corta con apellido.

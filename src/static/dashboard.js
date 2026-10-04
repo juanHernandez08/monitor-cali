@@ -760,6 +760,14 @@ async function loadStatus() {
   $("#status").innerHTML = `${s.total_mentions} menciones capturadas · ${s.scored} clasificadas · ${s.pending} pendientes · ${s.discarded} descartadas (homónimos / ajenas)<br>` +
     s.sources.filter((x) => x.type !== "REDDIT")  // casi no captura nada en Cali -- no se muestra como si fuera una fuente activa
       .map((x) => `${esc(x.name)}: ${x.total}${x.error ? ` <span style="color:var(--neg)" title="${esc(x.error)}">⚠</span>` : ""}`).join(" · ");
+  try {
+    const b = await j("/api/budget");
+    if (b.used != null) {
+      $("#status").innerHTML += `<br>Apify (redes): $${b.used.toFixed(2)} gastados de $${b.ceiling.toFixed(2)} del ciclo · ` +
+        (b.ok ? `$${b.available.toFixed(2)} disponibles hasta el ${b.cycle_end} (hoy máx. $${b.job_budget.toFixed(2)})`
+              : `<span style="color:var(--neg)">captura de redes en pausa: ${esc(b.reason)}</span>`);
+    }
+  } catch (e) { /* el presupuesto es informativo: sin él, el estado se ve igual */ }
 }
 
 /* ---------- pestaña Candidatos: roster + comparación compacta ---------- */

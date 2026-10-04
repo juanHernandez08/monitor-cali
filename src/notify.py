@@ -196,3 +196,38 @@ def check_ollama_tunnel(session) -> None:
             send(config.NTFY_TOPIC_TECH, "🔴 Túnel de Ollama caído",
                  "La PC no está clasificando menciones. Revisa la tarea programada MonitorCaliOllamaTunnel.",
                  priority=4, tags=["red_circle"])
+
+
+def notify_apify_blocked(session, reason: str) -> None:
+    """La vuelta de redes NO corrió por presupuesto (ver src/apify_budget.py). Un aviso por día y por
+    motivo: el job se revisa cada 24 h, pero "Actualizar ahora" puede reintentar varias veces."""
+    import datetime as dt
+    key = f"apify_blocked:{dt.datetime.utcnow().strftime('%Y-%m-%d')}"
+    if _get_state(session, key) == reason[:80]:
+        return
+    _set_state(session, key, reason[:80])
+    send(config.NTFY_TOPIC_TECH, "⛔ Apify: la captura de redes NO corrió",
+         f"{reason}\nNo se gastó nada. Para reanudarla hace falta confirmar presupuesto.", priority=4, tags=["no_entry"])
+
+
+def notify_apify_job(session, plan, spent: float | None, estimate: float, n_accounts: int, comment_posts: int,
+                     used_after: float | None) -> None:
+    """Cierre de cada vuelta de redes: cuánto costó contra lo presupuestado, y cuánto queda del ciclo."""
+    import json
+    left = max(0.0, plan.ceiling - plan.reserve - used_after) if used_after is not None else None
+    over = spent is not None and spent > plan.job_budget * 1.25
+    resumen = (f"Gasto real: ${spent:.2f} de ${plan.job_budget:.2f} presupuestados "
+               f"({n_accounts} cuentas, comentarios de {comment_posts} post). "
+               if spent is not None else "No se pudo medir el gasto real. ")
+    if left is not None:
+        resumen += f"Quedan ${left:.2f} utilizables hasta el {plan.cycle_end} ({plan.days_left} días)."
+    _set_state(session, "apify_last_job", json.dumps({"spent": spent, "budget": plan.job_budget, "estimate": estimate,
+                                                      "left": left, "cycle_end": plan.cycle_end}))
+    if over:
+        send(config.NTFY_TOPIC_TECH, "⚠️ Apify: la vuelta se pasó de lo presupuestado", resumen, priority=5, tags=["warning"])
+    else:
+        send(config.NTFY_TOPIC_TECH, "💵 Apify: vuelta de redes terminada", resumen, priority=2, tags=["moneybag"])
+    if plan.days_left <= 3:
+        send(config.NTFY_TOPIC_TECH, "📅 Apify: el ciclo termina pronto",
+             f"El ciclo cierra el {plan.cycle_end}. Si el cliente aprueba presupuesto para el siguiente, hay que confirmarlo "
+             "(APIFY_CYCLE_BUDGET_USD / APIFY_CYCLE_BUDGET_END); si no, la captura de redes se detiene sola.", priority=3, tags=["calendar"])
