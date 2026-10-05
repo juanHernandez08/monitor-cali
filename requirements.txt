@@ -11,6 +11,8 @@ apscheduler>=3.10,<4
 httpx>=0.27
 python-dotenv>=1.0
 googlenewsdecoder>=0.1
+# selectolax 1.0 quitó el backend que googlenewsdecoder importa (ImportError): tumbó la clasificación el 2026-10-04/05
+selectolax<1.0
 trafilatura>=1.12
 reportlab>=4.0
 pyjwt[crypto]>=2.8

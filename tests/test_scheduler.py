@@ -197,3 +197,24 @@ def test_next_run_with_no_history_runs_now(db_session):
     due = _next_run(db_session, CSE_GROUP, dt.timedelta(hours=8))
     now = dt.datetime.now(dt.timezone.utc)
     assert due <= now + dt.timedelta(seconds=5)
+
+
+def test_a_failure_enriching_press_does_not_stop_classification(db_session, monkeypatch):
+    """2026-10-05: googlenewsdecoder dejó de importar (selectolax 1.0) y enrich_pending lanzaba excepción ANTES de
+    clasificar -- 209 menciones (redes, YouTube) quedaron sin ficha aunque la IA estaba disponible."""
+    import contextlib
+    import src.scheduler as m
+    calls = []
+
+    @contextlib.contextmanager
+    def fake_session():
+        yield db_session
+
+    monkeypatch.setattr(m, "get_session", fake_session)
+    monkeypatch.setattr(m, "build_sentiment_engine", lambda: object())
+    monkeypatch.setattr(m, "enrich_pending", lambda s, limit=20: (_ for _ in ()).throw(ImportError("decoder roto")))
+    monkeypatch.setattr(m, "score_pending", lambda s, engine, limit=20: calls.append("score") or 0)
+    from src import notify
+    monkeypatch.setattr(notify, "check_negative_mentions", lambda s: 0)
+    m.job_score()
+    assert calls == ["score"]

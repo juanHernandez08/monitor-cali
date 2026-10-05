@@ -388,7 +388,13 @@ def job_score():
     from src import notify
     engine = build_sentiment_engine()
     with get_session() as s:
-        e = enrich_pending(s, limit=20)
+        try:
+            e = enrich_pending(s, limit=20)
+        except Exception:
+            # Una falla al bajar notas de prensa (p. ej. una dependencia rota) NO debe frenar la clasificación del resto:
+            # el 2026-10-05 esto dejó 209 menciones de redes y YouTube sin clasificar.
+            log.exception("enrich falló; se sigue con la clasificación")
+            e = 0
         if e:
             log.info("enrich: %d procesadas", e)
         n = score_pending(s, engine, limit=20)
