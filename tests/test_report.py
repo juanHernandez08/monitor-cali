@@ -267,3 +267,44 @@ def test_report_to_pdf_without_narrative_still_works(db_session):
     report = build_report(db_session, date="2026-09-28")  # sin engine -> narrative None
     pdf_bytes = report_to_pdf(report)
     assert pdf_bytes[:4] == b"%PDF"
+
+
+def test_an_automatic_report_without_the_llm_does_not_wipe_the_narrative_already_written_today(db_session):
+    """El reporte de las 7 a. m. corre con el PC del cliente apagado: antes pisaba al reporte del día que SÍ
+    tenía análisis (pasó el 2026-10-01). Las cifras se refrescan, el análisis ya redactado se conserva."""
+    from src.report import generate_and_store
+    first = generate_and_store(db_session, date="2026-10-01", engine=FakeNarrativeEngine())
+    assert first.data["narrative"]["resumen_ejecutivo"] == "Resumen de prueba."
+    second = generate_and_store(db_session, date="2026-10-01", engine=FakeNarrativeEngine(raise_error=True))
+    assert second.data["narrative"]["resumen_ejecutivo"] == "Resumen de prueba."
+
+
+def test_fill_missing_narrative_completes_a_recent_report_from_its_stored_numbers(db_session):
+    from src.models import Report
+    from src.report import generate_and_store, fill_missing_narrative
+    today = dt.datetime.utcnow().strftime("%Y-%m-%d")
+    generate_and_store(db_session, date=today, engine=FakeNarrativeEngine(raise_error=True))
+    assert db_session.query(Report).one().data["narrative"] is None
+
+    engine = FakeNarrativeEngine()
+    done = fill_missing_narrative(db_session, engine=engine)
+    assert done is not None and done.data["narrative"]["plan_72h"][0]["accion"] == "Acción 1"
+    assert db_session.query(Report).one().data["narrative"]["resumen_ejecutivo"] == "Resumen de prueba."
+    assert len(engine.prompts) == 1
+    # ya completo: no vuelve a pedirle nada a la IA
+    assert fill_missing_narrative(db_session, engine=engine) is None and len(engine.prompts) == 1
+
+
+def test_fill_missing_narrative_leaves_the_report_alone_while_the_llm_is_still_down(db_session):
+    from src.models import Report
+    from src.report import generate_and_store, fill_missing_narrative
+    today = dt.datetime.utcnow().strftime("%Y-%m-%d")
+    generate_and_store(db_session, date=today, engine=FakeNarrativeEngine(raise_error=True))
+    assert fill_missing_narrative(db_session, engine=FakeNarrativeEngine(raise_error=True)) is None
+    assert db_session.query(Report).one().data["narrative"] is None
+
+
+def test_fill_missing_narrative_ignores_old_reports(db_session):
+    from src.report import generate_and_store, fill_missing_narrative
+    generate_and_store(db_session, date="2020-01-01", engine=FakeNarrativeEngine(raise_error=True))
+    assert fill_missing_narrative(db_session, engine=FakeNarrativeEngine()) is None

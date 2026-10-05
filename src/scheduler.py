@@ -354,6 +354,35 @@ def job_daily_report():
         notify.notify_daily_summary(r.data)
 
 
+def _analyst_available() -> bool:
+    """¿Responde la IA que redacta el análisis? Con Ollama (el PC del cliente por túnel) se comprueba antes de
+    pedirle algo, para no llenar el registro de errores cada 10 minutos mientras está apagada."""
+    if config.SENTIMENT_BACKEND != "ollama":
+        return True
+    import requests
+    try:
+        return requests.get(f"{config.OLLAMA_URL}/api/tags", timeout=5).ok
+    except Exception:
+        return False
+
+
+@exclusive("report_narrative")
+def job_report_narrative():
+    """Completa el análisis narrativo de un reporte reciente que salió sin él (PC del cliente apagado a las 7 a. m.)."""
+    from src.report import fill_missing_narrative
+    from src import notify
+    with get_session() as s:
+        from src.models import Report
+        cutoff = (dt.datetime.utcnow() - dt.timedelta(days=1)).strftime("%Y-%m-%d")
+        latest = s.query(Report).filter(Report.date >= cutoff).order_by(Report.date.desc()).first()
+        if latest is None or (latest.data or {}).get("narrative") or not _analyst_available():
+            return
+        done = fill_missing_narrative(s)
+        if done:
+            log.info("análisis narrativo completado para el reporte %s", done.date)
+            notify.notify_daily_summary(done.data)
+
+
 @exclusive("score")
 def job_score():
     from src import notify
@@ -450,6 +479,8 @@ def start_scheduler() -> BackgroundScheduler:
     # Notificaciones (src/notify.py): actividad fuerte en redes cada 15 min, salud del túnel de
     # Ollama cada 10 min -- las menciones negativas se avisan dentro de job_score, justo al
     # clasificarlas.
+    # El análisis del reporte lo redacta la IA del PC del cliente: si estaba apagado a las 7 a. m., se completa solo después.
+    sched.add_job(job_report_narrative, "interval", minutes=10, id="report_narrative", max_instances=1, coalesce=True)
     sched.add_job(job_notify_social, "interval", minutes=15, id="notify_social", max_instances=1, coalesce=True)
     sched.add_job(job_notify_city, "interval", hours=1, id="notify_city", max_instances=1, coalesce=True)
     sched.add_job(job_ollama_health, "interval", minutes=10, id="ollama_health", max_instances=1, coalesce=True)

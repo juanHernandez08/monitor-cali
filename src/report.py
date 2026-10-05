@@ -266,12 +266,40 @@ def generate_and_store(session, date: str | None = None, engine=None) -> Report:
     date = date or dt.datetime.utcnow().strftime("%Y-%m-%d")
     data = build_report(session, date=date, engine=engine)
     report = session.query(Report).filter_by(date=date).first()
+    # Si la IA no estuvo disponible ahora pero hoy ya se había redactado el análisis, se conserva: antes un
+    # reporte automático de las 7 a. m. (con el PC del cliente apagado) pisaba al que sí tenía análisis
+    # (2026-10-01). Las cifras sí se refrescan.
+    if data.get("narrative") is None and report is not None and (report.data or {}).get("narrative"):
+        data["narrative"] = report.data["narrative"]
     if report is None:
         report = Report(date=date, data=data)
         session.add(report)
     else:
         report.data = data
         report.generated_at = dt.datetime.utcnow()
+    session.commit()
+    return report
+
+
+def fill_missing_narrative(session, engine=None, max_age_days: int = 1) -> Report | None:
+    """Redacta el análisis narrativo de un reporte reciente que quedó sin él -- la IA vive en el PC del
+    cliente y a las 7 a. m. (hora del reporte automático) suele estar apagado. Usa las cifras YA guardadas en
+    el reporte (no recalcula nada), así que el texto es coherente con las tablas que el equipo ya vio.
+    Devuelve el reporte actualizado, o None si no había nada que completar o la IA sigue sin responder."""
+    cutoff = (dt.datetime.utcnow() - dt.timedelta(days=max_age_days)).strftime("%Y-%m-%d")
+    report = session.query(Report).filter(Report.date >= cutoff).order_by(Report.date.desc()).first()
+    if report is None or (report.data or {}).get("narrative"):
+        return None
+    if engine is None:
+        from src.sentiment import build_sentiment_engine
+        engine = build_sentiment_engine()
+    d = report.data or {}
+    narrative = generate_narrative(
+        engine, d.get("reach_comparison", []), d.get("comment_reaction", []), d.get("topic_gaps", []), d.get("strong_social", []),
+        days=d.get("comparison_window_days", COMPARISON_WINDOW_DAYS), city_days=d.get("city_window_days", CITY_WINDOW_DAYS))
+    if not narrative:
+        return None
+    report.data = {**d, "narrative": narrative}
     session.commit()
     return report
 
@@ -449,7 +477,7 @@ def report_to_pdf(report: dict) -> bytes:
         p(narrative.get("resumen_ejecutivo") or "Sin resumen disponible.")
     else:
         h("Resumen ejecutivo")
-        p("No se generó análisis narrativo en este corte (el motor de análisis no estaba disponible). Las cifras de este reporte son reales e íntegras igual.")
+        p("El análisis narrativo aún no se redactó: lo hace la inteligencia artificial del PC del cliente, que estaba apagado o sin conexión al generar este reporte. Se completa solo cuando vuelve a estar en línea. Las cifras de este reporte son reales e íntegras igual.")
 
     # ---------- Método y alcance ----------
     h("Método y alcance")

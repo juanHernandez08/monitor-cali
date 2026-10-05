@@ -953,7 +953,7 @@ async function showReport(date) {
     </section>` : `
     <section class="intro panel">
       <h2>Análisis narrativo no disponible en este corte</h2>
-      <p>El motor de análisis no respondió al generar este reporte. Las cifras y gráficas de abajo son reales e íntegras igual.</p>
+      <p>El análisis narrativo aún no se redactó: lo hace la inteligencia artificial del PC del cliente, que estaba apagado o sin conexión al generar este reporte. Se completa solo cuando vuelve a estar en línea (revisa cada 10 minutos). Las cifras y gráficas de abajo son reales e íntegras igual.</p>
     </section>`}
     <section class="panel">
       <div class="panel-head"><div><h2>Método y alcance</h2><div class="hint">Generado el ${esc(scope.generado || "—")}. "Alcance" = likes + comentarios por publicación (no reproducciones ni "personas alcanzadas", que las plataformas no entregan por scraping). Se usa la mediana porque un solo post viral infla el promedio.</div></div></div>
