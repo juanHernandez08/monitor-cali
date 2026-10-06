@@ -507,6 +507,66 @@ def report_to_pdf(report: dict) -> bytes:
         d.add(String(label_w + 256, ly + 8, "Intensidad (0 leve a 1 muy fuerte)", fontName="Times-Roman", fontSize=6.6, fillColor=HexColor("#5b6475")))
         return d
 
+    EMO_COLORS = {"ira": "#c0392b", "miedo": "#7a4fb0", "asco": "#7a8a2e", "tristeza": "#5b7a99", "felicidad": "#2c7a5b",
+                  "sorpresa": "#d9822b", "sin emoción marcada": "#b9bec9"}
+
+    def share_drawing(hm: dict):
+        """Cada tema es una barra de 100 %, partida por emoción: muestra a dónde va el resto del porcentaje."""
+        rows, emos = hm["rows"], hm["emotions"]
+        label_w, bar_w, rh = 138, 300, 15
+        width, height = 460, 26 + rh * len(rows) + 4
+        d = Drawing(width, height)
+        lx = label_w
+        for e in emos:
+            d.add(Rect(lx, height - 12, 7, 7, fillColor=HexColor(EMO_COLORS[e]), strokeColor=None))
+            lab = "Sin emoción marcada" if e == "sin emoción marcada" else e.capitalize()
+            d.add(String(lx + 10, height - 11, lab, fontName="Times-Roman", fontSize=6.6, fillColor=HexColor("#1d2330")))
+            lx += 10 + len(lab) * 3.3 + 8
+        for i, r in enumerate(rows):
+            y = height - 26 - rh * (i + 1) + 2
+            d.add(String(label_w - 6, y + 3.5, _topic_label(r["category"], {"subtopics": []}).split(" -- ")[0][:30],
+                         fontName="Times-Roman", fontSize=7.4, textAnchor="end", fillColor=HexColor("#1d2330")))
+            x = label_w
+            for e in emos:
+                c = r["cells"].get(e)
+                if not c:
+                    continue
+                w = bar_w * c["count"] / r["total"]
+                d.add(Rect(x, y, w, rh - 4, fillColor=HexColor(EMO_COLORS[e]), strokeColor=HexColor("#ffffff"), strokeWidth=0.5))
+                if w >= 22:
+                    d.add(String(x + w / 2, y + 3, f"{round(c['count'] / r['total'] * 100)} %", fontName="Times-Bold", fontSize=6.4,
+                                 textAnchor="middle", fillColor=HexColor("#ffffff")))
+                x += w
+        return d
+
+    def reading_guide(hm: dict):
+        # el ejemplo sale de los datos de ESTE reporte (la primera fila y su emoción más frecuente), no de cifras fijas
+        row = hm["rows"][0]
+        real = sorted(((e, c) for e, c in row["cells"].items() if e != "sin emoción marcada"), key=lambda kv: -kv[1]["count"])
+        topic = _topic_label(row["category"], {"subtopics": []}).split(" -- ")[0]
+        if real:
+            emo, c = real[0]
+            ex1 = f"<b>Cada tema es un 100 %.</b> Por ejemplo, «{topic}» tuvo {row['total']} menciones en la semana: esas {row['total']} son el 100 % de ese tema."
+            ex2 = (f"<b>«{c['count']} ({c['pct']} % del tema)»</b> quiere decir: de esas {row['total']} menciones, {c['count']} expresan "
+                   f"<b>{emo}</b>. {c['count']} de {row['total']} es el {c['pct']} %.")
+        else:
+            ex1 = "<b>Cada tema es un 100 %.</b> Todas las menciones de un tema suman el 100 % de ese tema."
+            ex2 = "<b>«N (X % del tema)»</b> quiere decir: de todas las menciones del tema, N expresan esa emoción, y N es el X % del total del tema."
+        items = [
+            ex1, ex2,
+            "<b>¿Y el resto del 100 %?</b> Se reparte en las demás emociones (ira, tristeza, felicidad...) y en «sin emoción marcada», que son los "
+            "textos que solo informan y no expresan ningún sentimiento. El gráfico de barras de abajo muestra el reparto completo de cada tema.",
+            "<b>La tabla de apalancadores</b> solo muestra las <b>dos emociones más fuertes</b> de cada tema; por eso sus porcentajes no suman 100 %. "
+            "Pueden sumar 99 % o 101 % por redondeo.",
+            "<b>Intensidad</b> = qué tan fuerte es lo que sienten quienes escriben: 0 es leve y 1 es muy fuerte.",
+        ]
+        box = Table([[Paragraph("<b>Cómo leer esta sección, paso a paso</b>", styles["body"])]] + [[Paragraph("• " + t, styles["body"])] for t in items],
+                    colWidths=[15.8 * cm])
+        box.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, -1), HexColor("#eef2f8")), ("BOX", (0, 0), (-1, -1), 0.6, HexColor("#b9c4d6")),
+                                 ("LEFTPADDING", (0, 0), (-1, -1), 9), ("RIGHTPADDING", (0, 0), (-1, -1), 9),
+                                 ("TOPPADDING", (0, 0), (-1, -1), 2), ("BOTTOMPADDING", (0, 0), (-1, -1), 2)]))
+        return box
+
     def _no_presence(topic_count: int) -> str:
         return ("no se detectaron publicaciones clasificadas sobre este tema en las cuentas y la ventana revisadas"
                 if topic_count == 0 else f"{topic_count} menciones")
@@ -638,14 +698,21 @@ def report_to_pdf(report: dict) -> bytes:
     conv = report.get("conversation_emotions", [])
     hm = report.get("emotion_heatmap")
     if hm and hm.get("rows"):
-        story.append(CondPageBreak(11 * cm))  # título, nota y mapa juntos: el mapa necesita ~9 cm
+        story.append(CondPageBreak(15 * cm))  # título, guía y mapa juntos
         h3("Mapa de calor: emociones percibidas por tema")
+        story.append(reading_guide(hm))
+        story.append(Spacer(1, 6))
         note(f"Últimos {report.get('city_window_days', CITY_WINDOW_DAYS)} días. El color y el número grande son las menciones de cada celda; "
              "la barra naranja y «int.» son la <b>intensidad</b>: fuerza media de la carga emocional de esas menciones, de 0 (leve) a 1 (muy fuerte), "
              "medida con el valor absoluto del puntaje que la IA asigna a cada texto.")
         story.append(heatmap_drawing(hm))
         counters["fig"] += 1
         story.append(Paragraph(f"Figura {counters['fig']}. Mapa de calor de emociones por tema: menciones (color y número) e intensidad (barra e «int.»).", styles["caption"]))
+        story.append(CondPageBreak(9 * cm))
+        h3("Cómo se reparte el 100 % de cada tema")
+        story.append(share_drawing(hm))
+        counters["fig"] += 1
+        story.append(Paragraph(f"Figura {counters['fig']}. Reparto del 100 % de las menciones de cada tema entre las emociones (los segmentos de menos de 5 % no llevan etiqueta).", styles["caption"]))
         h3("Apalancadores: qué dispara cada emoción")
         rows_l = []
         for lv in hm.get("levers", []):

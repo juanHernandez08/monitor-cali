@@ -939,6 +939,12 @@ async function showReport(date) {
   const convEmotions = r.conversation_emotions || [];
   const hm = r.emotion_heatmap && r.emotion_heatmap.rows.length ? r.emotion_heatmap : null;
   const intensityWord = (v) => (v >= 0.6 ? "alta" : v >= 0.35 ? "media" : "leve");
+  let hmExample = "Todas las menciones de un tema suman el 100 % de ese tema. «N (X % del tema)» quiere decir que N de esas menciones expresan esa emoción y N es el X % del total del tema.";
+  if (hm) {
+    const row0 = hm.rows[0];
+    const real0 = Object.entries(row0.cells).filter(([e]) => e !== "sin emoción marcada").sort((a, b) => b[1].count - a[1].count)[0];
+    if (real0) hmExample = `Por ejemplo, «${cap(row0.category)}» tuvo ${row0.total} menciones: esas ${row0.total} son el 100 %. «${real0[1].count} (${real0[1].pct} % del tema)» quiere decir que ${real0[1].count} de esas ${row0.total} expresan ${real0[0]} (${real0[1].count} de ${row0.total} = ${real0[1].pct} %).`;
+  }
   const trendRows = reach.filter((c) => c.trend_pct !== null);
 
   $("#rep-body").innerHTML = `
@@ -1010,7 +1016,14 @@ async function showReport(date) {
     <h3 class="section-title">Conversación y emociones</h3>
     ${hm ? `<section class="panel">
       <div class="panel-head"><div><h2>Mapa de calor: emociones percibidas por tema</h2><div class="hint">Últimos ${r.city_window_days} días. Color y número = menciones de cada celda. <b>Intensidad</b> = fuerza media de la carga emocional de esas menciones, de 0 (leve) a 1 (muy fuerte); al pasar el cursor sobre una celda se ve junto con su % del tema.</div></div></div>
+      <div class="limitations"><span class="label">Cómo leer esto, paso a paso</span>
+        <b>Cada tema es un 100 %.</b> ${hmExample}
+        <b>El resto del 100 %</b> se reparte en las demás emociones y en «sin emoción marcada» (textos que solo informan); el gráfico de barras de abajo muestra el reparto completo.
+        Las tarjetas de apalancadores solo muestran las <b>dos emociones más fuertes</b> de cada tema, por eso sus porcentajes no suman 100 %.
+        <b>Intensidad:</b> qué tan fuerte es lo que sienten, de 0 (leve) a 1 (muy fuerte).</div>
       <div class="chart-box" id="chart-rep-heatmap"></div>
+      <h3 class="section-title" style="margin-top:14px">Cómo se reparte el 100 % de cada tema</h3>
+      <div class="chart-box" id="chart-rep-share"></div>
       <h3 class="section-title" style="margin-top:14px">Apalancadores: qué dispara cada emoción</h3>
       ${hm.levers.map((lv) => `<div class="topic-card">
         <div class="head"><h3>${esc(cap(lv.category))} · ${esc(cap(lv.emotion))}</h3><div>${lv.count} menciones (${lv.pct}% del tema) · intensidad ${lv.intensity.toFixed(2)} (${intensityWord(lv.intensity)})</div></div>
@@ -1065,6 +1078,11 @@ async function showReport(date) {
           (c ? `${c.count} menciones (${c.pct}% del tema)<br>intensidad ${c.intensity.toFixed(2)} (${intensityWord(c.intensity)})` : "sin menciones") + `</div>`;
       } },
     });
+  }
+  if (hm && $("#chart-rep-share")) {
+    const shareColors = ["#c0392b", "#7a4fb0", "#7a8a2e", "#5b7a99", "#2c7a5b", "#d9822b", "#b9bec9"];
+    hbar100("#chart-rep-share", hm.rows.map((row) => `${cap(row.category)} (${row.total})`),
+      hm.emotions.map((e) => ({ name: cap(e), data: hm.rows.map((row) => Math.round(((row.cells[e] || {}).count || 0) / row.total * 100)) })), shareColors);
   }
   const byCand = k.by_candidate;
   hbar("#chart-rep-candidates", byCand.map((c) => c.candidate), byCand.map((c) => c.count),
