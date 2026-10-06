@@ -721,11 +721,15 @@ def report_to_pdf(report: dict) -> bytes:
             if ej.get("text"):
                 link = f' (<link href="{ej["url"]}">ver original</link>)' if ej.get("url") else ""
                 apal += f"<br/><i>Ejemplo: “{ej['text'][:140]}” -- {ej.get('source', '')}{link}</i>"
+            row = next((r for r in hm["rows"] if r["category"] == lv["category"]), None)
+            others = sorted(((e, c) for e, c in (row["cells"].items() if row else []) if e != lv["emotion"]), key=lambda kv: -kv[1]["count"])
+            resto_pct = 100 - lv["pct"]
+            resto = (f"<b>{resto_pct} %</b>: " + "; ".join(f"{('sin emoción' if e == 'sin emoción marcada' else e)} {c['pct']} %" for e, c in others)) if others else f"{resto_pct} %"
             rows_l.append([_topic_label(lv["category"], {"subtopics": []}), lv["emotion"].capitalize(),
-                           f"{lv['count']} ({lv['pct']} % del tema)", f"{_num(lv['intensity'])} ({_intensity_word(lv['intensity'])})", apal])
-        table(["Tema", "Emoción", "Menciones", "Intensidad", "Apalancadores (n = veces que se repite)"], rows_l,
-              col_widths=[2.6 * cm, 2 * cm, 2.4 * cm, 2.2 * cm, 6.8 * cm],
-              caption="Apalancadores más repetidos de las dos emociones principales de cada tema, con intensidad y un ejemplo citable.")
+                           f"{lv['count']} ({lv['pct']} % del tema)", f"{_num(lv['intensity'])} ({_intensity_word(lv['intensity'])})", apal, resto])
+        table(["Tema", "Emoción", "Menciones", "Intensidad", "Apalancadores (n = veces que se repite)", "¿A dónde va el resto del tema?"], rows_l,
+              col_widths=[2.2 * cm, 1.8 * cm, 2.1 * cm, 1.9 * cm, 5.3 * cm, 3.7 * cm],
+              caption="Apalancadores de las dos emociones principales de cada tema. La última columna dice dónde está el resto del 100 % del tema.")
     else:
         table(["Tema", "Menciones", "Emoción predominante", "Apalancadores"],
               [[_topic_label(ce["category"], {"subtopics": []}), ce["count"], ce["dominant_emotion"] or "sin emoción marcada",

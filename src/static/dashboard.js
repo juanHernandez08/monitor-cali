@@ -1027,6 +1027,7 @@ async function showReport(date) {
       <h3 class="section-title" style="margin-top:14px">Apalancadores: qué dispara cada emoción</h3>
       ${hm.levers.map((lv) => `<div class="topic-card">
         <div class="head"><h3>${esc(cap(lv.category))} · ${esc(cap(lv.emotion))}</h3><div>${lv.count} menciones (${lv.pct}% del tema) · intensidad ${lv.intensity.toFixed(2)} (${intensityWord(lv.intensity)})</div></div>
+        <p class="hint">El resto del tema (${100 - lv.pct}%): ${(() => { const row = hm.rows.find((x) => x.category === lv.category); return row ? Object.entries(row.cells).filter(([e]) => e !== lv.emotion).sort((a, b) => b[1].count - a[1].count).map(([e, c]) => `${e === "sin emoción marcada" ? "sin emoción" : e} ${c.pct}%`).join(" · ") : ""; })()}</p>
         ${lv.apalancadores.length ? `<ul>${lv.apalancadores.map((a) => `<li>${esc(a.text)} <span class="hint">· n=${a.count} · int. ${a.intensity.toFixed(2)}</span></li>`).join("")}</ul>` : `<p class="hint">Sin apalancador registrado en estas menciones.</p>`}
         ${lv.ejemplo && lv.ejemplo.text ? `<div class="quote">"${esc(clip(lv.ejemplo.text, 200))}"<div class="who">${esc(lv.ejemplo.source || "")}${lv.ejemplo.url ? ` · <a href="${safeUrl(lv.ejemplo.url)}" target="_blank" rel="noopener">ver ↗</a>` : ""}</div></div>` : ""}
       </div>`).join("")}
