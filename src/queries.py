@@ -849,6 +849,58 @@ def city_emotion_by_topic(session, days: int = 7) -> list[dict]:
     return rows
 
 
+HEATMAP_EMOTIONS = ["ira", "miedo", "asco", "tristeza", "felicidad", "sorpresa", "sin emoción marcada"]
+
+
+def city_emotion_heatmap(session, days: int = 7, topics: int = 10, per_cell: int = 3) -> dict:
+    """Mapa de calor tema x emoción de la conversación de ciudad, con INTENSIDAD y APALANCADORES --
+    pedido del cliente (feedback sobre el reporte, 2026-10-06): "el mapa de calor de las emociones
+    percibidas, junto con sus apalancadores y la intensidad".
+
+    Por celda (tema x emoción): cuántas menciones, qué % del tema representan, la intensidad (fuerza
+    media de la carga emocional, 0 a 1: valor absoluto del puntaje de la IA -- es la única magnitud
+    por mención que existe; el matiz de la emoción no tiene escala) y, para las dos emociones
+    reales más frecuentes de cada tema, los apalancadores más repetidos con un ejemplo citable."""
+    current = _city_rows(session, _since(days))
+    cells: dict[tuple[str, str], list[Mention]] = defaultdict(list)
+    by_cat: dict[str, list[Mention]] = defaultdict(list)
+    for m in current:
+        cat = m.sentiment.category or "otro"
+        cells[(cat, m.sentiment.emotion or "sin emoción marcada")].append(m)
+        by_cat[cat].append(m)
+
+    def intensity(ms):
+        return round(sum(abs(m.sentiment.score) for m in ms) / len(ms), 2)
+
+    rows, levers = [], []
+    for cat, ms_cat in sorted(by_cat.items(), key=lambda kv: -len(kv[1]))[:topics]:
+        total = len(ms_cat)
+        row_cells = {}
+        for emo in HEATMAP_EMOTIONS:
+            ms = cells.get((cat, emo))
+            if ms:
+                row_cells[emo] = {"count": len(ms), "pct": round(len(ms) / total * 100), "intensity": intensity(ms)}
+        rows.append({"category": cat, "total": total, "cells": row_cells, "intensity": intensity(ms_cat),
+                     "dominant_emotion": _dominant_emotion(ms_cat)})
+        real = sorted(((e, c) for e, c in row_cells.items() if e != "sin emoción marcada"), key=lambda kv: -kv[1]["count"])[:2]
+        for emo, c in real:
+            ms = cells[(cat, emo)]
+            groups: dict[str, list[Mention]] = defaultdict(list)
+            for m in ms:
+                text = (m.sentiment.apalancador or "").strip()
+                if text:
+                    groups[text.lower()].append(m)
+            top = sorted(groups.values(), key=lambda g: (-len(g), -intensity(g)))[:per_cell]
+            best = max(ms, key=lambda m: abs(m.sentiment.score))
+            levers.append({
+                "category": cat, "emotion": emo, **c,
+                "apalancadores": [{"text": g[0].sentiment.apalancador.strip(), "count": len(g), "intensity": intensity(g)} for g in top],
+                "ejemplo": {"text": best.text[:220], "url": best.url, "source": best.source.name,
+                            "published_at": _when(best).isoformat()},
+            })
+    return {"days": days, "emotions": HEATMAP_EMOTIONS, "rows": rows, "levers": levers}
+
+
 def city_topic_emotion_samples(session, category: str, emotion: str, days: int = 7, limit: int = 6) -> list[dict]:
     """Qué está generando concretamente una emoción dentro de un tema -- el apalancador, no solo
     el conteo. Pedido del cliente 2026-10-01: "si en deporte felicidad es lo más fuerte, debería

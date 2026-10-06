@@ -247,6 +247,7 @@ def build_report(session, date: str | None = None, engine=None) -> dict:
         "strong_social": strong,
         "city_topics": city_topics,
         "conversation_emotions": _conversation_emotions(city_topics),
+        "emotion_heatmap": queries.city_emotion_heatmap(session, days=CITY_WINDOW_DAYS),
         "city_opportunities": queries.city_opportunities(session, days=CITY_WINDOW_DAYS),
         "reach_comparison": reach,
         "comment_reaction": reaction,
@@ -315,9 +316,9 @@ def report_to_pdf(report: dict) -> bytes:
     from reportlab.lib.units import cm
     from reportlab.lib.colors import HexColor
     from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY
-    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable, CondPageBreak
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-    from reportlab.graphics.shapes import Drawing
+    from reportlab.graphics.shapes import Drawing, Rect, String
     from reportlab.graphics.charts.barcharts import HorizontalBarChart
     from reportlab.pdfgen.canvas import Canvas
 
@@ -459,6 +460,53 @@ def report_to_pdf(report: dict) -> bytes:
         else:
             story.append(Spacer(1, 10))
 
+    def _num(v: float) -> str:
+        return f"{v:.2f}".replace(".", ",")
+
+    def _intensity_word(v: float) -> str:
+        return "alta" if v >= 0.6 else "media" if v >= 0.35 else "leve"
+
+    def heatmap_drawing(hm: dict):
+        rows, emos = hm["rows"], hm["emotions"]
+        label_w, rh, head, foot = 138, 27, 24, 34
+        cw = (460 - label_w) / len(emos)
+        width, height = 460, head + rh * len(rows) + foot
+        d = Drawing(width, height)
+        mx = max((c["count"] for r in rows for c in r["cells"].values()), default=1)
+
+        def shade(t):
+            return HexColor("#%02x%02x%02x" % (round(255 - (255 - 31) * t), round(255 - (255 - 111) * t), round(255 - (255 - 181) * t)))
+
+        for j, e in enumerate(emos):
+            lab = {"sin emoción marcada": "Sin emoción"}.get(e, e.capitalize())
+            d.add(String(label_w + cw * (j + 0.5), height - 15, lab, fontName="Times-Bold", fontSize=7.4, textAnchor="middle", fillColor=HexColor("#1d2330")))
+        for i, r in enumerate(rows):
+            y = height - head - rh * (i + 1)
+            d.add(String(label_w - 6, y + rh / 2 - 1, _topic_label(r["category"], {"subtopics": []}).split(" -- ")[0][:30],
+                         fontName="Times-Roman", fontSize=7.6, textAnchor="end", fillColor=HexColor("#1d2330")))
+            d.add(String(label_w - 6, y + rh / 2 - 9, f"{r['total']} menciones", fontName="Times-Italic", fontSize=6.2, textAnchor="end", fillColor=HexColor("#6e6d66")))
+            for j, e in enumerate(emos):
+                x = label_w + cw * j
+                c = r["cells"].get(e)
+                t = (c["count"] / mx) if c else 0
+                d.add(Rect(x + 1, y + 1, cw - 2, rh - 2, fillColor=shade(t) if c else HexColor("#f1f2f5"), strokeColor=HexColor("#ffffff"), strokeWidth=0.8))
+                if c:
+                    dark = t > 0.5
+                    d.add(String(x + cw / 2, y + rh - 11, str(c["count"]), fontName="Times-Bold", fontSize=8.6, textAnchor="middle",
+                                 fillColor=HexColor("#ffffff") if dark else HexColor("#1d2330")))
+                    d.add(String(x + cw / 2, y + 7.5, f"int. {_num(c['intensity'])}", fontName="Times-Roman", fontSize=5.9, textAnchor="middle",
+                                 fillColor=HexColor("#ffffff") if dark else HexColor("#5b6475")))
+                    d.add(Rect(x + 4, y + 2.5, cw - 8, 1.8, fillColor=HexColor("#e6e1d8"), strokeColor=None))
+                    d.add(Rect(x + 4, y + 2.5, (cw - 8) * c["intensity"], 1.8, fillColor=HexColor("#d9822b"), strokeColor=None))
+        ly = 8
+        d.add(String(label_w, ly + 12, "Menos menciones", fontName="Times-Roman", fontSize=6.6, fillColor=HexColor("#5b6475")))
+        for k in range(6):
+            d.add(Rect(label_w + 62 + k * 16, ly + 10, 16, 8, fillColor=shade(k / 5), strokeColor=None))
+        d.add(String(label_w + 62 + 6 * 16 + 4, ly + 12, f"Más ({mx})", fontName="Times-Roman", fontSize=6.6, fillColor=HexColor("#5b6475")))
+        d.add(Rect(label_w + 230, ly + 10, 22, 2, fillColor=HexColor("#d9822b"), strokeColor=None))
+        d.add(String(label_w + 256, ly + 8, "Intensidad (0 leve a 1 muy fuerte)", fontName="Times-Roman", fontSize=6.6, fillColor=HexColor("#5b6475")))
+        return d
+
     def _no_presence(topic_count: int) -> str:
         return ("no se detectaron publicaciones clasificadas sobre este tema en las cuentas y la ventana revisadas"
                 if topic_count == 0 else f"{topic_count} menciones")
@@ -588,11 +636,35 @@ def report_to_pdf(report: dict) -> bytes:
          "\"sin emoción marcada\"); el apalancador es lo que el texto deja ver como disparador concreto de esa "
          "emoción -- es la parte más útil para decidir qué hacer, no solo el volumen.")
     conv = report.get("conversation_emotions", [])
-    table(["Tema", "Menciones", "Emoción predominante", "Apalancadores"],
-          [[_topic_label(ce["category"], {"subtopics": []}), ce["count"], ce["dominant_emotion"] or "sin emoción marcada",
-            "; ".join(ce["apalancadores"]) or "—"] for ce in conv],
-          col_widths=[3.5 * cm, 2 * cm, 3.5 * cm, 6.5 * cm],
-          caption="Emoción predominante y apalancadores por tema de conversación de ciudad.")
+    hm = report.get("emotion_heatmap")
+    if hm and hm.get("rows"):
+        story.append(CondPageBreak(11 * cm))  # título, nota y mapa juntos: el mapa necesita ~9 cm
+        h3("Mapa de calor: emociones percibidas por tema")
+        note(f"Últimos {report.get('city_window_days', CITY_WINDOW_DAYS)} días. El color y el número grande son las menciones de cada celda; "
+             "la barra naranja y «int.» son la <b>intensidad</b>: fuerza media de la carga emocional de esas menciones, de 0 (leve) a 1 (muy fuerte), "
+             "medida con el valor absoluto del puntaje que la IA asigna a cada texto.")
+        story.append(heatmap_drawing(hm))
+        counters["fig"] += 1
+        story.append(Paragraph(f"Figura {counters['fig']}. Mapa de calor de emociones por tema: menciones (color y número) e intensidad (barra e «int.»).", styles["caption"]))
+        h3("Apalancadores: qué dispara cada emoción")
+        rows_l = []
+        for lv in hm.get("levers", []):
+            apal = "<br/>".join(f"• {a['text']} (n={a['count']}, int. {_num(a['intensity'])})" for a in lv["apalancadores"]) or "sin apalancador registrado"
+            ej = lv.get("ejemplo") or {}
+            if ej.get("text"):
+                link = f' (<link href="{ej["url"]}">ver original</link>)' if ej.get("url") else ""
+                apal += f"<br/><i>Ejemplo: “{ej['text'][:140]}” -- {ej.get('source', '')}{link}</i>"
+            rows_l.append([_topic_label(lv["category"], {"subtopics": []}), lv["emotion"].capitalize(),
+                           f"{lv['count']} ({lv['pct']} % del tema)", f"{_num(lv['intensity'])} ({_intensity_word(lv['intensity'])})", apal])
+        table(["Tema", "Emoción", "Menciones", "Intensidad", "Apalancadores (n = veces que se repite)"], rows_l,
+              col_widths=[2.6 * cm, 2 * cm, 2.4 * cm, 2.2 * cm, 6.8 * cm],
+              caption="Apalancadores más repetidos de las dos emociones principales de cada tema, con intensidad y un ejemplo citable.")
+    else:
+        table(["Tema", "Menciones", "Emoción predominante", "Apalancadores"],
+              [[_topic_label(ce["category"], {"subtopics": []}), ce["count"], ce["dominant_emotion"] or "sin emoción marcada",
+                "; ".join(ce["apalancadores"]) or "—"] for ce in conv],
+              col_widths=[3.5 * cm, 2 * cm, 3.5 * cm, 6.5 * cm],
+              caption="Emoción predominante y apalancadores por tema de conversación de ciudad.")
     for ce in conv:
         if ce["evidencia"]:
             h3(f"Evidencia -- {_topic_label(ce['category'], {'subtopics': []})}")

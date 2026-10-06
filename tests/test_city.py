@@ -533,3 +533,40 @@ def test_city_kpis(db_session):
     k = city_kpis(db_session, days=7)
     assert k["total"] == 5 and k["top_category"] == "servicios públicos"
     assert k["negative_pct"] == 60  # 3 de 5 negativas
+
+
+def test_city_emotion_heatmap_has_counts_intensity_and_levers_per_cell(db_session):
+    """Pedido del cliente (2026-10-06): el reporte debe traer el mapa de calor de emociones por tema con sus
+    apalancadores y la intensidad (fuerza media de la carga emocional, 0 a 1)."""
+    from src.queries import city_emotion_heatmap
+    now = dt.datetime.utcnow()
+    city = Candidate(name=CITY_NAME, kind="city", aliases=[])
+    src = Source(type=SourceType.RSS, name="El País Cali", config={"feed_url": "x", "city": True})
+    db_session.add_all([city, src])
+    db_session.commit()
+
+    def add(ext, cat, emo, apal, score):
+        m = Mention(candidate_id=city.id, source_id=src.id, external_id=ext, text=f"texto {ext}", url=f"https://x/{ext}",
+                    published_at=now, fetched_at=now, raw={})
+        db_session.add(m)
+        db_session.flush()
+        db_session.add(SentimentScore(mention_id=m.id, label=SentimentLabel.NEGATIVE if score < 0 else SentimentLabel.POSITIVE,
+                                      score=score, topic="t", model="f", category=cat, emotion=emo, apalancador=apal))
+
+    add("a", "seguridad y convivencia", "miedo", "balacera en el centro", -0.8)
+    add("b", "seguridad y convivencia", "miedo", "Balacera en el centro", -0.6)
+    add("c", "seguridad y convivencia", "miedo", "robo de celulares", -0.4)
+    add("d", "seguridad y convivencia", "ira", "falta de policía", -0.9)
+    add("e", "deporte", "felicidad", "título del Deportivo Cali", 0.7)
+    db_session.commit()
+
+    hm = city_emotion_heatmap(db_session, days=7)
+    rows = {r["category"]: r for r in hm["rows"]}
+    seg = rows["seguridad y convivencia"]
+    assert seg["total"] == 4 and seg["cells"]["miedo"] == {"count": 3, "pct": 75, "intensity": 0.6}
+    assert seg["cells"]["ira"]["intensity"] == 0.9 and seg["dominant_emotion"] == "miedo"
+    lv = next(x for x in hm["levers"] if x["category"] == "seguridad y convivencia" and x["emotion"] == "miedo")
+    # "balacera" se agrupa sin importar mayúsculas y va primero por repetirse; trae un ejemplo citable
+    assert lv["apalancadores"][0]["count"] == 2 and lv["apalancadores"][0]["text"].lower() == "balacera en el centro"
+    assert lv["ejemplo"]["url"].startswith("https://x/")
+    assert [r["category"] for r in hm["rows"]] == ["seguridad y convivencia", "deporte"]

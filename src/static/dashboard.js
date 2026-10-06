@@ -937,6 +937,8 @@ async function showReport(date) {
   const reaction = r.comment_reaction || [];
   const gaps = r.topic_gaps || [];
   const convEmotions = r.conversation_emotions || [];
+  const hm = r.emotion_heatmap && r.emotion_heatmap.rows.length ? r.emotion_heatmap : null;
+  const intensityWord = (v) => (v >= 0.6 ? "alta" : v >= 0.35 ? "media" : "leve");
   const trendRows = reach.filter((c) => c.trend_pct !== null);
 
   $("#rep-body").innerHTML = `
@@ -1006,6 +1008,16 @@ async function showReport(date) {
       <ul>${r.city_opportunities.novedades.length ? r.city_opportunities.novedades.map((t) => `<li><b>${esc(cap(t.topic))}</b> <span class="hint">(${esc(cap(t.category))})</span>: ${t.count} menciones · Carlos: ${repNoPresence(t.carlos_mentions)}</li>`).join("") : `<li class="empty">Sin novedades sin presencia de Carlos en el período.</li>`}</ul>
     </section>
     <h3 class="section-title">Conversación y emociones</h3>
+    ${hm ? `<section class="panel">
+      <div class="panel-head"><div><h2>Mapa de calor: emociones percibidas por tema</h2><div class="hint">Últimos ${r.city_window_days} días. Color y número = menciones de cada celda. <b>Intensidad</b> = fuerza media de la carga emocional de esas menciones, de 0 (leve) a 1 (muy fuerte); al pasar el cursor sobre una celda se ve junto con su % del tema.</div></div></div>
+      <div class="chart-box" id="chart-rep-heatmap"></div>
+      <h3 class="section-title" style="margin-top:14px">Apalancadores: qué dispara cada emoción</h3>
+      ${hm.levers.map((lv) => `<div class="topic-card">
+        <div class="head"><h3>${esc(cap(lv.category))} · ${esc(cap(lv.emotion))}</h3><div>${lv.count} menciones (${lv.pct}% del tema) · intensidad ${lv.intensity.toFixed(2)} (${intensityWord(lv.intensity)})</div></div>
+        ${lv.apalancadores.length ? `<ul>${lv.apalancadores.map((a) => `<li>${esc(a.text)} <span class="hint">· n=${a.count} · int. ${a.intensity.toFixed(2)}</span></li>`).join("")}</ul>` : `<p class="hint">Sin apalancador registrado en estas menciones.</p>`}
+        ${lv.ejemplo && lv.ejemplo.text ? `<div class="quote">"${esc(clip(lv.ejemplo.text, 200))}"<div class="who">${esc(lv.ejemplo.source || "")}${lv.ejemplo.url ? ` · <a href="${safeUrl(lv.ejemplo.url)}" target="_blank" rel="noopener">ver ↗</a>` : ""}</div></div>` : ""}
+      </div>`).join("")}
+    </section>` : ""}
     <section class="panel">
       <div class="panel-head"><div><h2>Qué situación concreta hay detrás de cada tema</h2><div class="hint">Emoción predominante y su apalancador -- qué está generando concretamente esa emoción, no solo cuánto se habla del tema.</div></div></div>
       ${convEmotions.length ? convEmotions.map((ce) => `<div class="topic-card">
@@ -1038,6 +1050,22 @@ async function showReport(date) {
       </article>`).join("") : `<div class="empty">Nada pendiente por ahora.</div>`}</div>
     </section>`;
 
+  if (hm && $("#chart-rep-heatmap")) {
+    chart("#chart-rep-heatmap", {
+      chart: { type: "heatmap", height: Math.max(220, hm.rows.length * 34) },
+      series: hm.rows.map((row) => ({ name: cap(row.category), data: hm.emotions.map((e) => ({ x: cap(e), y: (row.cells[e] || {}).count || 0 })) })),
+      colors: [BLUE],
+      plotOptions: { heatmap: { colorScale: { ranges: [{ from: 0, to: 0, color: GRID }] } } },
+      dataLabels: { enabled: true, style: { colors: [INK] } },
+      xaxis: { labels: { style: { colors: MUTED } } },
+      legend: { show: false },
+      tooltip: { custom: ({ seriesIndex, dataPointIndex }) => {
+        const row = hm.rows[seriesIndex], emo = hm.emotions[dataPointIndex], c = row.cells[emo];
+        return `<div style="padding:6px 9px;font-size:12px"><b>${esc(cap(row.category))} · ${esc(cap(emo))}</b><br>` +
+          (c ? `${c.count} menciones (${c.pct}% del tema)<br>intensidad ${c.intensity.toFixed(2)} (${intensityWord(c.intensity)})` : "sin menciones") + `</div>`;
+      } },
+    });
+  }
   const byCand = k.by_candidate;
   hbar("#chart-rep-candidates", byCand.map((c) => c.candidate), byCand.map((c) => c.count),
     byCand.map((c) => c.candidate === CARLOS ? BLUE : CARLOS_GRAY));
