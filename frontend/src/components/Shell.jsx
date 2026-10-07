@@ -23,7 +23,7 @@ export const NAV = [
 function Brand() {
   return (
     <div className="flex items-center gap-3 px-2">
-      <div className="grid size-10 place-items-center rounded-xl bg-gradient-to-br from-brand-400 to-brand-700 text-lg font-extrabold text-white shadow-glow ring-1 ring-white/20">M</div>
+      <img src={`${import.meta.env.BASE_URL}radar-icon.png`} alt="" className="size-10 rounded-xl shadow-glow ring-1 ring-white/20" />
       <div className="leading-tight">
         <div className="text-[15px] font-bold tracking-tight text-white">Monitor Cali</div>
         <div className="text-[11px] font-medium text-blue-200/70">Alcaldía 2027</div>
