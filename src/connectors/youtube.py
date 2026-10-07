@@ -96,6 +96,7 @@ class YouTubeConnector:
                         author=cs.get("authorDisplayName"),
                         published_at=_parse(cs.get("publishedAt")),
                         raw={"kind": "comment", "video_id": vid, "video_title": s.get("title"),
+                             "video_context": about[:500],  # título + descripción: contexto para atribuir
                              "video_about_candidate": hint is not None},
                         search_term=hint,
                     ))

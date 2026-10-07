@@ -4,7 +4,8 @@ import re
 import unicodedata
 
 from src.connectors.base import Connector
-from src.matching import all_search_terms_flat, find_matching_candidate, find_candidate_by_term, is_excluded
+from src.matching import (all_search_terms_flat, attribution_problem, find_matching_candidate, find_candidate_by_term,
+                          is_excluded)
 from sqlalchemy import func, or_
 from sqlalchemy.exc import IntegrityError
 
@@ -108,6 +109,8 @@ def ingest(session, source, connector: Connector, max_age_days: int = MAX_AGE_DA
                              or find_candidate_by_term(item.search_term, candidates))
             if candidate is not None and is_excluded(item.text, candidate):
                 continue
+            if candidate is not None and source.type in (SourceType.YOUTUBE, SourceType.SOCIAL)                     and attribution_problem(candidate, item.text, item.raw, source.type.value):
+                continue  # homónimo, o el video/post al que responde no es del candidato
             if candidate is None:
                 # fuente de ciudad: lo que no nombra a nadie SOLO es conversación de Cali si
                 # nombra la ciudad -- si no, es ruido de otro municipio o nacional (ver mentions_city)
@@ -175,7 +178,8 @@ def score_pending(session, engine, limit: int = 20) -> int:
     for mention in pending:
         raw = mention.raw or {}
         is_city = mention.candidate.kind == "city"
-        if not is_city and is_excluded(f"{mention.text} {mention.body or ''}", mention.candidate):
+        if not is_city and (is_excluded(f"{mention.text} {mention.body or ''}", mention.candidate)
+                            or attribution_problem(mention.candidate, mention.text, raw, mention.source.type.value)):
             mention.relevant = False
             session.add(SentimentScore(mention_id=mention.id, label=SentimentLabel.NEUTRAL, score=0.0,
                                        topic="homónimo", model="regla"))

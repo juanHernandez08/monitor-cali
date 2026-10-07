@@ -85,6 +85,9 @@ CANDIDATES = [
         "exclusions": [
             "Arias Orjuela", "Arias Orejuela", "Arias Navarro", "Jhon Arias", "Alfredo Arias",
             "Pastor Carlos Arias", "Carlos Miguel Arias", "Juan Carlos Arias", "Luis Carlos Arias",
+            # Carlos Arias, el famoso que sale con Sheynnis Palacios (Miss Universo 2023): sus videos
+            # y los comentarios de esos videos se colaban como menciones negativas del candidato.
+            "Sheynnis", "Miss Universo", "Miss Universe",
         ],
         # "Carlos Arias" es un nombre común (auditoría 2026-09-29: prensa nacional sobre un
         # futbolista "Luis Carlos Arias" se colaba sin este filtro). Igual que Mondragón/Márquez/

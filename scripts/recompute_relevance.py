@@ -6,7 +6,7 @@
     python -m scripts.recompute_relevance
 """
 from src.db import get_session, init_db
-from src.matching import has_required_context, is_excluded, mentions_candidate
+from src.matching import attribution_problem, has_required_context, is_excluded, mentions_candidate
 from src.models import Candidate, SourceType
 
 PRESS = (SourceType.GOOGLE_NEWS, SourceType.RSS)
@@ -32,6 +32,8 @@ def is_relevant(mention, candidate) -> bool:
         return has_required_context(blob, candidate) and mentions_candidate(blob, candidate)
     if is_excluded(mention.text, candidate):
         return False
+    if attribution_problem(candidate, mention.text, raw, mention.source.type.value):
+        return False  # homónimo en el video/post, o el video/post no es del candidato (matching.py)
     is_comment = raw.get("kind") == "comment"
     own_post = is_comment and raw.get("account_candidate") == candidate.name
     if is_comment and not own_post and "tangencial" in topic:

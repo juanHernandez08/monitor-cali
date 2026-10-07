@@ -173,3 +173,39 @@ def test_ingest_skips_excluded_homonyms_and_enrich_discards_them(db_session, mon
     enrich_pending(db_session, limit=10)
     b = db_session.query(Mention).filter_by(external_id="b").one()
     assert b.relevant is False  # el cuerpo revela el homónimo
+
+
+def test_ingest_drops_youtube_comments_of_a_homonym_video(db_session):
+    """Los comentarios de un video sobre un homónimo no deben contar como menciones del candidato."""
+    carlos = Candidate(name="Carlos Arias", aliases=[], exclusions=["Sheynnis"], context_terms=["Cali", "Concejo"])
+    yt = Source(type=SourceType.YOUTUBE, name="YouTube")
+    db_session.add_all([carlos, yt])
+    db_session.commit()
+    bad = RawItem(external_id="yt:comment:1", text="No me parece muy seria esa proposición", url="https://youtube.com/watch?v=1&lc=a",
+                  search_term="Carlos Arias",
+                  raw={"kind": "comment", "video_title": "¿Habrá boda? Carlos Arias sorprende a Sheynnis Palacios",
+                       "video_context": "¿habrá boda? carlos arias sorprende a sheynnis palacios"})
+    good = RawItem(external_id="yt:comment:2", text="Muy buena propuesta", url="https://youtube.com/watch?v=2&lc=b",
+                   search_term="Carlos Arias",
+                   raw={"kind": "comment", "video_title": "Carlos Arias presenta su propuesta para Cali",
+                        "video_context": "carlos arias presenta su propuesta para cali"})
+    assert ingest(db_session, yt, ListConnector([bad, good])) == 1
+    assert db_session.query(Mention).one().external_id == "yt:comment:2"
+
+
+def test_recompute_relevance_drops_comments_of_homonym_video(db_session):
+    """Lo ya guardado se limpia con las mismas reglas del ingreso (scripts/recompute_relevance.py)."""
+    from scripts.recompute_relevance import recompute
+    from src.models import SentimentLabel, SentimentScore
+    carlos = Candidate(name="Carlos Arias", aliases=[], exclusions=["Sheynnis"], context_terms=["Cali"])
+    yt = Source(type=SourceType.YOUTUBE, name="YouTube")
+    db_session.add_all([carlos, yt])
+    db_session.commit()
+    m = Mention(candidate_id=carlos.id, source_id=yt.id, external_id="c1", text="Ese romance no convence", relevant=True,
+                raw={"kind": "comment", "video_title": "Carlos Arias sorprende a Sheynnis Palacios"})
+    db_session.add(m)
+    db_session.commit()
+    db_session.add(SentimentScore(mention_id=m.id, label=SentimentLabel.NEGATIVE, score=-0.3, topic="rechazo", model="x"))
+    db_session.commit()
+    restored, dropped = recompute(db_session)
+    assert dropped == 1 and db_session.query(Mention).one().relevant is False
