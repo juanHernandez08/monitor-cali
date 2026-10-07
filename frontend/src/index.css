@@ -1,0 +1,97 @@
+@import "tailwindcss";
+@import "@fontsource-variable/inter";
+
+@theme {
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif;
+
+  --color-brand-50: #eef5ff;
+  --color-brand-100: #d9e8fd;
+  --color-brand-200: #bcd6fb;
+  --color-brand-300: #8fbbf6;
+  --color-brand-400: #5a98ec;
+  --color-brand-500: #2a78d6;
+  --color-brand-600: #1f62b8;
+  --color-brand-700: #184f95;
+  --color-brand-800: #153f78;
+  --color-brand-900: #12335f;
+
+  --color-navy-950: #070d22;
+  --color-navy-900: #0b1330;
+  --color-navy-800: #0f1b3d;
+  --color-navy-700: #18284f;
+  --color-navy-600: #233562;
+
+  --color-pos: #0ca30c;
+  --color-neg: #d03b3b;
+  --color-neu: #b7b6ad;
+
+  --shadow-card: 0 1px 2px rgb(15 23 42 / 0.04), 0 8px 24px -8px rgb(15 23 42 / 0.08);
+  --shadow-lift: 0 2px 4px rgb(15 23 42 / 0.05), 0 18px 40px -12px rgb(24 79 149 / 0.22);
+  --shadow-glow: 0 8px 24px -6px rgb(42 120 214 / 0.55);
+
+  --animate-fade-up: fade-up 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-fade-in: fade-in 0.3s ease-out both;
+  --animate-shimmer: shimmer 1.6s linear infinite;
+  --animate-pulse-ring: pulse-ring 2s ease-out infinite;
+
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes shimmer {
+    from { background-position: 200% 0; }
+    to { background-position: -200% 0; }
+  }
+  @keyframes pulse-ring {
+    0% { box-shadow: 0 0 0 0 rgb(34 197 94 / 0.55); }
+    80%, 100% { box-shadow: 0 0 0 9px rgb(34 197 94 / 0); }
+  }
+}
+
+@layer base {
+  html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+  body {
+    @apply bg-[#f3f5fa] font-sans text-slate-900 antialiased;
+    background-image:
+      radial-gradient(900px 420px at 85% -80px, rgb(42 120 214 / 0.10), transparent 70%),
+      radial-gradient(700px 380px at 10% 0, rgb(99 102 241 / 0.06), transparent 70%);
+    background-attachment: fixed;
+  }
+  :focus-visible { @apply outline-2 outline-offset-2 outline-brand-500 rounded-md; }
+  button { @apply cursor-pointer; }
+  button:disabled { @apply cursor-default; }
+  ::selection { background: rgb(42 120 214 / 0.2); }
+}
+
+@layer components {
+  .card {
+    @apply rounded-2xl bg-white shadow-card ring-1 ring-slate-200/70;
+  }
+  .scroll-thin { scrollbar-width: thin; scrollbar-color: #cbd5e1 transparent; }
+  .skeleton {
+    @apply rounded-lg;
+    background: linear-gradient(90deg, #eef1f6 25%, #f8fafc 37%, #eef1f6 63%);
+    background-size: 400% 100%;
+    animation: var(--animate-shimmer);
+  }
+  .rich b { @apply text-brand-700 font-semibold; }
+}
+
+/* Gráficas ApexCharts: tooltip con los mismos bordes y sombras de la app. */
+.apexcharts-tooltip { border-radius: 12px !important; box-shadow: 0 10px 30px -8px rgb(15 23 42 / 0.25) !important; border: 1px solid #e2e8f0 !important; }
+.apexcharts-tooltip-title { background: #f8fafc !important; border-bottom: 1px solid #e2e8f0 !important; font-weight: 600 !important; }
+.apexcharts-legend-text { color: #475569 !important; font-weight: 500 !important; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}
+
+@media print {
+  aside, header, .no-print { display: none !important; }
+  .card { box-shadow: none; break-inside: avoid; }
+  body { background: #fff; }
+}

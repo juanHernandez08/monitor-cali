@@ -3,6 +3,17 @@
 Documento para retomar el proyecto en otra máquina o en otra sesión sin el historial de chat.
 Léelo completo antes de tocar código. Estado al **2026-09-28**.
 
+## Frontend (cambio 2026-10-07)
+
+El tablero se reescribió en **React + Tailwind** (`frontend/`, Vite; mismas 9 pestañas + Perfil y
+las mismas rutas `/api/*`). Se compila a `src/static/app` (no versionado; el Dockerfile lo hace en
+una etapa Node) y `GET /` lo sirve. El tablero anterior (`templates/dashboard.html` +
+`static/dashboard.js`) queda en **`/legacy`** como respaldo y es el que sirve `/` si no hay
+compilación. La lógica de lecturas automáticas (textos «Carlos ocupa el 3.º lugar…»), filtros y
+gráficas se portó tal cual: `pages/*.jsx` ≈ `loadX()` de `dashboard.js`. Las gráficas usan
+`charts/Chart.jsx` (`HBar`, `HBar100`, `Gauge`) con la paleta validada de `lib/palette.js`.
+«Investigar un perfil» no se portó (está apagado: `INVESTIGATE_ENABLED=0`).
+
 ## Qué es
 
 Bot + dashboard que captura menciones de los **9 candidatos** a la Alcaldía de Cali 2027 (cliente:

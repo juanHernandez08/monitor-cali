@@ -1,3 +1,13 @@
+# Etapa 1: compila el tablero (React + Tailwind) a archivos estáticos. Node NO queda en la imagen final.
+FROM node:22-slim AS frontend
+WORKDIR /frontend
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci
+COPY frontend/ ./
+# vite.config.js saca el resultado a ../src/static/app => /src/static/app
+RUN npm run build
+
+# Etapa 2: la aplicación Python.
 FROM python:3.11-slim
 WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
@@ -5,6 +15,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 # .dockerignore deja fuera .env, monitor.db, .git y respaldos: la imagen no lleva secretos ni datos.
 COPY . .
+COPY --from=frontend /src/static/app /app/src/static/app
 # Usuario sin privilegios: si alguien lograra ejecutar código en el contenedor, no sería root.
 # /app completo es del usuario: si un .env viejo aún dice DATABASE_URL=sqlite:///monitor.db, SQLite
 # puede crear el archivo (aunque ahí NO sobrevive a un redespliegue: ver docs/auditoria/01-seguridad.md).

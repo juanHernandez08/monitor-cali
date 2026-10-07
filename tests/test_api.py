@@ -122,3 +122,21 @@ def test_investigate_is_disabled_by_default_to_protect_the_apify_budget(client, 
     monkeypatch.setattr(m, "investigate_profile", lambda *a, **k: called.append(1) or [])
     r = client.post("/api/investigate", json={"url": "https://www.instagram.com/unrival/", "platform": "instagram"}, headers=CSRF)
     assert r.status_code == 403 and not called
+
+
+def test_legacy_dashboard_page(client):
+    r = client.get("/legacy")
+    assert r.status_code == 200 and "dashboard.js" in r.text
+
+
+def test_dashboard_serves_built_frontend(client, tmp_path, monkeypatch):
+    """Con el tablero React compilado (static/app/index.html), `/` lo sirve y sin caché: el
+    index referencia archivos con hash en el nombre, así que nunca debe quedar guardado."""
+    import src.api as m
+    built = tmp_path / "static" / "app"
+    built.mkdir(parents=True)
+    (built / "index.html").write_text("<!doctype html><title>Monitor nuevo</title><div id=root></div>", encoding="utf-8")
+    monkeypatch.setattr(m, "BASE", tmp_path)
+    r = client.get("/")
+    assert r.status_code == 200 and "Monitor nuevo" in r.text
+    assert r.headers["Cache-Control"] == "no-cache"

@@ -62,10 +62,24 @@ src/
   sentiment.py     OllamaSentimentEngine / SentimentEngine (Claude) / build_sentiment_engine()
   scheduler.py     APScheduler: qué fuente corre cuándo
   queries.py       consultas del dashboard
-  api.py           FastAPI + página (templates/, static/)
+  api.py           FastAPI; sirve el tablero compilado (static/app) y, de respaldo, el anterior (templates/, /legacy)
+frontend/          tablero React + Tailwind (Vite); `npm run build` lo compila a src/static/app
 scripts/           seed_sources.py, run_once.py, demo.ps1
 docs/              presupuesto.md, despliegue.md, specs y planes
 ```
+
+## Tablero (frontend)
+
+Está en `frontend/` (React 18 + Tailwind 4 + ApexCharts, con Vite). El Dockerfile lo compila solo
+(etapa Node); para verlo en local:
+
+```powershell
+cd frontend; npm install; npm run build   # genera src/static/app (no se versiona)
+.\.venv\Scripts\python -m uvicorn src.api:app --port 8000   # y abrir http://localhost:8000
+```
+
+Para desarrollar con recarga en caliente: `npm run dev` (puerto 5173; reenvía /api al 8000).
+Si `src/static/app` no existe, `/` cae al tablero anterior; ese sigue disponible en `/legacy`.
 
 ## Tests
 

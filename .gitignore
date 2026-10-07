@@ -8,3 +8,5 @@ monitor.db.bak-*
 monitor.db-journal
 monitor.db-wal
 monitor.db-shm
+frontend/node_modules/
+src/static/app/

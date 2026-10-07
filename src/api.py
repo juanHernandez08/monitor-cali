@@ -124,6 +124,17 @@ def create_app(session_factory=None, start_jobs: bool = True, cf_verifier=None) 
 
     @app.get("/", response_class=HTMLResponse)
     def dashboard(request: Request):
+        """Tablero nuevo (React + Tailwind, compilado a static/app por `npm run build` en frontend/).
+        Si esa carpeta no existe (entorno sin compilar, tests) cae al tablero anterior."""
+        built = BASE / "static" / "app" / "index.html"
+        if built.is_file():
+            # El index.html referencia archivos con hash en el nombre: él nunca debe quedar en caché.
+            return HTMLResponse(built.read_text(encoding="utf-8"), headers={"Cache-Control": "no-cache"})
+        return templates.TemplateResponse(request, "dashboard.html", {"v": _asset_version()})
+
+    @app.get("/legacy", response_class=HTMLResponse)
+    def dashboard_legacy(request: Request):
+        """Tablero anterior (HTML + JS propio), disponible como respaldo mientras se estabiliza el nuevo."""
         return templates.TemplateResponse(request, "dashboard.html", {"v": _asset_version()})
 
     @app.get("/api/summary")
