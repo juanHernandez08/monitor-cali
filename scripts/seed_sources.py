@@ -26,11 +26,13 @@ def seed(session):
             session.add(Candidate(
                 name=c["name"], party=c.get("party"), aliases=c.get("aliases", []),
                 exclusions=c.get("exclusions", []), context_terms=c.get("context_terms", []),
+                strict_attribution=c.get("strict_attribution", False),
             ))
         else:  # config.py es la fuente de verdad de alias, exclusiones, contexto y partido
             row.aliases = c.get("aliases", [])
             row.exclusions = c.get("exclusions", [])
             row.context_terms = c.get("context_terms", [])
+            row.strict_attribution = c.get("strict_attribution", False)
             row.party = c.get("party")
     for c in COUNCILORS:
         row = session.query(Candidate).filter_by(name=c["name"]).first()

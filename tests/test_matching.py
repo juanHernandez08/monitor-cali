@@ -41,7 +41,8 @@ def test_is_excluded_matches_homonym_phrases_case_insensitive():
 
 def _carlos():
     return Candidate(id=1, name="Carlos Arias", aliases=["Carlos Andrés Arias", "@soycarlosaarias", "Buenos Ciudadanos"],
-                     exclusions=["Sheynnis", "Juan Carlos Arias"], context_terms=["Cali", "Alcaldía", "Concejo"])
+                     exclusions=["Sheynnis", "Juan Carlos Arias"], context_terms=["Cali", "Alcaldía", "Concejo"],
+                     strict_attribution=True)
 
 
 def test_comment_on_homonym_video_is_rejected():
@@ -86,3 +87,13 @@ def test_candidates_without_context_terms_only_check_exclusions():
     ana = Candidate(id=2, name="Ana Pérez", aliases=[], exclusions=["Ana Pérez actriz"], context_terms=[])
     assert attribution_problem(ana, "gran idea", {"kind": "comment", "video_title": "Entrevista a Ana Pérez"}) is None
     assert attribution_problem(ana, "gran idea", {"kind": "comment", "video_title": "Ana Pérez actriz en gala"})
+
+
+def test_strictness_is_opt_in_per_candidate():
+    """Sin strict_attribution (candidatos sin homónimos famosos) un video sin 'Cali' sigue valiendo:
+    solo se revisa si el video o publicación es de un homónimo conocido."""
+    from src.matching import attribution_problem
+    mondragon = Candidate(id=3, name="Alfredo Mondragón", aliases=[], exclusions=[], context_terms=["Cali"])
+    raw = {"kind": "comment", "video_title": "Mondragón habla en el Senado"}
+    assert attribution_problem(mondragon, "mentiroso", raw) is None
+    assert attribution_problem(mondragon, "x", {"kind": "video"}) is None

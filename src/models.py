@@ -39,6 +39,9 @@ class Candidate(Base):
     kind = Column(String, default="candidate", nullable=False)  # "candidate" | "councilor" | "city"
     council = Column(Boolean, default=False, nullable=False)  # pertenece al Concejo de Cali
     context_terms = Column(JSON, default=list)  # si está, el texto debe contener alguno (nombres comunes)
+    # Nombre con homónimos famosos: sus videos y los comentarios de esos videos deben traer el
+    # contexto local o un alias específico para atribuirse (ver matching.attribution_problem).
+    strict_attribution = Column(Boolean, default=False, nullable=False)
 
     mentions = relationship("Mention", back_populates="candidate")
 

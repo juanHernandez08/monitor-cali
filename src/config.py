@@ -94,6 +94,9 @@ CANDIDATES = [
         # Vélez, solo aplica a prensa (ver matching.has_required_context / enrich.py) -- no a
         # redes ni comentarios, donde la atribución viene de la cuenta, no del texto.
         "context_terms": ["Cali", "Alcaldía", "Alcaldia", "Concejo"],
+        # Homónimos famosos (un artista, un futbolista, un pastor): sus videos y los comentarios de
+        # esos videos se colaban como menciones del candidato (2026-10-07). Ver attribution_problem.
+        "strict_attribution": True,
     },
     {
         # Congresista del Pacto Histórico: sin exigir contexto local, la mayoría de prensa que

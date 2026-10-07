@@ -97,9 +97,10 @@ def attribution_problem(candidate: Candidate, text: str, raw: dict | None, sourc
     if kind == "comment" and parent and not own_post:
         if is_excluded(parent, candidate):
             return "homónimo en el video o publicación"
-        if not mentions_candidate(text, candidate) and not parent_confirms(parent, candidate):
+        if (getattr(candidate, "strict_attribution", False) and not mentions_candidate(text, candidate)
+                and not parent_confirms(parent, candidate)):
             return "el video o publicación no es del candidato"
-    if kind == "video":
+    if kind == "video" and getattr(candidate, "strict_attribution", False):
         if not mentions_candidate(text, candidate):
             return "el video no nombra al candidato"
         if is_excluded(text, candidate) or not parent_confirms(text, candidate):

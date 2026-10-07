@@ -177,7 +177,7 @@ def test_ingest_skips_excluded_homonyms_and_enrich_discards_them(db_session, mon
 
 def test_ingest_drops_youtube_comments_of_a_homonym_video(db_session):
     """Los comentarios de un video sobre un homónimo no deben contar como menciones del candidato."""
-    carlos = Candidate(name="Carlos Arias", aliases=[], exclusions=["Sheynnis"], context_terms=["Cali", "Concejo"])
+    carlos = Candidate(name="Carlos Arias", aliases=[], exclusions=["Sheynnis"], context_terms=["Cali", "Concejo"], strict_attribution=True)
     yt = Source(type=SourceType.YOUTUBE, name="YouTube")
     db_session.add_all([carlos, yt])
     db_session.commit()
@@ -197,7 +197,7 @@ def test_recompute_relevance_drops_comments_of_homonym_video(db_session):
     """Lo ya guardado se limpia con las mismas reglas del ingreso (scripts/recompute_relevance.py)."""
     from scripts.recompute_relevance import recompute
     from src.models import SentimentLabel, SentimentScore
-    carlos = Candidate(name="Carlos Arias", aliases=[], exclusions=["Sheynnis"], context_terms=["Cali"])
+    carlos = Candidate(name="Carlos Arias", aliases=[], exclusions=["Sheynnis"], context_terms=["Cali"], strict_attribution=True)
     yt = Source(type=SourceType.YOUTUBE, name="YouTube")
     db_session.add_all([carlos, yt])
     db_session.commit()
