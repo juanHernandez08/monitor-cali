@@ -8,7 +8,7 @@ export function SentBadge({ m }) {
   if (!m.label) return <Tag tone="pending"><Clock3 className="size-3" />pendiente</Tag>;
   const emo = emotionLine(m);
   return (
-    <div className="grid justify-items-start gap-1 sm:justify-items-end sm:text-right">
+    <div className="grid justify-items-start gap-1 xl:justify-items-end xl:text-right">
       <Tag tone={sentTone(m.label)}>{LABEL[m.label]} {m.score}</Tag>
       {m.topic && <div className="text-[11px] font-medium text-slate-500">{m.topic}</div>}
       {emo && (
@@ -64,7 +64,7 @@ function CommentsSummary({ r, open, onToggle }) {
   if (!s?.total) return null;
   const t = s.total;
   return (
-    <div className="grid gap-1.5 sm:justify-items-end">
+    <div className="grid gap-1.5 xl:justify-items-end">
       <button type="button" onClick={onToggle} aria-expanded={open}
         className="inline-flex items-center gap-1 text-[13px] font-semibold text-brand-600 hover:text-brand-800">
         <ChevronRight className={cx("size-4 transition-transform", open && "rotate-90")} />
@@ -103,7 +103,7 @@ export function FeedItem({ r, showCandidate }) {
   const [open, setOpen] = useState(false);
   const hasComments = r.comments_summary?.total > 0;
   return (
-    <article className="grid gap-3 rounded-2xl border border-slate-200/80 bg-white p-3 transition hover:border-brand-200 hover:shadow-md sm:grid-cols-[7rem_1fr_auto] sm:gap-4">
+    <article className="grid gap-3 rounded-2xl border border-slate-200/80 bg-white p-3 transition hover:border-brand-200 hover:shadow-md sm:grid-cols-[7rem_1fr] sm:gap-4 xl:grid-cols-[7rem_1fr_auto]">
       <Thumb r={r} />
       <div className="min-w-0">
         <div className="mb-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-slate-500">
@@ -121,12 +121,12 @@ export function FeedItem({ r, showCandidate }) {
         )}
         {r.author && <div className="mt-1.5 text-xs text-slate-500">{r.author}</div>}
       </div>
-      <div className="grid content-start gap-2 sm:min-w-[160px] sm:justify-items-end">
+      <div className="grid content-start gap-2 sm:col-start-2 xl:col-start-auto xl:min-w-[160px] xl:justify-items-end">
         {r.kind === "comments" ? <span className="text-xs text-slate-500">solo comentarios</span> : <SentBadge m={r} />}
         <Metrics r={r} />
         <CommentsSummary r={r} open={open} onToggle={() => setOpen(!open)} />
       </div>
-      {hasComments && open && <div className="border-t border-dashed border-slate-200 pt-3 sm:col-span-3"><Thread comments={r.comments} /></div>}
+      {hasComments && open && <div className="border-t border-dashed border-slate-200 pt-3 col-span-full"><Thread comments={r.comments} /></div>}
     </article>
   );
 }
@@ -141,7 +141,7 @@ export function SocialPost({ r }) {
   const [open, setOpen] = useState(false);
   const c = r.comments_preview || [];
   return (
-    <article className="grid gap-3 rounded-2xl border border-slate-200/80 bg-white p-3 transition hover:border-brand-200 hover:shadow-md sm:grid-cols-[7rem_1fr_auto] sm:gap-4">
+    <article className="grid gap-3 rounded-2xl border border-slate-200/80 bg-white p-3 transition hover:border-brand-200 hover:shadow-md sm:grid-cols-[7rem_1fr] sm:gap-4 xl:grid-cols-[7rem_1fr_auto]">
       <Thumb r={r} />
       <div className="min-w-0">
         <div className="mb-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-slate-500">
@@ -164,17 +164,17 @@ export function SocialPost({ r }) {
           </button>
         )}
       </div>
-      <div className="grid content-start gap-2 sm:min-w-[170px] sm:justify-items-end">
+      <div className="grid content-start gap-2 sm:col-start-2 xl:col-start-auto xl:min-w-[170px] xl:justify-items-end">
         <SentBadge m={r} />
         <div className="flex flex-wrap items-center gap-x-3 text-xs text-slate-600">
           <span className="inline-flex items-center gap-1"><Heart className="size-3.5 text-rose-400" />{fmtNum(r.likes)}</span>
           <span className="inline-flex items-center gap-1"><MessageCircle className="size-3.5 text-brand-400" />{fmtNum(r.comments)}</span>
           {r.views ? <span className="inline-flex items-center gap-1"><Eye className="size-3.5 text-slate-400" />{fmtNum(r.views)}</span> : null}
         </div>
-        <div className="text-[11px] text-slate-400 sm:text-right">medido {ago(r.fetched_at)}: puede haber crecido desde entonces</div>
+        <div className="text-[11px] text-slate-400 xl:text-right">medido {ago(r.fetched_at)}: puede haber crecido desde entonces</div>
       </div>
       {open && (
-        <div className="grid gap-2 border-t border-dashed border-slate-200 pt-3 sm:col-span-3">
+        <div className="grid gap-2 border-t border-dashed border-slate-200 pt-3 col-span-full">
           {c.map((x, i) => (
             <div key={i} className="rounded-xl bg-slate-50 p-3 text-[13px]">
               <div className="text-slate-800">{x.text}</div>

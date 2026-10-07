@@ -51,14 +51,14 @@ export function Panel({ title, hint, icon, tone, actions, children, className, b
     <section id={id} className={cx("card min-w-0 p-4 sm:p-5", className)}>
       {(title || actions) && (
         <div className="mb-4 flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
-          <div className="flex min-w-0 flex-1 items-start gap-3">
+          <div className="flex min-w-0 flex-[1_1_300px] items-start gap-3">
             <IconChip icon={icon} tone={tone} size="sm" />
             <div className="min-w-0 flex-1">
               <h2 className="text-[15px] font-semibold leading-tight tracking-tight text-slate-900 sm:text-base">{title}</h2>
               <Hint>{hint}</Hint>
             </div>
           </div>
-          {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
+          {actions && <div className="flex max-w-full flex-wrap items-center gap-2">{actions}</div>}
         </div>
       )}
       <div className={cx(flush && "-mx-1", bodyClass)}>{children}</div>
