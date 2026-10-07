@@ -12,7 +12,7 @@ function KpiSkeleton() {
 export function RivalCard({ r, onOpen, big }) {
   return (
     <button type="button" onClick={onOpen}
-      className="card group flex w-full items-center gap-3.5 p-4 text-left transition duration-300 hover:-translate-y-0.5 hover:shadow-lift">
+      className="card group flex w-full items-center gap-3 p-3 text-left transition duration-300 hover:-translate-y-0.5 hover:shadow-lift sm:gap-3.5 sm:p-4">
       <Avatar name={r.name} src={r.avatar} size={big ? "md" : "sm"} />
       <div className="min-w-0 flex-1">
         <div className="truncate text-sm font-semibold text-slate-900 group-hover:text-brand-700">
@@ -20,7 +20,7 @@ export function RivalCard({ r, onOpen, big }) {
         </div>
         <div className="min-h-4 truncate text-xs text-slate-500">{r.party || (big ? "sin partido" : "")}</div>
         <div className="mt-1.5 flex items-baseline gap-1.5">
-          <span className="text-2xl font-bold leading-none tracking-tight text-slate-900">{r.mentions}</span>
+          <span className="text-xl font-bold leading-none tracking-tight text-slate-900 sm:text-2xl">{r.mentions}</span>
           <span className="text-xs text-slate-500">menciones{r.pending ? ` · ${r.pending} pend.` : ""}</span>
         </div>
         <SentimentBar r={r} className="mt-2.5" />

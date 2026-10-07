@@ -60,7 +60,7 @@ function RelBars({ title, hint, icon, rowsAll, rowsMine }) {
     } } },
     legend: { position: "bottom" },
   };
-  return <Panel icon={icon} title={title} hint={hint}><Chart options={options} height={340} label={title} /></Panel>;
+  return <Panel icon={icon} title={title} hint={hint}><Chart options={options} height={340} label={title} minWidth={460} /></Panel>;
 }
 
 function Insights() {
@@ -109,7 +109,7 @@ function Insights() {
         </Panel>
       </div>
       <Panel icon={LineChart} title="Interacciones por publicación, semana a semana" hint="Mediana semanal de Carlos Arias frente a la mediana del resto de cuentas monitoreadas. La mediana no se deja arrastrar por un solo reel viral.">
-        <Chart options={weeklyOptions} height={400} label="Interacciones por publicación semana a semana" />
+        <Chart options={weeklyOptions} height={400} label="Interacciones por publicación semana a semana" minWidth={560} />
       </Panel>
     </>
   );

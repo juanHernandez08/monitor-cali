@@ -10,14 +10,14 @@ import { Button, Segmented, Select, cx } from "./ui";
 
 export const NAV = [
   { id: "resumen", label: "Resumen", icon: LayoutDashboard, title: "Resumen", sub: "Lo esencial: cómo va Carlos frente a sus rivales" },
-  { id: "candidatos", label: "Candidatos", icon: Users, title: "Candidatos y concejales", sub: "Quién habla más, cómo les va y qué emoción transmiten" },
+  { id: "candidatos", label: "Candidatos", icon: Users, title: "Candidatos", sub: "Quién habla más, cómo les va y qué emoción transmiten" },
   { id: "publicaciones", label: "Publicaciones", icon: Newspaper, title: "Publicaciones", sub: "Prensa, redes sociales y YouTube, una por una" },
   { id: "meta", label: "Meta y redes", icon: Share2, title: "Meta y redes", sub: "Alcance, reacción de la audiencia y qué funciona en redes" },
-  { id: "analisis", label: "Análisis en gráficas", icon: BarChart3, title: "Análisis en gráficas", sub: "Alcance, percepción y temas con lectura en palabras" },
+  { id: "analisis", label: "Análisis en gráficas", icon: BarChart3, title: "Análisis", sub: "Alcance, percepción y temas con lectura en palabras" },
   { id: "ciudad", label: "Ciudad", icon: Building2, title: "Ciudad", sub: "De qué habla Cali y cómo lo siente la gente" },
   { id: "historico", label: "Histórico", icon: History, title: "Histórico", sub: "Cali de 2008 a hoy, alcaldías y cambios de conversación" },
   { id: "agenda", label: "Agenda", icon: Target, title: "Agenda", sub: "Qué conviene decir, y qué no" },
-  { id: "reporte", label: "Reporte", icon: FileText, title: "Reporte diario", sub: "Se genera solo de lunes a viernes en la mañana" },
+  { id: "reporte", label: "Reporte", icon: FileText, title: "Reporte", sub: "Se genera solo de lunes a viernes en la mañana" },
 ];
 
 function Brand() {
@@ -103,13 +103,13 @@ function Header({ onMenu }) {
   const showPeriod = route.tab !== "reporte";
   return (
     <header className="sticky top-0 z-20 border-b border-slate-200/70 bg-white/75 backdrop-blur-xl">
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 sm:px-8">
+      <div className="flex items-center gap-x-3 px-3 py-2.5 sm:flex-wrap sm:gap-x-4 sm:gap-y-2 sm:px-8 sm:py-3">
         <button type="button" aria-label="Abrir menú" onClick={onMenu} className="-ml-1 rounded-xl p-2 text-slate-600 hover:bg-slate-100 lg:hidden"><Menu className="size-5" /></button>
         <div className="min-w-0 flex-1">
-          <h1 className="truncate text-lg font-bold tracking-tight text-slate-900 sm:text-xl">{meta.title}</h1>
+          <h1 className="truncate text-base font-bold tracking-tight text-slate-900 sm:text-xl">{meta.title}</h1>
           <p className="hidden truncate text-[13px] text-slate-500 sm:block">{meta.sub}</p>
         </div>
-        <div className="flex w-full shrink-0 items-center justify-between gap-2.5 sm:w-auto sm:justify-end">
+        <div className="flex shrink-0 items-center justify-end gap-2 sm:gap-2.5">
           <span className="hidden items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-600 2xl:inline-flex">
             <Radio className="size-3.5 text-emerald-500" />Actualizado {health.data ? ago(health.data.last_run) : "…"}
           </span>
@@ -117,11 +117,11 @@ function Header({ onMenu }) {
             <>
               <div className="hidden xl:block"><Segmented label="Período" size="sm" value={days} onChange={setDays} options={PERIODS.map(([d, l]) => [d, l])} /></div>
               <div className="xl:hidden"><Select label="Período" value={String(days)} onChange={(v) => setDays(Number(v))}
-                options={PERIODS.map(([d, l]) => [String(d), d === 1 ? "Últimas 24 h" : `Últimos ${l}`])} /></div>
+                options={PERIODS.map(([d, l]) => [String(d), d === 1 ? "24 horas" : l])} /></div>
             </>
           )}
-          <Button onClick={onRefresh} loading={busy} icon={RefreshCw} className="px-3.5">
-            {busy ? "Actualizando…" : "Actualizar ahora"}
+          <Button onClick={onRefresh} loading={busy} icon={RefreshCw} className="px-3 sm:px-3.5" aria-label="Actualizar ahora">
+            <span className="hidden sm:inline">{busy ? "Actualizando…" : "Actualizar ahora"}</span>
           </Button>
         </div>
       </div>
@@ -170,7 +170,7 @@ export function Shell({ children }) {
       <Sidebar open={open} onClose={() => setOpen(false)} />
       <div className="flex min-w-0 flex-1 flex-col">
         <Header onMenu={() => setOpen(true)} />
-        <main id="main" tabIndex={-1} className="mx-auto w-full max-w-[1400px] flex-1 px-4 pb-10 pt-5 outline-none sm:px-8 sm:pt-6">
+        <main id="main" tabIndex={-1} className="mx-auto w-full max-w-[1400px] flex-1 px-3 pb-10 pt-4 outline-none sm:px-8 sm:pt-6">
           {children}
           <StatusFooter />
         </main>

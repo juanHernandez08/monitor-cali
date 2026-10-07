@@ -4,7 +4,7 @@ import { periodLabel, useApp } from "../lib/app";
 import { useApi } from "../lib/useApi";
 import { CARLOS, SRC_LABEL, esc, ordinal, pct, scored, share } from "../lib/format";
 import { BLUE, CARLOS_GRAY, COLORS, GRID, INK, MUTED, SRC_COLOR, VIOLET } from "../lib/palette";
-import { Callout, Empty, Panel, PanelSkeleton, Reading, SectionTitle, Skeleton, Button } from "../components/ui";
+import { CalloutFold, Empty, Panel, PanelSkeleton, Reading, SectionTitle, Skeleton, Button } from "../components/ui";
 import { Chart, HBar, HBar100, SENT_COLORS } from "../charts/Chart";
 import { FeedList, SourceChip } from "../components/Feed";
 import { LinkOut } from "../components/ui";
@@ -80,7 +80,7 @@ function Timeline({ rows }) {
   return (
     <Panel icon={CalendarDays} tone="violet" title="¿Cuándo se habló de ellos?"
       hint="Menciones por día de Carlos Arias (línea gruesa) y de los 4 rivales con más menciones. Pasa el mouse por un punto para ver el valor; haz clic para ver la publicación que lo causó.">
-      <Chart options={options} height={420} label="Menciones por día" clickable />
+      <Chart options={options} height={420} label="Menciones por día" clickable minWidth={560} />
       {shown && <PeakDetail peak={shown} onClose={() => setPeak(null)} />}
     </Panel>
   );
@@ -117,7 +117,7 @@ function Sources() {
           {cTotal ? <>Las menciones de <b>Carlos Arias</b> vienen sobre todo de <b>{carlosBy[0][0]}</b> ({pct(carlosBy[0][1], cTotal)}% de sus {cTotal})
             {carlosBy[1] && carlosBy[1][1] ? `, seguido de ${carlosBy[1][0]} (${pct(carlosBy[1][1], cTotal)}%).` : "."}</> : null}</> : "Sin datos en el período."}
       </Reading>
-      <Chart options={options} height={420} label="Canales por candidato" />
+      <Chart options={options} height={420} label="Canales por candidato" minWidth={480} />
     </Panel>
   );
 }
@@ -229,11 +229,11 @@ function Conversation({ onWeek }) {
               {last.scored < 15 ? `: con tan pocas menciones el rango va de ${last.net_low} a ${last.net_high}, así que no permite concluir si mejoró o empeoró.` : "."}</>}</>
             : "Sin menciones de candidatos en el período."}
         </Reading>
-        <Chart options={sovOptions} height={420} label="Participación de Carlos semana a semana" clickable />
+        <Chart options={sovOptions} height={420} label="Participación de Carlos semana a semana" clickable minWidth={560} />
       </Panel>
       <Panel icon={Scale} tone="green" title="Sentimiento neto de Carlos, con su margen"
         hint="% positivas menos % negativas en cada semana (de −100 a +100). La franja es el rango plausible al 95%: cuanto más ancha, menos menciones hubo y menos se puede concluir. Toca un punto para ver abajo las publicaciones de esa semana.">
-        <Callout label="Cómo leer esta gráfica, paso a paso">
+        <CalloutFold label="Cómo leer esta gráfica, paso a paso">
           <ul>
             <li><b>La línea azul oscura («Sentimiento neto»)</b> es el dato real medido esa semana: de todas las menciones de Carlos que la IA clasificó, qué porcentaje fueron positivas menos qué porcentaje fueron negativas. Si una semana tuviera 70% positivas y 10% negativas, el neto sería +60. Si fueran 20% positivas y 50% negativas, el neto sería −30.</li>
             <li><b>0 es el punto neutro</b> (línea punteada gris): ni buena ni mala semana. Por encima de 0, predominan las menciones positivas; por debajo, las negativas.</li>
@@ -241,8 +241,8 @@ function Conversation({ onWeek }) {
             <li>Ejemplo real: si una semana el neto marca 0 pero la franja va de −56 a +56, eso NO significa «semana neutra» — significa «con tan pocas menciones, no se puede saber si esa semana fue buena o mala». En cambio, si el neto marca 92 con una franja angosta (de 63 a 98), ahí sí se puede confiar: esa semana fue claramente positiva.</li>
             <li>Por eso conviene mirar varias semanas seguidas en vez de una sola: una racha de semanas por encima de 0 (aunque cada una tenga franja ancha) sí es una señal confiable; una sola semana suelta con franja ancha, no.</li>
           </ul>
-        </Callout>
-        <Chart options={netOptions} height={420} label="Sentimiento neto semanal" clickable />
+        </CalloutFold>
+        <Chart options={netOptions} height={420} label="Sentimiento neto semanal" clickable minWidth={560} />
       </Panel>
     </>
   );

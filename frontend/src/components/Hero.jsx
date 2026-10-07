@@ -5,9 +5,9 @@ import { Avatar, cx } from "./ui";
 
 function Stat({ n, label, tone }) {
   return (
-    <div className="rounded-xl bg-white/10 px-3.5 py-2.5 ring-1 ring-white/15 backdrop-blur-sm">
-      <div className={cx("text-2xl font-bold leading-none tracking-tight", tone)}>{n}</div>
-      <div className="mt-1 text-[11px] font-medium text-blue-100/70">{label}</div>
+    <div className="rounded-xl bg-white/10 px-2.5 py-2 ring-1 ring-white/15 backdrop-blur-sm sm:px-3.5 sm:py-2.5">
+      <div className={cx("text-xl font-bold leading-none tracking-tight sm:text-2xl", tone)}>{n}</div>
+      <div className="mt-1 text-[10.5px] font-medium leading-tight text-blue-100/70 sm:text-[11px]">{label}</div>
     </div>
   );
 }
@@ -25,18 +25,18 @@ export function Hero({ r, rivals, onOpen }) {
   return (
     <Wrapper
       {...(interactive ? { role: "button", tabIndex: 0, onClick: onOpen, onKeyDown: (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen(); } } } : {})}
-      className={cx("group relative overflow-hidden rounded-3xl bg-gradient-to-br from-navy-800 via-brand-800 to-brand-600 p-5 text-white shadow-lift ring-1 ring-white/10 sm:p-7",
+      className={cx("group relative overflow-hidden rounded-3xl bg-gradient-to-br from-navy-800 via-brand-800 to-brand-600 p-4 text-white shadow-lift ring-1 ring-white/10 sm:p-7",
         interactive && "cursor-pointer transition duration-300 hover:-translate-y-0.5 hover:shadow-2xl")}>
       <div className="pointer-events-none absolute -right-16 -top-24 size-80 rounded-full bg-brand-400/25 blur-3xl" />
       <div className="pointer-events-none absolute -bottom-24 left-1/3 size-72 rounded-full bg-indigo-400/15 blur-3xl" />
       <div className="relative grid items-center gap-6 lg:grid-cols-[auto_1fr_auto]">
         <div className="flex items-center gap-4 lg:block">
-          <Avatar name={r.name} src={r.avatar} size="xl" className="!ring-4 !ring-white/25" />
+          <Avatar name={r.name} src={r.avatar} size="xl" className="!size-16 !text-xl !ring-4 !ring-white/25 sm:!size-24 sm:!text-3xl" />
           <div className="lg:hidden"><HeroName r={r} /></div>
         </div>
         <div className="min-w-0">
           <div className="hidden lg:block"><HeroName r={r} /></div>
-          <div className="mt-4 grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-5">
+          <div className={cx("mt-3 grid gap-2 sm:mt-4 sm:grid-cols-3 sm:gap-2.5 xl:grid-cols-5", r.pending ? "grid-cols-3" : "grid-cols-4")}>
             <Stat n={r.mentions} label="menciones" />
             <Stat n={r.positive} label="positivas" tone="text-emerald-300" />
             <Stat n={r.neutral} label="neutrales" tone="text-slate-200" />
@@ -75,8 +75,8 @@ export function Hero({ r, rivals, onOpen }) {
 function HeroName({ r }) {
   return (
     <div>
-      <div className="flex items-center gap-2">
-        <h2 className="text-2xl font-bold tracking-tight sm:text-[28px]">{r.name}</h2>
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+        <h2 className="text-xl font-bold tracking-tight sm:text-[28px]">{r.name}</h2>
         {r.name === CARLOS && <span className="rounded-full bg-white/15 px-2.5 py-0.5 text-[11px] font-semibold ring-1 ring-white/20">nuestro candidato</span>}
       </div>
       <div className="mt-0.5 flex items-center gap-2 text-sm text-blue-100/80">

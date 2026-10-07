@@ -48,9 +48,9 @@ function Hint({ children }) {
 
 export function Panel({ title, hint, icon, tone, actions, children, className, bodyClass, id, flush }) {
   return (
-    <section id={id} className={cx("card min-w-0 p-4 sm:p-5", className)}>
+    <section id={id} className={cx("card min-w-0 p-3.5 sm:p-5", className)}>
       {(title || actions) && (
-        <div className="mb-4 flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
+        <div className="mb-3 flex flex-wrap items-start justify-between gap-x-4 gap-y-3 sm:mb-4">
           <div className="flex min-w-0 flex-[1_1_300px] items-start gap-3">
             <IconChip icon={icon} tone={tone} size="sm" />
             <div className="min-w-0 flex-1">
@@ -58,7 +58,7 @@ export function Panel({ title, hint, icon, tone, actions, children, className, b
               <Hint>{hint}</Hint>
             </div>
           </div>
-          {actions && <div className="flex max-w-full flex-wrap items-center gap-2">{actions}</div>}
+          {actions && <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:max-w-full sm:flex-wrap sm:items-center">{actions}</div>}
         </div>
       )}
       <div className={cx(flush && "-mx-1", bodyClass)}>{children}</div>
@@ -108,6 +108,17 @@ export function Callout({ label, children, className }) {
     </div>
   );
 }
+/* Explicación larga plegable (nativa, accesible): en el teléfono evita dos pantallas de texto antes de la gráfica. */
+export function CalloutFold({ label, children, defaultOpen = false }) {
+  return (
+    <details open={defaultOpen} className="group my-3 rounded-xl border-l-[3px] border-slate-300 bg-slate-50 text-[13px] leading-relaxed text-slate-700">
+      <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500 [&::-webkit-details-marker]:hidden">
+        <Info className="size-3.5" />{label}<ChevronDown className="ml-auto size-4 transition-transform group-open:rotate-180" />
+      </summary>
+      <div className="px-4 pb-3 [&_li]:my-1 [&_ul]:list-disc [&_ul]:pl-5">{children}</div>
+    </details>
+  );
+}
 export function Empty({ children, icon: Icon = Inbox, className }) {
   return (
     <div className={cx("flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-8 text-center text-sm text-slate-500", className)}>
@@ -144,7 +155,7 @@ export const sentTone = (label) => (label === "positive" ? "positive" : label ==
 /* ---------- controles ---------- */
 export function Select({ value, onChange, options, className, label, children }) {
   return (
-    <label className={cx("relative inline-flex", className)}>
+    <label className={cx("relative flex min-w-0 sm:inline-flex", className)}>
       <span className="sr-only">{label}</span>
       <select value={value} onChange={(e) => onChange(e.target.value)} aria-label={label}
         className="h-9 w-full cursor-pointer appearance-none rounded-xl border border-slate-200 bg-white pl-3 pr-8 text-[13px] font-medium text-slate-700 shadow-sm outline-none transition hover:border-slate-300 focus:border-brand-400 focus:ring-4 focus:ring-brand-100">

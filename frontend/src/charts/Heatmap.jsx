@@ -27,7 +27,7 @@ export function EmotionHeatmap({ rows, onCell, label }) {
     xaxis: { labels: { style: { colors: MUTED } }, position: "top" },
     legend: { show: false },
   };
-  return <Chart options={options} height={Math.max(220, rows.length * 38 + 40)} label={label} clickable={!!onCell} />;
+  return <Chart options={options} height={Math.max(220, rows.length * 38 + 40)} label={label} clickable={!!onCell} minWidth={540} />;
 }
 
 /* Ejemplos (citas) detrás de una celda: carga al elegir una combinación. */

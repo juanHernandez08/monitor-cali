@@ -45,7 +45,7 @@ function Indicator({ ind, periods }) {
           <div className="text-[13px] text-slate-500">{ind.unit} · {ind.better === "lower" ? "menos es mejor" : ind.better === "higher" ? "más es mejor" : "contexto"}</div></div>
         <div className="flex items-center gap-2 text-[13px] text-slate-600">{o.first_year} → {o.last_year}: <b className="text-slate-900">{fmtVal(o.first, ind)} → {fmtVal(o.last, ind)}</b> <Verdict v={o.verdict} /></div>
       </div>
-      <Chart options={options} height={260} label={ind.label} />
+      <Chart options={options} height={260} label={ind.label} minWidth={440} />
       <div className="scroll-thin overflow-x-auto">
         <table className="my-1.5 w-full border-collapse text-[12.5px]">
           <thead><tr className="text-left text-[11px] uppercase tracking-wide text-slate-500">
@@ -111,7 +111,7 @@ function Comparison({ h }) {
         {best && worst && (
           <Reading>Con los indicadores medibles de punta a punta, el mejor balance es el de <b>{best.label}</b> ({best.improved} mejoraron, {best.worsened} empeoraron) y el más negativo, el de <b>{worst.label}</b> ({worst.improved} contra {worst.worsened}), que coincide con la pandemia y el paro nacional. La alcaldía en curso se mide solo hasta el último dato cerrado (2025). El balance cuenta indicadores, no los pondera: una mejora en homicidios pesa lo mismo que una en empresas registradas.</Reading>
         )}
-        <Chart options={options} height={420} label="Balance por alcaldía" />
+        <Chart options={options} height={420} label="Balance por alcaldía" minWidth={420} />
       </Panel>
       <Panel icon={GitCompareArrows} title="Tablero comparativo" hint="Cambio de cada indicador en cada alcaldía. * = ventana parcial (falta el dato de inicio o de cierre): sirve como referencia, no para comparar alcaldías.">
         <div className="scroll-thin overflow-x-auto">

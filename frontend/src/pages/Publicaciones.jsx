@@ -6,7 +6,7 @@ import { CARLOS } from "../lib/format";
 import { BLUE, CARLOS_GRAY } from "../lib/palette";
 import { Empty, Loading, Panel, Segmented, Select, Skeleton } from "../components/ui";
 import { FeedPanel } from "../components/FeedPanel";
-import { SocialPost } from "../components/Feed";
+import { MoreButton, SocialPost } from "../components/Feed";
 import { HBar } from "../charts/Chart";
 
 /* Candidatos a la Alcaldía vs. concejales: un concejal muy activo aplastaba la escala y no se
@@ -16,6 +16,16 @@ export function useCouncilorNames() {
   return { people: data, names: data ? new Set(data.filter((r) => r.is_councilor).map((r) => r.name)) : null };
 }
 export const splitByCouncil = (rows, names, key = "candidate") => [rows.filter((r) => !names.has(r[key])), rows.filter((r) => names.has(r[key]))];
+
+function PostList({ rows }) {
+  const [shown, setShown] = useState(20);
+  return (
+    <div className="grid gap-2.5">
+      {rows.slice(0, shown).map((r, i) => <SocialPost key={`${r.url ?? i}-${i}`} r={r} />)}
+      <MoreButton shown={shown} total={rows.length} onMore={() => setShown(shown + 20)} />
+    </div>
+  );
+}
 
 function RedesSociales() {
   const { days } = useApp();
@@ -55,7 +65,7 @@ function RedesSociales() {
       </Panel>
       <Panel icon={Camera} tone="amber" title="Publicaciones" hint="ordenadas por alcance (likes + comentarios); toca «ver original» para abrirla" actions={filters}>
         {!posts.data ? <Loading rows={4} /> : posts.data.length
-          ? <div className="grid gap-2.5">{posts.data.map((r, i) => <SocialPost key={`${r.url ?? i}-${i}`} r={r} />)}</div>
+          ? <PostList rows={posts.data} />
           : <Empty>Sin publicaciones con esos filtros en el período.</Empty>}
       </Panel>
     </div>

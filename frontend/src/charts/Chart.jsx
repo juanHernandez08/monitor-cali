@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import ApexCharts from "apexcharts";
 import { CRITICAL, GOOD, GRID, INK, MUTED, NEUTRAL_TONE, YELLOW } from "../lib/palette";
+import { useNarrow } from "../lib/useMedia";
 
 function deepMerge(a, b) {
   const out = { ...a };
@@ -21,7 +22,8 @@ const BASE = {
    opciones (se compara su JSON; las funciones no cuentan), así que quien la usa no necesita
    memorizar nada. Las pestañas inactivas se desmontan: ya no hay que medir contenedores ocultos
    (el problema que obligaba a diferir gráficas en el tablero anterior). */
-export function Chart({ options, height = 300, label, clickable, className }) {
+export function Chart({ options, height = 300, label, clickable, className, minWidth }) {
+  const narrow = useNarrow();
   const ref = useRef(null);
   const latest = useRef(options);
   latest.current = options;
@@ -34,8 +36,11 @@ export function Chart({ options, height = 300, label, clickable, className }) {
     c.render();
     return () => { try { c.destroy(); } catch { /* ya destruida */ } };
   }, [key, height]);
-  return <div ref={ref} role="img" aria-label={label ? `Gráfica: ${label}` : undefined}
-    className={className} style={{ height, minWidth: 0, cursor: clickable ? "pointer" : undefined }} />;
+  const box = <div ref={ref} role="img" aria-label={label ? `Gráfica: ${label}` : undefined}
+    className={className} style={{ height, minWidth: narrow && minWidth ? minWidth : 0, cursor: clickable ? "pointer" : undefined }} />;
+  // En el teléfono, las gráficas anchas (mapas de calor, series semanales) se desplazan en
+  // horizontal dentro de su panel en vez de apretarse hasta quedar ilegibles.
+  return narrow && minWidth ? <div className="scroll-thin -mx-1 overflow-x-auto px-1 pb-1">{box}</div> : box;
 }
 
 /* Alto según cuántas barras hay: 20+ candidatos en un cuadro fijo quedan ilegibles. */
@@ -46,11 +51,12 @@ export function HBar({ categories, data, colors, labelFmt, onClick, label, minHe
   const h = Math.max(minHeight || 0, barsHeight(categories.length));
   const click = useRef(onClick);
   click.current = onClick;
+  const narrow = useNarrow();
   const options = {
     chart: { type: "bar", events: onClick ? { dataPointSelection: (_e, _c, cfg) => click.current?.(cfg.dataPointIndex) } : {} },
     series: [{ data }],
-    xaxis: { categories, labels: { style: { colors: MUTED } } },
-    yaxis: { labels: { maxWidth: 230 } },
+    xaxis: { categories, tickAmount: narrow ? 4 : undefined, labels: { style: { colors: MUTED } } },
+    yaxis: { labels: { maxWidth: narrow ? 108 : 230 } },
     plotOptions: { bar: { horizontal: true, borderRadius: 5, borderRadiusApplication: "end", distributed: Array.isArray(colors), barHeight: "62%" } },
     colors: Array.isArray(colors) ? colors : [colors],
     dataLabels: { enabled: true, formatter: labelFmt || ((v) => v), style: { colors: [INK], fontWeight: 600 }, offsetX: 6 },
@@ -61,13 +67,14 @@ export function HBar({ categories, data, colors, labelFmt, onClick, label, minHe
 
 /* Barras horizontales apiladas al 100 % (ya como % 0-100). `colors` sigue el orden de `series`. */
 export function HBar100({ categories, series, colors, label }) {
+  const narrow = useNarrow();
   const options = {
     chart: { type: "bar", stacked: true },
-    series, xaxis: { categories, max: 100, labels: { formatter: (v) => Math.round(v) + "%" } },
-    yaxis: { labels: { maxWidth: 230 } },
+    series, xaxis: { categories, max: 100, tickAmount: narrow ? 4 : undefined, labels: { formatter: (v) => Math.round(v) + "%" } },
+    yaxis: { labels: { maxWidth: narrow ? 108 : 230 } },
     plotOptions: { bar: { horizontal: true, borderRadius: 3, barHeight: "62%" } },
     colors,
-    dataLabels: { enabled: true, formatter: (v) => (v >= 8 ? Math.round(v) + "%" : ""), style: { colors: ["#fff"], fontWeight: 600 } },
+    dataLabels: { enabled: true, formatter: (v) => (v >= (narrow ? 14 : 8) ? Math.round(v) + "%" : ""), style: { colors: ["#fff"], fontWeight: 600 } },
     legend: { position: "bottom" }, tooltip: { y: { formatter: (v) => v + "%" } },
   };
   return <Chart options={options} height={barsHeight(categories.length)} label={label} />;

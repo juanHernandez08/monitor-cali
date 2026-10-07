@@ -8,11 +8,11 @@ export function SentBadge({ m }) {
   if (!m.label) return <Tag tone="pending"><Clock3 className="size-3" />pendiente</Tag>;
   const emo = emotionLine(m);
   return (
-    <div className="grid justify-items-start gap-1 xl:justify-items-end xl:text-right">
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 xl:grid xl:justify-items-end xl:text-right">
       <Tag tone={sentTone(m.label)}>{LABEL[m.label]} {m.score}</Tag>
       {m.topic && <div className="text-[11px] font-medium text-slate-500">{m.topic}</div>}
       {emo && (
-        <div className="max-w-[230px] text-[11px] leading-snug text-slate-500">
+        <div className="w-full text-[11px] leading-snug text-slate-500 xl:max-w-[230px]">
           siente: {emo.text}{emo.lever ? ` — por: ${emo.lever}` : ""}
         </div>
       )}
@@ -42,7 +42,7 @@ function Thumb({ r }) {
   try { host = new URL(r.url).hostname; } catch { host = null; }
   const favicon = host ? `https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=64` : "";
   const src = safeUrl(r.thumbnail);
-  const box = "grid h-20 w-full shrink-0 place-items-center overflow-hidden rounded-xl bg-gradient-to-br from-slate-100 to-slate-50 text-[11px] text-slate-400 sm:h-[84px] sm:w-28";
+  const box = "grid size-[4.5rem] shrink-0 place-items-center overflow-hidden rounded-xl bg-gradient-to-br from-slate-100 to-slate-50 text-[11px] text-slate-400 sm:h-[84px] sm:w-28";
   if (src && !broken) return <div className={box}><img src={src} alt="" loading="lazy" referrerPolicy="no-referrer" onError={() => setBroken(true)} className="size-full object-cover" /></div>;
   if (favicon) return <div className={box}><img src={favicon} alt="" loading="lazy" className="size-9 object-contain" /></div>;
   return <div className={box} aria-hidden="true">{KIND[r.kind] || ""}</div>;
@@ -103,7 +103,7 @@ export function FeedItem({ r, showCandidate }) {
   const [open, setOpen] = useState(false);
   const hasComments = r.comments_summary?.total > 0;
   return (
-    <article className="grid gap-3 rounded-2xl border border-slate-200/80 bg-white p-3 transition hover:border-brand-200 hover:shadow-md sm:grid-cols-[7rem_1fr] sm:gap-4 xl:grid-cols-[7rem_1fr_auto]">
+    <article className="grid grid-cols-[4.5rem_minmax(0,1fr)] gap-x-3 gap-y-2.5 rounded-2xl border border-slate-200/80 bg-white p-3 transition hover:border-brand-200 hover:shadow-md sm:grid-cols-[7rem_minmax(0,1fr)] sm:gap-x-4 xl:grid-cols-[7rem_minmax(0,1fr)_auto]">
       <Thumb r={r} />
       <div className="min-w-0">
         <div className="mb-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-slate-500">
@@ -113,7 +113,7 @@ export function FeedItem({ r, showCandidate }) {
           <LinkOut href={r.url} />
         </div>
         {r.fetched_at && <div className="mb-1 text-[11px] text-slate-400">capturado {fmtDate(r.fetched_at)}</div>}
-        <p className="line-clamp-3 text-sm leading-relaxed text-slate-800">{r.text}</p>
+        <p className="line-clamp-4 text-sm leading-relaxed text-slate-800 sm:line-clamp-3">{r.text}</p>
         {r.summary && (
           <div className="mt-2 flex gap-2 rounded-lg bg-slate-50 px-3 py-2 text-[13px] text-slate-700">
             <Sparkles className="mt-0.5 size-3.5 shrink-0 text-brand-500" /><span>{r.summary}</span>
@@ -121,7 +121,7 @@ export function FeedItem({ r, showCandidate }) {
         )}
         {r.author && <div className="mt-1.5 text-xs text-slate-500">{r.author}</div>}
       </div>
-      <div className="grid content-start gap-2 sm:col-start-2 xl:col-start-auto xl:min-w-[160px] xl:justify-items-end">
+      <div className="grid content-start gap-2 col-span-2 sm:col-span-1 sm:col-start-2 xl:col-start-auto xl:min-w-[160px] xl:justify-items-end">
         {r.kind === "comments" ? <span className="text-xs text-slate-500">solo comentarios</span> : <SentBadge m={r} />}
         <Metrics r={r} />
         <CommentsSummary r={r} open={open} onToggle={() => setOpen(!open)} />
@@ -131,9 +131,26 @@ export function FeedItem({ r, showCandidate }) {
   );
 }
 
+/* Se pintan de a 20: con 80 filas la página del teléfono llegaba a 30.000 px de alto. */
+const PAGE = 20;
+export function MoreButton({ shown, total, onMore }) {
+  if (total <= shown) return null;
+  return (
+    <button type="button" onClick={onMore}
+      className="justify-self-center rounded-xl bg-brand-50 px-4 py-2 text-[13px] font-semibold text-brand-700 hover:bg-brand-100">
+      Mostrar {Math.min(PAGE, total - shown)} más <span className="font-normal text-brand-600/70">({total - shown} restantes)</span>
+    </button>
+  );
+}
 export function FeedList({ rows, showCandidate, empty = "Sin publicaciones con esos filtros." }) {
+  const [shown, setShown] = useState(PAGE);
   if (!rows?.length) return <Empty>{empty}</Empty>;
-  return <div className="grid gap-2.5">{rows.map((r, i) => <FeedItem key={`${r.id ?? r.url ?? i}-${i}`} r={r} showCandidate={showCandidate} />)}</div>;
+  return (
+    <div className="grid gap-2.5">
+      {rows.slice(0, shown).map((r, i) => <FeedItem key={`${r.id ?? r.url ?? i}-${i}`} r={r} showCandidate={showCandidate} />)}
+      <MoreButton shown={shown} total={rows.length} onMore={() => setShown(shown + PAGE)} />
+    </div>
+  );
 }
 
 /* ---------- publicación de redes con vista previa de comentarios sin clasificar ---------- */
@@ -141,7 +158,7 @@ export function SocialPost({ r }) {
   const [open, setOpen] = useState(false);
   const c = r.comments_preview || [];
   return (
-    <article className="grid gap-3 rounded-2xl border border-slate-200/80 bg-white p-3 transition hover:border-brand-200 hover:shadow-md sm:grid-cols-[7rem_1fr] sm:gap-4 xl:grid-cols-[7rem_1fr_auto]">
+    <article className="grid grid-cols-[4.5rem_minmax(0,1fr)] gap-x-3 gap-y-2.5 rounded-2xl border border-slate-200/80 bg-white p-3 transition hover:border-brand-200 hover:shadow-md sm:grid-cols-[7rem_minmax(0,1fr)] sm:gap-x-4 xl:grid-cols-[7rem_minmax(0,1fr)_auto]">
       <Thumb r={r} />
       <div className="min-w-0">
         <div className="mb-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-slate-500">
@@ -150,7 +167,7 @@ export function SocialPost({ r }) {
           <span>{fmtDate(r.published_at)}</span>
           <LinkOut href={r.url} />
         </div>
-        <p className="line-clamp-3 text-sm leading-relaxed text-slate-800">{r.text}</p>
+        <p className="line-clamp-4 text-sm leading-relaxed text-slate-800 sm:line-clamp-3">{r.text}</p>
         {r.summary && (
           <div className="mt-2 flex gap-2 rounded-lg bg-slate-50 px-3 py-2 text-[13px] text-slate-700">
             <Sparkles className="mt-0.5 size-3.5 shrink-0 text-brand-500" /><span>{r.summary}</span>
@@ -164,7 +181,7 @@ export function SocialPost({ r }) {
           </button>
         )}
       </div>
-      <div className="grid content-start gap-2 sm:col-start-2 xl:col-start-auto xl:min-w-[170px] xl:justify-items-end">
+      <div className="grid content-start gap-2 col-span-2 sm:col-span-1 sm:col-start-2 xl:col-start-auto xl:min-w-[170px] xl:justify-items-end">
         <SentBadge m={r} />
         <div className="flex flex-wrap items-center gap-x-3 text-xs text-slate-600">
           <span className="inline-flex items-center gap-1"><Heart className="size-3.5 text-rose-400" />{fmtNum(r.likes)}</span>

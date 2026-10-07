@@ -51,7 +51,7 @@ function EmotionHeatmapBlock({ r, hm }) {
         Las tarjetas de apalancadores solo muestran las <b>dos emociones más fuertes</b> de cada tema, por eso sus porcentajes no suman 100 %.{" "}
         <b>Intensidad:</b> qué tan fuerte es lo que sienten, de 0 (leve) a 1 (muy fuerte).
       </Callout>
-      <Chart options={heatOptions} height={Math.max(220, hm.rows.length * 38 + 40)} label="Mapa de calor de emociones por tema" />
+      <Chart options={heatOptions} height={Math.max(220, hm.rows.length * 38 + 40)} label="Mapa de calor de emociones por tema" minWidth={540} />
       <h3 className="mb-1 mt-5 text-sm font-semibold text-slate-900">Cómo se reparte el 100 % de cada tema</h3>
       <HBar100 categories={hm.rows.map((row) => `${cap(row.category)} (${row.total})`)} colors={SHARE_COLORS} label="Reparto de emociones por tema"
         series={hm.emotions.map((e) => ({ name: cap(e), data: hm.rows.map((row) => Math.round((((row.cells[e] || {}).count || 0) / row.total) * 100)) }))} />
