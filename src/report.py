@@ -121,6 +121,8 @@ def _conversation_emotions(city_topics: list[dict], limit: int = 6) -> list[dict
 
 STRATEGY_WINDOW_DAYS = 90  # formato/día/franja necesitan volumen: con 30 días casi ninguna celda alcanza n=5
 STRATEGY_MIN_N = 5
+STRATEGY_MIN_LIFT = 1.15  # un formato "gana" solo si rinde al menos 15 % por encima de lo habitual
+STRATEGY_MAX_DROP = 0.7   # y "se evita" solo si rinde 30 % por debajo o menos
 
 
 def _conclusive(rows: list[dict]) -> list[dict]:
@@ -141,17 +143,21 @@ def _strategy_rules(ins: dict) -> list[dict]:
     fmt = _conclusive(all_dims["format"])
     if fmt:
         best, mine = fmt[0], _by_key(mine_dims["format"]).get(fmt[0]["key"])
-        txt = f"Priorizar {best['key']}: rinde {best['median_rel']}× frente a lo habitual de cada cuenta (n={best['n']} publicaciones)."
-        if mine and mine["conclusive"]:
-            txt += f" En Carlos rinde {mine['median_rel']}× (n={mine['n']})."
-        elif mine:
-            txt += f" Carlos tiene solo {mine['n']} publicaciones de este formato: aún no se puede medir en su cuenta."
-        else:
-            txt += " Carlos no ha publicado este formato en la ventana: es el experimento más claro por probar."
+        if best["median_rel"] >= STRATEGY_MIN_LIFT:
+            txt = f"Priorizar {best['key']}: rinde {best['median_rel']}× frente a lo habitual de cada cuenta (n={best['n']} publicaciones)."
+            if mine and mine["conclusive"]:
+                txt += f" En Carlos rinde {mine['median_rel']}× (n={mine['n']})."
+            elif mine:
+                txt += f" Carlos tiene solo {mine['n']} publicaciones de este formato: aún no se puede medir en su cuenta."
+            else:
+                txt += " Carlos no ha publicado este formato en la ventana: es el experimento más claro por probar."
+        else:  # 1,02× no es una ventaja: decir "priorizar" ahí sería inventar una palanca
+            txt = (f"Ningún formato destaca claramente: el mejor ({best['key']}) rinde {best['median_rel']}× frente a lo habitual de cada cuenta "
+                   f"(n={best['n']}). El formato no es la palanca principal en esta ventana; pesa más el tema y el ritmo.")
         rules.append({"eje": "Formato", "texto": txt})
         worst = fmt[-1]
-        if len(fmt) > 1 and worst["median_rel"] < 1:
-            rules.append({"eje": "Formato", "texto": f"No depender de {worst['key']}: rinde {worst['median_rel']}× (por debajo de lo habitual; n={worst['n']})."})
+        if len(fmt) > 1 and worst["median_rel"] <= STRATEGY_MAX_DROP:
+            rules.append({"eje": "Formato", "texto": f"No depender de {worst['key']}: rinde {worst['median_rel']}× (muy por debajo de lo habitual; n={worst['n']})."})
 
     cad = ins["cadence"]
     mine_pw = round(sum(r["posts_per_week"] for r in cad if r["candidate"] == queries.CARLOS), 1)
@@ -190,7 +196,13 @@ def _social_strategy(session) -> dict:
     """Qué funciona en redes (reglas por formato, día, franja, largo y ritmo) más los referentes:
     publicaciones de OTRAS cuentas que se dispararon, para replicar el formato/tema."""
     ins = queries.social_insights(session, days=STRATEGY_WINDOW_DAYS, min_n=STRATEGY_MIN_N)
-    refs = [p for p in queries.social_strong_posts(session, days=14) if p["candidate"] != queries.CARLOS][:4]
+    refs, seen = [], set()
+    for p in queries.social_strong_posts(session, days=14):  # la misma publicación suele estar en Instagram y Facebook
+        key = (p["candidate"], (p["text"] or "")[:40])
+        if p["candidate"] != queries.CARLOS and key not in seen:
+            seen.add(key)
+            refs.append(p)
+    refs = refs[:4]
     return {
         "window_days": STRATEGY_WINDOW_DAYS, "min_n": STRATEGY_MIN_N,
         "posts_total": ins["posts_total"], "posts_carlos": ins["posts_candidate"],

@@ -226,6 +226,21 @@ def test_report_includes_social_strategy_rules_computed_from_the_data(db_session
     assert any(r["eje"] == "Frecuencia" for r in s["rules"])
 
 
+def test_social_strategy_does_not_invent_a_winning_format_when_the_gap_is_tiny(db_session):
+    """Con datos reales el mejor formato rendía 1,02× lo habitual: decir «priorizar» sería inventar una palanca."""
+    from src.report import build_report
+    carlos = Candidate(name="Carlos Arias", aliases=[])
+    social = Source(type=SourceType.SOCIAL, name="Instagram / Facebook (cuentas)")
+    db_session.add_all([carlos, social])
+    db_session.commit()
+    for i in range(6):
+        _typed_post(db_session, carlos, social, f"r{i}", 102, "clips", 2 + i)
+        _typed_post(db_session, carlos, social, f"i{i}", 100, "image", 2 + i)
+    db_session.commit()
+    formato = [r["texto"] for r in build_report(db_session, date="2026-10-13")["social_strategy"]["rules"] if r["eje"] == "Formato"]
+    assert formato and formato[0].startswith("Ningún formato destaca") and not any("Priorizar" in t for t in formato)
+
+
 def test_social_strategy_does_not_claim_anything_with_too_few_posts(db_session):
     from src.report import build_report
     carlos = Candidate(name="Carlos Arias", aliases=[])
