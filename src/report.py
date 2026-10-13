@@ -207,6 +207,7 @@ def _social_strategy(session) -> dict:
         "window_days": STRATEGY_WINDOW_DAYS, "min_n": STRATEGY_MIN_N,
         "posts_total": ins["posts_total"], "posts_carlos": ins["posts_candidate"],
         "rules": _strategy_rules(ins) if ins["posts_total"] else [],
+        "avoid_formats": [r["key"] for r in _conclusive(ins["all"]["format"]) if r["median_rel"] <= STRATEGY_MAX_DROP],
         "references": [{"candidate": p["candidate"], "platform": p["platform"], "format": p.get("format"),
                         "text": (p["text"] or "")[:160], "url": p.get("url"), "multiplier": p["multiplier"],
                         "engagement": p["engagement"]} for p in refs],
@@ -254,7 +255,7 @@ Responde SOLO con un JSON de la forma:
   "factores_hipotesis": "<4-7 frases explicando, con los datos de arriba, qué factores se observan en el alcance de Carlos frente a sus rivales -- ritmo de publicación, respuesta de la audiencia, temas cubiertos o no EN ESTA VENTANA. Deja explícito que son CORRELACIONES/factores observados, no causas demostradas: los datos describen frecuencia y rendimiento, no prueban que la ausencia de un tema cause el alcance. Si los datos no alcanzan para explicar algo, dilo en vez de adivinar.>",
   "activacion_respuesta": "<3-5 frases: de lo que dice la gente, qué es intensidad emocional pasajera y qué es una señal real de activación (repetición del mismo reclamo, urgencia, peticiones concretas) -- un comentario positivo aislado no demuestra por sí solo alta activación. Señala qué información VERIFICABLE (no opinión) podría responder a esas peticiones, si los datos la contienen.>",
   "limitaciones": "<3-5 frases: qué preguntas relevantes NO se pueden responder con estos datos -- sesgo de audiencia propia (quien comenta en la cuenta de Carlos no es una muestra de toda Cali), cobertura incompleta, posible duplicación de la misma publicación entre plataformas, pauta paga, tamaño de audiencia de cada cuenta, o causas específicas detrás de una subida/bajada puntual, cuando esa información no está en las cifras de arriba. Sé específico sobre qué falta, no genérico.>",
-  "estrategia_redes": [{{"eje": "<Formato | Frecuencia | Horario | Contenido | Audiencia | Referentes>", "recomendacion": "<qué hacer en redes en las próximas semanas, concreto y ejecutable, 1-2 frases>", "base_en_datos": "<qué línea de 'Qué funciona en redes' o de las tablas de arriba la respalda, sin repetir cifras exactas; si la muestra es chica (n bajo) o no es concluyente, dilo>"}}, "... 4 a 6 recomendaciones, cada una apoyada en los datos de arriba; no inventes tácticas que los datos no sustenten, y si Carlos casi no tiene publicaciones de un formato, proponlo como prueba a medir, no como hecho"],
+  "estrategia_redes": [{{"eje": "<Formato | Frecuencia | Horario | Contenido | Audiencia | Referentes>", "recomendacion": "<qué hacer en redes en las próximas semanas, concreto y ejecutable, 1-2 frases>", "base_en_datos": "<qué línea de 'Qué funciona en redes' o de las tablas de arriba la respalda, sin repetir cifras exactas; si la muestra es chica (n bajo) o no es concluyente, dilo>"}}, "... 4 a 6 recomendaciones, cada una apoyada en los datos de arriba; no inventes tácticas que los datos no sustenten, y si Carlos casi no tiene publicaciones de un formato, proponlo como prueba a medir, no como hecho. DEBEN ser coherentes con las líneas de 'Qué funciona en redes': si una línea dice 'No depender de X', NUNCA recomiendes X; si dice 'Ningún formato destaca', no propongas cambiar de formato como palanca principal. Sé específico: nombra el tema, el formato o la cuenta referente concreta de arriba en vez de frases genéricas como 'seguir el ejemplo de otros'. Una recomendación de 'Contenido' solo puede usar temas que aparezcan arriba en 'temas sin cubrir'"],
   "plan_72h": [{{"dia": "Día 1", "accion": "<acción concreta y ejecutable>", "dato_necesario": "<qué información hace falta confirmar antes de publicar>", "fuente": "<de dónde sale ese dato -- un hallazgo de arriba, o a quién preguntarle>", "condicion_para_publicar": "<qué tiene que cumplirse antes de sacarlo -- p. ej. confirmar una cifra oficial>"}}, "... un ítem por cada uno de los 3 días, 2 a 3 acciones por día"]}}
 """
 
@@ -326,8 +327,14 @@ def generate_narrative(engine, reach: list[dict], reaction: list[dict], gaps: li
                 "condicion_para_publicar": str(item.get("condicion_para_publicar", "")).strip(),
             })
         social = []
+        avoid = [f.lower() for f in (strategy or {}).get("avoid_formats", [])]
         for item in payload.get("estrategia_redes") or []:
             if not isinstance(item, dict) or not str(item.get("recomendacion", "")).strip():
+                continue
+            rec_l = str(item["recomendacion"]).lower()
+            # un modelo local pequeño a veces contradice la tabla (recomendó «probar videos» cuando los videos rendían 0,36×):
+            # si menciona un formato que los datos dicen evitar y no lo dice en negativo, se descarta
+            if any(f in rec_l for f in avoid) and not re.search(r"\b(evit|no |menos|reduc|depender|dejar|sin )", rec_l):
                 continue
             social.append({"eje": str(item.get("eje", "")).strip(),
                            "recomendacion": str(item.get("recomendacion", "")).strip(),

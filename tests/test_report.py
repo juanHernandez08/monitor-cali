@@ -268,6 +268,21 @@ def test_narrative_carries_the_social_strategy_recommendations_and_the_prompt_th
     assert "Priorizar reel" in engine.prompts[0] and "estrategia_redes" in engine.prompts[0]
 
 
+def test_llm_recommendation_that_contradicts_a_format_the_data_says_to_avoid_is_dropped(db_session):
+    """Con datos reales el modelo local recomendó «probar videos» cuando los videos rendían 0,36× lo habitual."""
+    from src.report import generate_narrative
+    strategy = {"window_days": 90, "rules": [{"eje": "Formato", "texto": "No depender de video"}], "references": [],
+                "avoid_formats": ["video"]}
+    engine = FakeNarrativeEngine(payload={
+        "resumen_ejecutivo": "R.", "factores_hipotesis": "F.", "activacion_respuesta": "A.", "plan_72h": [],
+        "estrategia_redes": [{"eje": "Formato", "recomendacion": "Probar el uso de videos para ganar interacción.", "base_en_datos": "x"},
+                             {"eje": "Formato", "recomendacion": "Evitar depender de los videos y apostar por temas locales.", "base_en_datos": "x"},
+                             {"eje": "Frecuencia", "recomendacion": "Publicar más seguido.", "base_en_datos": "x"}]})
+    n = generate_narrative(engine, [], [], [], [], strategy=strategy)
+    assert [x["recomendacion"] for x in n["estrategia_redes"]] == [
+        "Evitar depender de los videos y apostar por temas locales.", "Publicar más seguido."]
+
+
 def test_pdf_has_the_social_strategy_section_and_survives_old_reports_without_it(db_session):
     from src.report import build_report, report_to_pdf
     _strategy_fixture(db_session)
