@@ -91,6 +91,7 @@ def test_build_report_with_engine_includes_narrative_grounded_in_real_numbers(db
         "factores_hipotesis": "Factores de prueba.",
         "activacion_respuesta": "Activación de prueba.",
         "limitaciones": "",
+        "estrategia_redes": [],
         "plan_72h": [{"dia": "Día 1", "accion": "Acción 1", "dato_necesario": "Dato 1",
                      "fuente": "Fuente 1", "condicion_para_publicar": "Condición 1"}],
     }
@@ -189,6 +190,76 @@ def test_report_to_pdf_with_real_city_topics_and_social_data(db_session):
     assert report["city_topics"][0]["category"] == "movilidad y transporte"
     pdf_bytes = report_to_pdf(report)
     assert pdf_bytes[:4] == b"%PDF"
+
+
+def _typed_post(db_session, cand, src, ext, likes, kind, when_ago):
+    now = dt.datetime.utcnow()
+    m = Mention(candidate_id=cand.id, source_id=src.id, external_id=ext, text=ext, url=f"https://x/{ext}",
+                raw={"kind": "post", "platform": "instagram", "num_comments": 0,
+                     "record": {"likesCount": likes, "productType": kind}},
+                published_at=now - dt.timedelta(days=when_ago), fetched_at=now)
+    db_session.add(m)
+
+
+def _strategy_fixture(db_session):
+    carlos = Candidate(name="Carlos Arias", aliases=[])
+    clara = Candidate(name="Clara Luz Roldán", aliases=[])
+    social = Source(type=SourceType.SOCIAL, name="Instagram / Facebook (cuentas)")
+    db_session.add_all([carlos, clara, social])
+    db_session.commit()
+    for i in range(6):  # reels rinden el doble que las imágenes en las dos cuentas
+        _typed_post(db_session, carlos, social, f"cr{i}", 200, "clips", 2 + i)
+        _typed_post(db_session, carlos, social, f"ci{i}", 100, "image", 2 + i)
+        _typed_post(db_session, clara, social, f"lr{i}", 2000, "clips", 2 + i)
+        _typed_post(db_session, clara, social, f"li{i}", 1000, "image", 2 + i)
+    db_session.commit()
+
+
+def test_report_includes_social_strategy_rules_computed_from_the_data(db_session):
+    """Pedido del cliente 2026-10-13: el reporte no sacaba las estrategias en redes."""
+    from src.report import build_report
+    _strategy_fixture(db_session)
+    s = build_report(db_session, date="2026-10-13")["social_strategy"]
+    assert s["posts_total"] == 24 and s["posts_carlos"] == 12
+    formato = [r["texto"] for r in s["rules"] if r["eje"] == "Formato"]
+    assert formato and formato[0].startswith("Priorizar reel") and "n=" in formato[0]
+    assert any(r["eje"] == "Frecuencia" for r in s["rules"])
+
+
+def test_social_strategy_does_not_claim_anything_with_too_few_posts(db_session):
+    from src.report import build_report
+    carlos = Candidate(name="Carlos Arias", aliases=[])
+    social = Source(type=SourceType.SOCIAL, name="Instagram / Facebook (cuentas)")
+    db_session.add_all([carlos, social])
+    db_session.commit()
+    _typed_post(db_session, carlos, social, "a", 100, "clips", 1)
+    _typed_post(db_session, carlos, social, "b", 300, "image", 2)
+    db_session.commit()
+    s = build_report(db_session, date="2026-10-13")["social_strategy"]
+    assert not any(r["eje"] == "Formato" for r in s["rules"])  # n < 5 por celda: no concluyente
+
+
+def test_narrative_carries_the_social_strategy_recommendations_and_the_prompt_the_rules(db_session):
+    from src.report import build_report
+    _strategy_fixture(db_session)
+    engine = FakeNarrativeEngine(payload={
+        "resumen_ejecutivo": "R.", "factores_hipotesis": "F.", "activacion_respuesta": "A.", "plan_72h": [],
+        "estrategia_redes": [{"eje": "Formato", "recomendacion": "Publicar más reels.", "base_en_datos": "Reels rinden más."},
+                             {"eje": "x", "recomendacion": "  "}, "basura"],
+    })
+    report = build_report(db_session, date="2026-10-13", engine=engine)
+    assert report["narrative"]["estrategia_redes"] == [
+        {"eje": "Formato", "recomendacion": "Publicar más reels.", "base_en_datos": "Reels rinden más."}]
+    assert "Priorizar reel" in engine.prompts[0] and "estrategia_redes" in engine.prompts[0]
+
+
+def test_pdf_has_the_social_strategy_section_and_survives_old_reports_without_it(db_session):
+    from src.report import build_report, report_to_pdf
+    _strategy_fixture(db_session)
+    report = build_report(db_session, date="2026-10-13", engine=FakeNarrativeEngine())
+    assert report_to_pdf(report)[:4] == b"%PDF"
+    old = {k: v for k, v in report.items() if k != "social_strategy"}  # reportes guardados antes de esta sección
+    assert report_to_pdf(old)[:4] == b"%PDF"
 
 
 def test_build_report_includes_method_scope_and_conversation_emotions(db_session):

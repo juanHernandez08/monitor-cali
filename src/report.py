@@ -117,6 +117,101 @@ def _conversation_emotions(city_topics: list[dict], limit: int = 6) -> list[dict
     return out
 
 
+# ---------- Estrategia en redes (computada en Python a partir de social_insights, no LLM) ----------
+
+STRATEGY_WINDOW_DAYS = 90  # formato/día/franja necesitan volumen: con 30 días casi ninguna celda alcanza n=5
+STRATEGY_MIN_N = 5
+
+
+def _conclusive(rows: list[dict]) -> list[dict]:
+    return sorted((r for r in rows if r["conclusive"]), key=lambda r: -r["median_rel"])
+
+
+def _by_key(rows: list[dict]) -> dict:
+    return {r["key"]: r for r in rows}
+
+
+def _strategy_rules(ins: dict) -> list[dict]:
+    """Reglas concretas y trazables (cada una dice con cuántas publicaciones se midió). Alcance
+    relativo: 1,0× = una publicación típica de esa MISMA cuenta, así una cuenta grande no aplasta
+    a una pequeña. Pedido del cliente 2026-10-13: el reporte no sacaba estrategias para redes."""
+    rules = []
+    mine_dims, all_dims = ins["candidate_dims"], ins["all"]
+
+    fmt = _conclusive(all_dims["format"])
+    if fmt:
+        best, mine = fmt[0], _by_key(mine_dims["format"]).get(fmt[0]["key"])
+        txt = f"Priorizar {best['key']}: rinde {best['median_rel']}× frente a lo habitual de cada cuenta (n={best['n']} publicaciones)."
+        if mine and mine["conclusive"]:
+            txt += f" En Carlos rinde {mine['median_rel']}× (n={mine['n']})."
+        elif mine:
+            txt += f" Carlos tiene solo {mine['n']} publicaciones de este formato: aún no se puede medir en su cuenta."
+        else:
+            txt += " Carlos no ha publicado este formato en la ventana: es el experimento más claro por probar."
+        rules.append({"eje": "Formato", "texto": txt})
+        worst = fmt[-1]
+        if len(fmt) > 1 and worst["median_rel"] < 1:
+            rules.append({"eje": "Formato", "texto": f"No depender de {worst['key']}: rinde {worst['median_rel']}× (por debajo de lo habitual; n={worst['n']})."})
+
+    cad = ins["cadence"]
+    mine_pw = round(sum(r["posts_per_week"] for r in cad if r["candidate"] == queries.CARLOS), 1)
+    others = sorted(r["posts_per_week"] for r in cad if r["candidate"] != queries.CARLOS)
+    med_others = others[len(others) // 2] if others else None
+    if med_others is not None and mine_pw:
+        if mine_pw < med_others:
+            rules.append({"eje": "Frecuencia", "texto": f"Carlos publica {mine_pw} veces por semana; la cuenta mediana monitoreada, {med_others}. Subir el ritmo hacia ese nivel antes de optimizar horarios."})
+        else:
+            rules.append({"eje": "Frecuencia", "texto": f"Carlos publica {mine_pw} veces por semana, igual o más que la cuenta mediana ({med_others}): el ritmo no es el problema; pesa más el formato y el tema."})
+
+    wd = _conclusive(all_dims["weekday"])
+    if len(wd) >= 2:
+        spread = round(wd[0]["median_rel"] - wd[-1]["median_rel"], 2)
+        if spread < 0.3:
+            rules.append({"eje": "Día", "texto": f"El día de la semana mueve poco el resultado (diferencia máxima de {spread}× entre días): no condicionar la publicación al día."})
+        else:
+            rules.append({"eje": "Día", "texto": f"Mejor día: {wd[0]['key']} ({wd[0]['median_rel']}×, n={wd[0]['n']}); el más flojo, {wd[-1]['key']} ({wd[-1]['median_rel']}×, n={wd[-1]['n']})."})
+
+    hb = _conclusive(all_dims["hour_block"])
+    if len(hb) >= 2 and hb[0]["median_rel"] - hb[-1]["median_rel"] >= 0.2:
+        rules.append({"eje": "Franja horaria", "texto": f"Mejor franja (hora de Cali): {hb[0]['key']} ({hb[0]['median_rel']}×, n={hb[0]['n']}); la más floja, {hb[-1]['key']} ({hb[-1]['median_rel']}×)."})
+    elif hb:
+        rules.append({"eje": "Franja horaria", "texto": "La franja horaria no marca una diferencia clara en esta ventana: publicar cuando el contenido esté listo."})
+
+    ln = _conclusive(all_dims["length"])
+    if len(ln) >= 2 and ln[0]["median_rel"] - ln[-1]["median_rel"] >= 0.2:
+        rules.append({"eje": "Largo del texto", "texto": f"El texto {ln[0]['key']} rinde mejor ({ln[0]['median_rel']}×, n={ln[0]['n']}); el {ln[-1]['key']}, peor ({ln[-1]['median_rel']}×)."})
+
+    if ins.get("engagement_per_view_pct"):
+        rules.append({"eje": "Video", "texto": f"De cada 100 personas que ven un video de Carlos, {ins['engagement_per_view_pct']} interactúan: úsalo de referencia para medir si un video mejora o empeora."})
+    return rules
+
+
+def _social_strategy(session) -> dict:
+    """Qué funciona en redes (reglas por formato, día, franja, largo y ritmo) más los referentes:
+    publicaciones de OTRAS cuentas que se dispararon, para replicar el formato/tema."""
+    ins = queries.social_insights(session, days=STRATEGY_WINDOW_DAYS, min_n=STRATEGY_MIN_N)
+    refs = [p for p in queries.social_strong_posts(session, days=14) if p["candidate"] != queries.CARLOS][:4]
+    return {
+        "window_days": STRATEGY_WINDOW_DAYS, "min_n": STRATEGY_MIN_N,
+        "posts_total": ins["posts_total"], "posts_carlos": ins["posts_candidate"],
+        "rules": _strategy_rules(ins) if ins["posts_total"] else [],
+        "references": [{"candidate": p["candidate"], "platform": p["platform"], "format": p.get("format"),
+                        "text": (p["text"] or "")[:160], "url": p.get("url"), "multiplier": p["multiplier"],
+                        "engagement": p["engagement"]} for p in refs],
+    }
+
+
+def _fmt_strategy(strategy: dict | None) -> str:
+    if strategy is None:
+        return "No disponible en este corte: deja estrategia_redes como lista vacía."
+    if not (strategy.get("rules") or strategy.get("references")):
+        return "Sin publicaciones suficientes para medir qué funciona en redes: deja estrategia_redes como lista vacía."
+    lines = [f"- [{r['eje']}] {r['texto']}" for r in strategy.get("rules", [])]
+    lines += [f"- [Referente] {r['candidate']} ({r['platform']}, {r.get('format') or 'sin formato'}): \"{r['text'][:100]}\" "
+              f"-- {r['multiplier']}× su propio promedio." for r in strategy.get("references", [])]
+    return "\n".join(lines)
+
+
 # ---------- Análisis narrativo (LLM, grounded en las cifras ya calculadas) ----------
 
 ANALYST_PROMPT = """Eres un analista de datos y estratega de comunicación de la campaña de Carlos Andrés Arias a la Alcaldía de Cali 2027.
@@ -139,11 +234,15 @@ REGLA IMPORTANTE sobre la sección "temas sin cubrir" de abajo: mide solo los ú
 ## Publicaciones que se dispararon muy por encima de lo habitual de esa misma cuenta
 {strong}
 
+## Qué funciona en redes (ventana de {strategy_days} días, alcance RELATIVO: 1,0× = una publicación típica de esa misma cuenta; n = publicaciones medidas)
+{strategy}
+
 Responde SOLO con un JSON de la forma:
 {{"resumen_ejecutivo": "<2-4 frases: el hallazgo más importante de este corte, sin repetir cifras exactas de memoria>",
   "factores_hipotesis": "<4-7 frases explicando, con los datos de arriba, qué factores se observan en el alcance de Carlos frente a sus rivales -- ritmo de publicación, respuesta de la audiencia, temas cubiertos o no EN ESTA VENTANA. Deja explícito que son CORRELACIONES/factores observados, no causas demostradas: los datos describen frecuencia y rendimiento, no prueban que la ausencia de un tema cause el alcance. Si los datos no alcanzan para explicar algo, dilo en vez de adivinar.>",
   "activacion_respuesta": "<3-5 frases: de lo que dice la gente, qué es intensidad emocional pasajera y qué es una señal real de activación (repetición del mismo reclamo, urgencia, peticiones concretas) -- un comentario positivo aislado no demuestra por sí solo alta activación. Señala qué información VERIFICABLE (no opinión) podría responder a esas peticiones, si los datos la contienen.>",
   "limitaciones": "<3-5 frases: qué preguntas relevantes NO se pueden responder con estos datos -- sesgo de audiencia propia (quien comenta en la cuenta de Carlos no es una muestra de toda Cali), cobertura incompleta, posible duplicación de la misma publicación entre plataformas, pauta paga, tamaño de audiencia de cada cuenta, o causas específicas detrás de una subida/bajada puntual, cuando esa información no está en las cifras de arriba. Sé específico sobre qué falta, no genérico.>",
+  "estrategia_redes": [{{"eje": "<Formato | Frecuencia | Horario | Contenido | Audiencia | Referentes>", "recomendacion": "<qué hacer en redes en las próximas semanas, concreto y ejecutable, 1-2 frases>", "base_en_datos": "<qué línea de 'Qué funciona en redes' o de las tablas de arriba la respalda, sin repetir cifras exactas; si la muestra es chica (n bajo) o no es concluyente, dilo>"}}, "... 4 a 6 recomendaciones, cada una apoyada en los datos de arriba; no inventes tácticas que los datos no sustenten, y si Carlos casi no tiene publicaciones de un formato, proponlo como prueba a medir, no como hecho"],
   "plan_72h": [{{"dia": "Día 1", "accion": "<acción concreta y ejecutable>", "dato_necesario": "<qué información hace falta confirmar antes de publicar>", "fuente": "<de dónde sale ese dato -- un hallazgo de arriba, o a quién preguntarle>", "condicion_para_publicar": "<qué tiene que cumplirse antes de sacarlo -- p. ej. confirmar una cifra oficial>"}}, "... un ítem por cada uno de los 3 días, 2 a 3 acciones por día"]}}
 """
 
@@ -190,16 +289,18 @@ def _fmt_strong(rows: list[dict]) -> str:
 
 
 def generate_narrative(engine, reach: list[dict], reaction: list[dict], gaps: list[dict],
-                       strong: list[dict], days: int = COMPARISON_WINDOW_DAYS, city_days: int = CITY_WINDOW_DAYS) -> dict | None:
+                       strong: list[dict], days: int = COMPARISON_WINDOW_DAYS, city_days: int = CITY_WINDOW_DAYS,
+                       strategy: dict | None = None) -> dict | None:
     """Pide al LLM que analice y proponga un plan SOLO a partir de las cifras ya calculadas (nunca
     le pasamos texto libre de menciones para que no "descubra" hechos por su cuenta, y se le pide
     explícitamente que nunca repita un número exacto de memoria -- ver ANALYST_PROMPT). Si el LLM
     falla o responde algo no parseable, el reporte igual se genera sin esta sección -- nunca debe
     tumbar el resto del reporte."""
     prompt = ANALYST_PROMPT.format(days=days, city_days=city_days, reach=_fmt_reach(reach),
-                                   reaction=_fmt_reaction(reaction), gaps=_fmt_gaps(gaps, city_days), strong=_fmt_strong(strong))
+                                   reaction=_fmt_reaction(reaction), gaps=_fmt_gaps(gaps, city_days), strong=_fmt_strong(strong),
+                                   strategy_days=(strategy or {}).get("window_days", STRATEGY_WINDOW_DAYS), strategy=_fmt_strategy(strategy))
     try:
-        text = engine.generate_text(prompt, max_tokens=3500)
+        text = engine.generate_text(prompt, max_tokens=4500)
         payload = json.loads(_JSON_FENCE.sub("", text).strip())
         plan = []
         for item in payload.get("plan_72h", []):
@@ -212,8 +313,16 @@ def generate_narrative(engine, reach: list[dict], reaction: list[dict], gaps: li
                 "fuente": str(item.get("fuente", "")).strip(),
                 "condicion_para_publicar": str(item.get("condicion_para_publicar", "")).strip(),
             })
+        social = []
+        for item in payload.get("estrategia_redes") or []:
+            if not isinstance(item, dict) or not str(item.get("recomendacion", "")).strip():
+                continue
+            social.append({"eje": str(item.get("eje", "")).strip(),
+                           "recomendacion": str(item.get("recomendacion", "")).strip(),
+                           "base_en_datos": str(item.get("base_en_datos", "")).strip()})
         return {
             "resumen_ejecutivo": str(payload.get("resumen_ejecutivo", "")).strip(),
+            "estrategia_redes": social[:8],
             "factores_hipotesis": str(payload.get("factores_hipotesis", "")).strip(),
             "activacion_respuesta": str(payload.get("activacion_respuesta", "")).strip(),
             "limitaciones": str(payload.get("limitaciones", "")).strip(),
@@ -235,7 +344,8 @@ def build_report(session, date: str | None = None, engine=None) -> dict:
     gaps = queries.candidate_topic_gaps(session, queries.CARLOS, days=CITY_WINDOW_DAYS)
     strong = queries.social_strong_posts(session, days=SOCIAL_WINDOW_DAYS)
     city_topics = queries.city_topics(session, days=CITY_WINDOW_DAYS)[:10]
-    narrative = generate_narrative(engine, reach, reaction, gaps, strong) if engine is not None else None
+    strategy = _social_strategy(session)
+    narrative = generate_narrative(engine, reach, reaction, gaps, strong, strategy=strategy) if engine is not None else None
     return {
         "date": date,
         "social_window_days": SOCIAL_WINDOW_DAYS,
@@ -252,6 +362,7 @@ def build_report(session, date: str | None = None, engine=None) -> dict:
         "reach_comparison": reach,
         "comment_reaction": reaction,
         "topic_gaps": gaps,
+        "social_strategy": strategy,
         "narrative": narrative,
         "pending_review": _pending_review(session, SOCIAL_WINDOW_DAYS),
     }
@@ -297,7 +408,8 @@ def fill_missing_narrative(session, engine=None, max_age_days: int = 1) -> Repor
     d = report.data or {}
     narrative = generate_narrative(
         engine, d.get("reach_comparison", []), d.get("comment_reaction", []), d.get("topic_gaps", []), d.get("strong_social", []),
-        days=d.get("comparison_window_days", COMPARISON_WINDOW_DAYS), city_days=d.get("city_window_days", CITY_WINDOW_DAYS))
+        days=d.get("comparison_window_days", COMPARISON_WINDOW_DAYS), city_days=d.get("city_window_days", CITY_WINDOW_DAYS),
+        strategy=d.get("social_strategy"))
     if not narrative:
         return None
     report.data = {**d, "narrative": narrative}
@@ -742,6 +854,30 @@ def report_to_pdf(report: dict) -> bytes:
             for ev in ce["evidencia"]:
                 link = f' (<link href="{ev["url"]}">ver original</link>)' if ev.get("url") else ""
                 quote(f"{ev['text']} -- {ev.get('source', '')}{link}")
+
+    # ---------- Estrategia en redes ----------
+    strategy = report.get("social_strategy")
+    h("Estrategia en redes")
+    if strategy is None:
+        p("Este reporte se generó antes de incluir la sección de estrategia en redes.")
+    else:
+        note(f"Medido sobre {strategy['posts_total']} publicaciones de los últimos {strategy['window_days']} días "
+             f"({strategy['posts_carlos']} de Carlos). Se usa alcance relativo: 1,0× es una publicación típica de esa misma cuenta, "
+             f"así una cuenta grande no aplasta a una pequeña. Solo se afirma algo cuando hay al menos {strategy['min_n']} publicaciones por celda.")
+        recs = (narrative or {}).get("estrategia_redes") or []
+        if recs:
+            h3("Recomendaciones del análisis")
+            table(["Eje", "Recomendación", "En qué datos se apoya"],
+                  [[x["eje"], x["recomendacion"], x["base_en_datos"]] for x in recs],
+                  col_widths=[2.4 * cm, 7.6 * cm, 5.5 * cm], caption="Recomendaciones de estrategia en redes redactadas a partir de los datos de este informe.")
+        h3("Qué dicen los datos")
+        table(["Eje", "Lectura"], [[x["eje"], x["texto"]] for x in strategy["rules"]],
+              col_widths=[3 * cm, 12.5 * cm], caption="Reglas calculadas sobre formato, ritmo, día, franja y largo de texto.")
+        h3("Referentes: publicaciones de otras cuentas que se dispararon")
+        table(["Cuenta", "Red", "Publicación", "Veces su promedio"],
+              [[r["candidate"], r["platform"], (f'<link href="{r["url"]}">{r["text"][:110]}</link>' if r.get("url") else r["text"][:110]),
+                f"{r['multiplier']}×"] for r in strategy["references"]],
+              col_widths=[3 * cm, 2 * cm, 8 * cm, 2.5 * cm], caption="Publicaciones de los últimos 14 días con alcance muy por encima del habitual de su cuenta.")
 
     # ---------- Activación y respuesta factual / Factores observados ----------
     if narrative:

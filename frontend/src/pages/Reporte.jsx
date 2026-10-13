@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Activity, AlertTriangle, ClipboardList, Download, FileText, Flame, Lightbulb, MapPinned, Megaphone, MessageSquareText, Microscope, Play, Rocket, ScanSearch, Smile, Target, TrendingUp, Users2 } from "lucide-react";
+import { Activity, AlertTriangle, ClipboardList, Download, FileText, Flame, Lightbulb, MapPinned, Megaphone, MessageSquareText, Microscope, Play, Rocket, ScanSearch, Smile, Sparkles, Target, TrendingUp, Users2 } from "lucide-react";
 import { useApp } from "../lib/app";
 import { useApi } from "../lib/useApi";
 import { clearCache } from "../lib/cache";
@@ -19,6 +19,50 @@ const noPresence = (n) => (n === 0 ? "no se detectaron publicaciones clasificada
 
 function ListItem({ children, meta }) {
   return <li className="py-3 text-sm"><div className="text-slate-800">{children}</div>{meta && <div className="mt-1 text-xs text-slate-500">{meta}</div>}</li>;
+}
+
+const AXIS_TONE = { Formato: "brand", Frecuencia: "pending", Día: "pending", "Franja horaria": "pending", "Largo del texto": "pending", Video: "brand" };
+
+/* Estrategia en redes: recomendaciones redactadas por la IA (si el PC del cliente estuvo en línea),
+   reglas calculadas sobre los datos (siempre) y referentes de otras cuentas. */
+export function SocialStrategy({ s, recs }) {
+  if (!s) return <Panel icon={Sparkles} tone="violet" title="Estrategia en redes"><Empty>Este reporte se generó antes de incluir la estrategia en redes. El de hoy en adelante la trae.</Empty></Panel>;
+  return (
+    <div className="grid gap-5">
+      <Panel icon={Sparkles} tone="violet" title="Qué hacer en redes"
+        hint={`Medido sobre ${s.posts_total} publicaciones de los últimos ${s.window_days} días (${s.posts_carlos} de Carlos). Alcance relativo: 1,0× es una publicación típica de esa misma cuenta. Solo se afirma algo con al menos ${s.min_n} publicaciones por celda.`}>
+        {recs?.length ? (
+          <ul className="divide-y divide-slate-100">
+            {recs.map((x, i) => (
+              <ListItem key={i} meta={x.base_en_datos && <>Se apoya en: {x.base_en_datos}</>}>
+                <Tag tone={AXIS_TONE[x.eje] || "brand"} className="mr-2">{x.eje}</Tag>{x.recomendacion}
+              </ListItem>
+            ))}
+          </ul>
+        ) : (
+          <Reading>La IA aún no redactó las recomendaciones de este corte (se completan solas cuando el PC del cliente vuelve a estar en línea). Mientras tanto, abajo están las lecturas calculadas directamente de los datos.</Reading>
+        )}
+      </Panel>
+      <Panel icon={Target} title="Qué dicen los datos" hint="Reglas calculadas con las publicaciones de todas las cuentas monitoreadas; la cifra entre paréntesis es cuántas publicaciones hay detrás.">
+        {s.rules.length ? (
+          <ul className="divide-y divide-slate-100">
+            {s.rules.map((x, i) => <ListItem key={i}><Tag tone={AXIS_TONE[x.eje] || "brand"} className="mr-2">{x.eje}</Tag>{x.texto}</ListItem>)}
+          </ul>
+        ) : <Empty>Aún no hay publicaciones suficientes para medir qué funciona.</Empty>}
+      </Panel>
+      <Panel icon={Flame} tone="amber" title="Referentes: qué se disparó en otras cuentas" hint="Publicaciones de los últimos 14 días con alcance muy por encima de lo habitual de su cuenta — para estudiar su formato y tema.">
+        {s.references.length ? (
+          <ul className="divide-y divide-slate-100">
+            {s.references.map((p, i) => (
+              <ListItem key={i} meta={<>{SRC_LABEL[p.platform] || p.platform}{p.format ? ` · ${p.format}` : ""} · {fmtNum(p.engagement)} de alcance{p.url && <> · <LinkOut href={p.url}>ver</LinkOut></>}</>}>
+                <Tag tone="positive" className="mr-2">{p.multiplier}×</Tag><b>{p.candidate}</b>: {clip(p.text, 160)}
+              </ListItem>
+            ))}
+          </ul>
+        ) : <Empty icon={Flame}>Ninguna otra cuenta se disparó por encima de lo habitual en los últimos 14 días.</Empty>}
+      </Panel>
+    </div>
+  );
 }
 
 function EmotionHeatmapBlock({ r, hm }) {
@@ -188,6 +232,9 @@ function ReportBody({ date }) {
           </div>
         ) : <Empty>Sin suficientes menciones clasificadas en esta ventana.</Empty>}
       </Panel>
+
+      <SectionTitle>Estrategia en redes</SectionTitle>
+      <SocialStrategy s={r.social_strategy} recs={n?.estrategia_redes} />
 
       {n && (
         <>

@@ -169,6 +169,14 @@ export default function Meta() {
           <Reading>{n.resumen_ejecutivo}</Reading>
           <p className="text-sm leading-relaxed text-slate-700">{n.factores_hipotesis}</p>
           {n.limitaciones && <Callout label="Qué NO se puede determinar con estos datos">{n.limitaciones}</Callout>}
+          {(n.estrategia_redes || []).length > 0 && (
+            <>
+              <h3 className="mb-2 mt-4 text-sm font-semibold text-slate-900">Estrategia en redes</h3>
+              <ul className="divide-y divide-slate-100 text-sm">
+                {n.estrategia_redes.map((it, i) => <li key={i} className="py-2.5"><b>{it.eje}:</b> {it.recomendacion}</li>)}
+              </ul>
+            </>
+          )}
           <h3 className="mb-2 mt-4 text-sm font-semibold text-slate-900">Plan de 72 horas</h3>
           <ul className="divide-y divide-slate-100 text-sm">
             {(n.plan_72h || []).length ? n.plan_72h.map((it, i) => <li key={i} className="py-2.5"><b>{it.dia}:</b> {it.accion}</li>) : <li className="py-2.5 text-slate-500">Sin plan generado en este corte.</li>}
