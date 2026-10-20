@@ -23,7 +23,16 @@
 "code": "03",
 "name": "Comuna 3",
 "parent": "76001",
-"variants": []
+"variants": [
+{
+"text": "centro de cali",
+"ambiguous": false
+},
+{
+"text": "bulevar del rio",
+"ambiguous": false
+}
+]
 },
 {
 "id": "comuna:04",
@@ -119,7 +128,12 @@
 "code": "15",
 "name": "Comuna 15",
 "parent": "76001",
-"variants": []
+"variants": [
+{
+"text": "llano verde",
+"ambiguous": false
+}
+]
 },
 {
 "id": "comuna:16",
@@ -143,7 +157,12 @@
 "code": "18",
 "name": "Comuna 18",
 "parent": "76001",
-"variants": []
+"variants": [
+{
+"text": "el danubio",
+"ambiguous": false
+}
+]
 },
 {
 "id": "comuna:19",
@@ -167,7 +186,12 @@
 "code": "21",
 "name": "Comuna 21",
 "parent": "76001",
-"variants": []
+"variants": [
+{
+"text": "potrero grande",
+"ambiguous": false
+}
+]
 },
 {
 "id": "comuna:22",
@@ -1632,6 +1656,10 @@
 {
 "text": "ciudad paraiso",
 "ambiguous": true
+},
+{
+"text": "el calvario",
+"ambiguous": false
 }
 ]
 },
@@ -2872,6 +2900,14 @@
 {
 "text": "ciudad universitaria",
 "ambiguous": true
+},
+{
+"text": "univalle",
+"ambiguous": false
+},
+{
+"text": "universidad del valle",
+"ambiguous": false
 }
 ]
 },
@@ -2921,6 +2957,10 @@
 "variants": [
 {
 "text": "unicentro cali",
+"ambiguous": false
+},
+{
+"text": "unicentro",
 "ambiguous": false
 }
 ]
@@ -4510,11 +4550,11 @@
 "ambiguous": false
 },
 {
-"text": "canaverales",
+"text": "los samanes",
 "ambiguous": true
 },
 {
-"text": "los samanes",
+"text": "canaverales",
 "ambiguous": true
 }
 ]

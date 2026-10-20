@@ -11,7 +11,7 @@ from sqlalchemy import func, or_
 from src import config, stats
 from src.urlnorm import normalize_url
 from src.models import (
-    ApiUsage, Candidate, Mention, Run, SentimentLabel, SentimentScore, Source, SourceType,
+    ApiUsage, Candidate, Mention, MentionPlace, Run, SentimentLabel, SentimentScore, Source, SourceType,
 )
 
 CARLOS = "Carlos Arias"
@@ -1411,3 +1411,100 @@ def weekly_conversation(session, days: int = 90, candidate: str = CARLOS) -> dic
                     "net_low": round(pci[0] - nci[1]) if n else None,
                     "net_high": round(pci[1] - nci[0]) if n else None})
     return {"candidate": candidate, "weeks": out}
+
+
+# ---------- Mapa: de qué zona se habla (georreferenciación por texto, ver src/geo.py) ----------
+
+GEO_LEVELS = ("departamento", "municipio", "comuna", "barrio", "corregimiento", "vereda")
+
+
+def _at_level(place_id: str, level: str) -> str | None:
+    """La zona de `place_id` al nivel pedido: un barrio sube a su comuna, una vereda a su corregimiento,
+    todo lo de Cali sube al municipio Cali y al departamento del Valle."""
+    from src import geo
+    if place_id.startswith(level + ":"):
+        return place_id
+    return next((a for a in geo.ancestors(place_id) if a.startswith(level + ":")), None)
+
+
+def _geo_rows(session, days: int, candidate_id: int | None = None):
+    q = (session.query(Mention, MentionPlace.place_id, MentionPlace.method)
+         .join(MentionPlace, MentionPlace.mention_id == Mention.id)
+         .filter(WHEN >= _since(days), Mention.relevant.is_(True)))
+    if candidate_id:
+        q = q.filter(Mention.candidate_id == candidate_id)
+    return q.all()
+
+
+def _zone_stats(ms: list[Mention]) -> dict:
+    scored = [m for m in ms if m.sentiment and m.sentiment.model != "regla"]
+    labels = Counter(m.sentiment.label for m in scored)
+    pos, neg = labels.get(SentimentLabel.POSITIVE, 0), labels.get(SentimentLabel.NEGATIVE, 0)
+    cats = Counter(m.sentiment.category for m in scored if m.sentiment.category and m.sentiment.category != "otro")
+    emos = Counter(m.sentiment.emotion for m in scored if m.sentiment.emotion and m.sentiment.emotion != "sin emoción marcada")
+    return {"mentions": len(ms), "scored": len(scored), "positive": pos, "negative": neg,
+            "neutral": labels.get(SentimentLabel.NEUTRAL, 0),
+            "negative_pct": pct(neg, len(scored)), "positive_pct": pct(pos, len(scored)),
+            "net": round((pos - neg) / len(scored) * 100) if scored else None,
+            "categories": [{"category": c, "count": n} for c, n in cats.most_common(3)],
+            "emotions": [{"emotion": e, "count": n} for e, n in emos.most_common(3)]}
+
+
+def geo_zones(session, days: int = 30, level: str = "comuna", candidate_id: int | None = None,
+              min_mentions: int = 5) -> dict:
+    """Menciones por zona al nivel pedido, con tono, temas y emociones. `conclusive` = al menos
+    `min_mentions` menciones: con menos, el tono de la zona no dice nada (el mapa lo marca)."""
+    from src import geo
+    if level not in GEO_LEVELS:
+        level = "comuna"
+    by_zone: dict[str, dict[int, Mention]] = defaultdict(dict)
+    methods: Counter = Counter()
+    located = set()
+    for m, pid, method in _geo_rows(session, days, candidate_id):
+        z = _at_level(pid, level)
+        if z:
+            by_zone[z][m.id] = m
+            methods[method] += 1
+        if geo.is_inside_cali(pid):
+            located.add(m.id)
+    total = session.query(func.count(Mention.id)).filter(WHEN >= _since(days), Mention.relevant.is_(True))
+    if candidate_id:
+        total = total.filter(Mention.candidate_id == candidate_id)
+    total = total.scalar() or 0
+    zones = []
+    for z, ms in by_zone.items():
+        p = geo.place(z)
+        zones.append({"id": z, "name": p["name"], "level": p["level"], "parent": p.get("parent"),
+                      **_zone_stats(list(ms.values())), "conclusive": len(ms) >= min_mentions})
+    zones.sort(key=lambda r: -r["mentions"])
+    return {"level": level, "days": days, "zones": zones, "min_mentions": min_mentions,
+            "coverage": {"mentions": total, "located_in_cali": len(located),
+                         "located_pct": round(len(located) / total * 100, 1) if total else 0},
+            "methods": dict(methods)}
+
+
+def geo_detail(session, ids: list[str], days: int = 30, candidate_id: int | None = None, limit: int = 40) -> dict:
+    """Una zona o un GRUPO de zonas (p. ej. las 4 comunas del Distrito de Aguablanca): una mención que
+    nombra a varias del grupo cuenta una vez. Incluye las menciones para leerlas con su enlace."""
+    from src import geo
+    ids = [i for i in ids if geo.place(i)][:400]
+    wanted = set(ids)
+    ms: dict[int, Mention] = {}
+    sub: dict[str, set[int]] = defaultdict(set)
+    for m, pid, _ in _geo_rows(session, days, candidate_id):
+        chain = [pid] + geo.ancestors(pid)
+        hit = next((z for z in chain if z in wanted), None)
+        if hit:
+            ms[m.id] = m
+            # la sub-zona más específica dentro del grupo (barrio dentro de la comuna elegida)
+            sub[pid if pid != hit else hit].add(m.id)
+    rows = sorted(ms.values(), key=lambda m: _when(m), reverse=True)
+    topics = Counter((m.sentiment.topic or "").lower() for m in rows
+                     if m.sentiment and m.sentiment.topic and m.sentiment.topic.lower() not in META_TOPICS)
+    sources = Counter(m.source.type.value for m in rows)
+    return {"ids": ids, "names": [geo.place(i)["name"] for i in ids], "days": days, **_zone_stats(rows),
+            "topics": [{"topic": t, "count": n} for t, n in topics.most_common(8)],
+            "sources": [{"source": s, "count": n} for s, n in sources.most_common()],
+            "subzones": sorted(({"id": z, "name": geo.place(z)["name"], "level": geo.place(z)["level"], "mentions": len(v)}
+                                for z, v in sub.items() if z not in wanted), key=lambda r: -r["mentions"])[:15],
+            "items": [_mention_dict(m) for m in rows[:limit]]}

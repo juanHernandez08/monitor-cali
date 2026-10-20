@@ -208,6 +208,19 @@ def create_app(session_factory=None, start_jobs: bool = True, cf_verifier=None) 
         with session() as s:
             return queries.social_insights(s, days=days, candidate=candidate)
 
+    @app.get("/api/geo/zones")
+    def api_geo_zones(days: int = Query(30, ge=1, le=365), level: str = Query("comuna", max_length=20),
+                      candidate_id: int | None = Query(None, ge=1)):
+        with session() as s:
+            return queries.geo_zones(s, days=days, level=level, candidate_id=candidate_id)
+
+    @app.get("/api/geo/detail")
+    def api_geo_detail(ids: str = Query(..., max_length=8000), days: int = Query(30, ge=1, le=365),
+                       candidate_id: int | None = Query(None, ge=1)):
+        with session() as s:
+            return queries.geo_detail(s, [i.strip() for i in ids.split(",") if i.strip()], days=days,
+                                      candidate_id=candidate_id)
+
     @app.get("/api/conversation/weekly")
     def api_conversation_weekly(days: int = Query(90, ge=14, le=365), candidate: str = Query("Carlos Arias", max_length=120)):
         with session() as s:

@@ -11,6 +11,7 @@ from sqlalchemy.exc import IntegrityError
 
 from src.models import Candidate, Mention, Run, SentimentLabel, SentimentScore, Source, SourceType
 from src.urlnorm import normalize_url
+from src.geo import assign_places
 
 log = logging.getLogger(__name__)
 
@@ -217,12 +218,16 @@ def score_pending(session, engine, limit: int = 20) -> int:
                                    # (None) -- si no, backfill_emotions.py reprocesaría sin parar
                                    # cada mención neutra, que siempre vuelve a salir vacía.
                                    emotion_nuance=getattr(result, "emotion_nuance", ""),
-                                   apalancador=getattr(result, "apalancador", "")))
+                                   apalancador=getattr(result, "apalancador", ""),
+                                   place_hint=getattr(result, "place_hint", "")))
         try:
             session.commit()
         except IntegrityError:  # otro proceso (el scheduler del servidor) ya la clasificó
             session.rollback()
             continue
+        if mention.relevant:
+            assign_places(session, mention)
+            session.commit()
         scored += 1
     return scored
 

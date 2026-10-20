@@ -101,10 +101,28 @@ class SentimentScore(Base):
     emotion = Column(String, nullable=True)  # categoría núcleo de la rueda de emociones (ver sentiment.EMOTIONS)
     emotion_nuance = Column(String, nullable=True)  # matiz específico dentro de esa emoción (ver sentiment.EMOTION_NUANCES)
     apalancador = Column(String, nullable=True)  # qué disparó concretamente la emoción (frase libre del LLM)
+    place_hint = Column(String, nullable=True)  # lugar de Cali que el LLM leyó en el texto ("" = ninguno; None = sin preguntar)
     model = Column(String, nullable=False)
     created_at = Column(DateTime, default=dt.datetime.utcnow, nullable=False)
 
     mention = relationship("Mention", back_populates="sentiment")
+
+
+class MentionPlace(Base):
+    """Zona de la que habla una mención (comuna, barrio, corregimiento, vereda, municipio...), ver
+    src/geo.py. Mide DE QUÉ ZONA se habla, nunca desde dónde escribe una persona. `method`: 'texto'
+    (lo nombra la mención), 'heredado' (comentario que toma la zona del video/publicación que comenta)
+    o 'ia' (el LLM lo leyó en el texto y se normalizó contra el diccionario oficial)."""
+    __tablename__ = "mention_places"
+
+    id = Column(Integer, primary_key=True)
+    mention_id = Column(Integer, ForeignKey("mentions.id"), nullable=False, index=True)
+    place_id = Column(String, nullable=False, index=True)  # p. ej. "barrio:0216", "comuna:02"
+    level = Column(String, nullable=False)
+    matched = Column(String, nullable=True)  # fragmento que lo disparó, para auditar
+    method = Column(String, nullable=False)
+
+    __table_args__ = (UniqueConstraint("mention_id", "place_id", name="uq_mention_place"),)
 
 
 class Run(Base):

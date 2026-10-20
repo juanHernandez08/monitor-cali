@@ -138,3 +138,47 @@ def locate(text: str) -> list[dict]:
 
 def is_inside_cali(pid: str) -> bool:
     return pid != CALI and CALI in ancestors(pid)
+
+
+def _most_specific(found: list[dict]) -> list[dict]:
+    """Si una mención nombra "barrio Siloé" y "comuna 20", basta Siloé (ya sube a la comuna 20)."""
+    ids = {p["id"] for p in found}
+    return [p for p in found if not any(p["id"] in ancestors(o) for o in ids if o != p["id"])]
+
+
+def places_for_mention(mention) -> list[dict]:
+    """Zonas de una mención, con el método que las encontró: 'texto' (la mención misma, incluido el
+    cuerpo de la nota), 'heredado' (un comentario sin lugar propio toma el del video/publicación que
+    comenta) e 'ia' (el lugar que leyó el LLM, normalizado contra el diccionario oficial)."""
+    raw = mention.raw or {}
+    own = locate(f"{mention.text}\n{(mention.body or '')[:3000]}")
+    out = [{**p, "method": "texto"} for p in own]
+    has_zone = any(is_inside_cali(p["id"]) for p in own)
+    if not has_zone and raw.get("kind") == "comment":
+        parent = raw.get("video_title") or raw.get("video_context") or raw.get("post_title") or ""
+        inherited = [p for p in locate(parent) if is_inside_cali(p["id"])]
+        out += [{**p, "method": "heredado"} for p in inherited]
+        has_zone = bool(inherited)
+    hint = getattr(getattr(mention, "sentiment", None), "place_hint", None)
+    if not has_zone and hint:
+        # el LLM ya dijo que es un lugar de Cali: se lee como "barrio X de Cali" para que los nombres
+        # ambiguos ("La Paz") cuenten, y se normaliza contra la lista oficial (lo que no esté, se descarta)
+        guess = hint if re.search(r"\b(comuna|barrio|vereda|corregimiento|sector)\b", norm(hint)) else f"barrio {hint}"
+        out += [{**p, "method": "ia"} for p in locate(f"{guess}, Cali") if is_inside_cali(p["id"])]
+    seen, uniq = set(), []
+    for p in _most_specific(out):
+        if p["id"] not in seen:
+            seen.add(p["id"])
+            uniq.append(p)
+    return uniq
+
+
+def assign_places(session, mention) -> int:
+    """Recalcula y guarda las zonas de `mention` (idempotente). No hace commit."""
+    from src.models import MentionPlace
+    session.query(MentionPlace).filter_by(mention_id=mention.id).delete()
+    found = places_for_mention(mention)
+    for p in found:
+        session.add(MentionPlace(mention_id=mention.id, place_id=p["id"], level=p["level"],
+                                 matched=(p.get("matched") or "")[:120], method=p["method"]))
+    return len(found)

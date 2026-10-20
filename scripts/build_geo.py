@@ -151,6 +151,67 @@ def is_ambiguous(v: str, other_places: set[str]) -> bool:
     return False
 
 
+SHAPES = ROOT / "frontend" / "public" / "geo"
+
+
+def _dp(points: list, tol: float) -> list:
+    """Douglas-Peucker: quita vértices que se apartan menos de `tol` grados de la línea (el borde
+    oficial trae miles de puntos; el mapa en un celular no los necesita)."""
+    if len(points) < 3:
+        return points
+    (x1, y1), (x2, y2) = points[0], points[-1]
+    dx, dy = x2 - x1, y2 - y1
+    norm2 = dx * dx + dy * dy
+    best, idx = -1.0, 0
+    for i in range(1, len(points) - 1):
+        px, py = points[i]
+        if norm2 == 0:
+            d = (px - x1) ** 2 + (py - y1) ** 2
+        else:
+            t = max(0, min(1, ((px - x1) * dx + (py - y1) * dy) / norm2))
+            d = (px - x1 - t * dx) ** 2 + (py - y1 - t * dy) ** 2
+        if d > best:
+            best, idx = d, i
+    if best <= tol * tol:
+        return [points[0], points[-1]]
+    return _dp(points[:idx + 1], tol)[:-1] + _dp(points[idx:], tol)
+
+
+def _simplify(geom: dict, tol: float) -> dict:
+    def ring(r):
+        s = _dp([[round(x, 5), round(y, 5)] for x, y, *_ in r], tol)
+        return s if len(s) >= 4 else [[round(x, 5), round(y, 5)] for x, y, *_ in r]
+    if geom["type"] == "Polygon":
+        return {"type": "Polygon", "coordinates": [ring(r) for r in geom["coordinates"]]}
+    if geom["type"] == "MultiPolygon":
+        return {"type": "MultiPolygon", "coordinates": [[ring(r) for r in poly] for poly in geom["coordinates"]]}
+    return geom
+
+
+def write_shapes(comunas, barrios, correg, veredas, dptos, mpios):
+    """Formas livianas para el mapa del tablero (frontend/public/geo/*.json). Cada zona lleva solo
+    id (el mismo de gazetteer.json), nombre y zona madre."""
+    SHAPES.mkdir(parents=True, exist_ok=True)
+    layers = {
+        "comunas": (comunas, 0.00008, lambda p: (f"comuna:{p['comcodigo']}", f"Comuna {int(p['comcodigo'])}", "municipio:76001")),
+        "barrios": (barrios, 0.00004, lambda p: (f"barrio:{p['barcodigo']}", p["barnombre"], f"comuna:{p['barcomuna']}")),
+        "corregimientos": (correg, 0.0002, lambda p: (f"corregimiento:{p['corrcod']}", p["corrnombre"], "municipio:76001")),
+        "veredas": (veredas, 0.00012, lambda p: (f"vereda:{p['vercodigo']}", p["vernombre"], f"corregimiento:{p['vercodcorr']}")),
+        "departamentos": (dptos, 0.01, lambda p: (f"departamento:{p['DPTO_CCDGO']}", display(p["DPTO_CNMBR"]), "co")),
+        "municipios": (mpios, 0.008, lambda p: (f"municipio:{p['MPIO_CCDGO']}", display(p["MPIO_CNMBR"]), f"departamento:{p['DPTO_CCDGO']}")),
+    }
+    for name, (feats, tol, props) in layers.items():
+        out = []
+        for f in feats:
+            pid, label, parent = props(f["properties"])
+            out.append({"type": "Feature", "properties": {"id": pid, "name": label, "parent": parent},
+                        "geometry": _simplify(f["geometry"], tol)})
+        path = SHAPES / f"{name}.json"
+        path.write_text(json.dumps({"type": "FeatureCollection", "features": out}, ensure_ascii=False,
+                                   separators=(",", ":")), encoding="utf-8")
+        print(f"  {path.relative_to(ROOT)}: {len(out)} zonas, {path.stat().st_size // 1024} KB")
+
+
 def load(name: str) -> list[dict]:
     return json.loads((RAW / name).read_text(encoding="utf-8"))["features"]
 
@@ -217,6 +278,28 @@ def main():
                        "name": display(p["MPIO_CNMBR"]), "parent": f"departamento:{p['DPTO_CCDGO']}",
                        "variants": [{"text": v, "ambiguous": amb(v)} for v in sorted(vs)]})
 
+    # Nombres de uso popular que no están así en la lista oficial. Solo los comprobados (en los datos
+    # del monitor o en la división oficial); lo demás lo atrapa el campo "lugar" del LLM.
+    aliases = {
+        "potrero grande": ("level", "comuna", "21"),      # urbanización de vivienda de la comuna 21
+        "el calvario": ("name", "Ciudad Paraíso"),       # "cuya denominación oficial cambió a barrio Ciudad Paraíso"
+        "el danubio": ("level", "comuna", "18"),          # "urbanización El Danubio en la comuna 18"
+        "llano verde": ("level", "comuna", "15"),
+        "univalle": ("name", "Sector Ciudad Universitaria"),
+        "universidad del valle": ("name", "Sector Ciudad Universitaria"),
+        "unicentro": ("name", "Unicentro Cali"),
+        "centro de cali": ("level", "comuna", "03"),
+        "bulevar del rio": ("level", "comuna", "03"),
+    }
+    by_name = {p["name"]: p for p in places}
+    by_id = {p["id"]: p for p in places}
+    for alias, target in aliases.items():
+        p = by_name.get(target[1]) if target[0] == "name" else by_id.get(f"{target[1]}:{target[2]}")
+        if p is None:
+            raise SystemExit(f"alias sin destino: {alias} -> {target}")
+        p["variants"].append({"text": alias, "ambiguous": False})
+
+    write_shapes(comunas, barrios, correg, veredas, dptos, mpios)
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps({"source": "IDESC Cali (Acuerdo 0636 de 2026) + DANE Divipola 2018",
                                "places": places}, ensure_ascii=False, indent=0), encoding="utf-8")

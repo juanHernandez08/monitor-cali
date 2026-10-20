@@ -33,3 +33,68 @@ def test_distrito_de_aguablanca_is_its_four_comunas():
 def test_hierarchy_rolls_barrios_up_to_comuna_and_city():
     assert ancestors("barrio:0216") == ["comuna:02", "municipio:76001", "departamento:76"]
     assert is_inside_cali("barrio:0216") and not is_inside_cali("municipio:76001")
+
+
+def _mention(db_session, text, raw=None, hint=None, label="NEGATIVE", ext=None):
+    import datetime as dt
+    from src.models import Candidate, Mention, SentimentLabel, SentimentScore, Source, SourceType
+    cand = db_session.query(Candidate).filter_by(name="Cali (ciudad)").first()
+    if cand is None:
+        cand = Candidate(name="Cali (ciudad)", aliases=[], kind="city")
+        db_session.add_all([cand, Source(type=SourceType.RSS, name="Medio local")])
+        db_session.commit()
+    src = db_session.query(Source).first()
+    now = dt.datetime.utcnow()
+    m = Mention(candidate_id=cand.id, source_id=src.id, external_id=ext or text[:40], text=text, url="https://x/" + (ext or "a"),
+                raw=raw or {}, published_at=now, fetched_at=now, relevant=True)
+    db_session.add(m)
+    db_session.flush()
+    db_session.add(SentimentScore(mention_id=m.id, label=SentimentLabel[label], score=-0.5, topic="agua",
+                                  category="servicios públicos", model="f", place_hint=hint))
+    db_session.commit()
+    return m
+
+
+def test_assign_places_keeps_the_most_specific_zone_and_inherits_for_comments(db_session):
+    from src.geo import assign_places
+    from src.models import MentionPlace
+    m = _mention(db_session, "Sin agua en el barrio Siloé, comuna 20 de Cali", ext="m1")
+    assign_places(db_session, m)
+    assert [p.place_id for p in db_session.query(MentionPlace).filter_by(mention_id=m.id)] == ["barrio:2003"]
+    c = _mention(db_session, "qué vergüenza", raw={"kind": "comment", "post_title": "Inundación en Potrero Grande"}, ext="c1")
+    assign_places(db_session, c)
+    row = db_session.query(MentionPlace).filter_by(mention_id=c.id).one()
+    assert (row.place_id, row.method) == ("comuna:21", "heredado")
+
+
+def test_llm_place_hint_is_normalized_against_the_official_list(db_session):
+    from src.geo import assign_places
+    from src.models import MentionPlace
+    m = _mention(db_session, "Balacera anoche, dos heridos", hint="La Paz", ext="h1")
+    assign_places(db_session, m)
+    row = db_session.query(MentionPlace).filter_by(mention_id=m.id).one()
+    assert (row.place_id, row.method) == ("barrio:0214", "ia")
+    n = _mention(db_session, "Huecos por todos lados", hint="calle 5 con 39", ext="h2")
+    assert assign_places(db_session, n) == 0  # una dirección no está en el diccionario: no se inventa zona
+
+
+def test_geo_zones_rolls_up_to_comuna_and_detail_merges_a_group(db_session):
+    from src import queries
+    from src.geo import assign_places
+    for i, t in enumerate(["Sin agua en Siloé, Cali", "Balacera en Siloé, Cali", "Fiesta en Potrero Grande", "Inundación en Pance"]):
+        assign_places(db_session, _mention(db_session, t, ext=f"z{i}"))
+    db_session.commit()
+    z = {r["id"]: r for r in queries.geo_zones(db_session, days=7, level="comuna", min_mentions=2)["zones"]}
+    assert z["comuna:20"]["mentions"] == 2 and z["comuna:20"]["conclusive"] and z["comuna:20"]["negative_pct"] == 100
+    assert z["comuna:21"]["mentions"] == 1 and not z["comuna:21"]["conclusive"]
+    d = queries.geo_detail(db_session, ["comuna:20", "comuna:21"], days=7)
+    assert d["mentions"] == 3 and d["subzones"][0] == {"id": "barrio:2003", "name": "Siloé", "level": "barrio", "mentions": 2}
+    c = queries.geo_zones(db_session, days=7, level="corregimiento")
+    assert [r["id"] for r in c["zones"]] == ["corregimiento:53"]
+
+
+def test_sentiment_parser_reads_the_place_hint():
+    from src.sentiment import _parse_payload
+    r = _parse_payload('{"label": "negative", "score": -0.4, "topic": "agua", "lugar": "barrio Siloé"}', "m")
+    assert r.place_hint == "barrio Siloé"
+    assert _parse_payload('{"label": "neutral", "score": 0}', "m").place_hint == ""
