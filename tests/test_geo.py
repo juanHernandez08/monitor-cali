@@ -126,5 +126,6 @@ def test_social_comments_inherit_the_zone_of_the_full_parent_post(db_session):
 
 def test_article_less_barrio_names_and_campaign_regions():
     # "Comuneros" son dos barrios oficiales (I y II) en comunas distintas: solo se puede afirmar Cali
-    assert "barrio:" not in " ".join(ids("barrio Comuneros, Cali")) and "municipio:76001" in ids("barrio Comuneros, Cali")    assert ids("Más policía en el oriente de Cali") == {"comuna:13", "comuna:14", "comuna:15", "comuna:16", "comuna:21"}
+    assert "barrio:" not in " ".join(ids("barrio Comuneros, Cali")) and "municipio:76001" in ids("barrio Comuneros, Cali")
+    assert ids("Más policía en el oriente de Cali") == {"comuna:13", "comuna:14", "comuna:15", "comuna:16", "comuna:21"}
     assert ids("Comuneros firmes") == set()  # sin "barrio" delante no cuenta
