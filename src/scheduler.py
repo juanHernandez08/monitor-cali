@@ -22,8 +22,8 @@ from src.connectors.youtube import YouTubeConnector
 from src.db import get_session
 from src.enrich import enrich_pending
 from src.models import Run, Source, SourceType
-from src.pipeline import ingest, score_pending
-from src.sentiment import build_sentiment_engine
+from src.pipeline import backfill_place_hints, ingest, score_pending
+from src.sentiment import OllamaSentimentEngine, build_sentiment_engine
 from sqlalchemy import func
 
 log = logging.getLogger(__name__)
@@ -400,6 +400,12 @@ def job_score():
         n = score_pending(s, engine, limit=20)
         if n:
             log.info("score: %d clasificadas", n)
+        # Con la cola al día, el tiempo libre de la IA del PC se usa para leer el "lugar" de menciones
+        # viejas (mapa territorial). Nunca con Claude: costaría créditos por ~10.000 menciones.
+        if n < 20 and isinstance(engine, OllamaSentimentEngine):
+            p = backfill_place_hints(s, engine, limit=12)
+            if p:
+                log.info("lugar: %d menciones antiguas releídas", p)
         alerted = notify.check_negative_mentions(s)
         if alerted:
             log.info("notify: %d menciones negativas avisadas", alerted)

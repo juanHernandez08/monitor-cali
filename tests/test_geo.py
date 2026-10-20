@@ -129,3 +129,36 @@ def test_article_less_barrio_names_and_campaign_regions():
     assert "barrio:" not in " ".join(ids("barrio Comuneros, Cali")) and "municipio:76001" in ids("barrio Comuneros, Cali")
     assert ids("Más policía en el oriente de Cali") == {"comuna:13", "comuna:14", "comuna:15", "comuna:16", "comuna:21"}
     assert ids("Comuneros firmes") == set()  # sin "barrio" delante no cuenta
+
+
+def test_backfill_place_hints_only_sets_the_place_and_recomputes_the_zone(db_session):
+    from src.models import MentionPlace
+    from src.pipeline import backfill_place_hints
+    from src.sentiment import SentimentResult
+    from src.models import SentimentLabel
+
+    class Fake:
+        calls = 0
+        def score(self, text, candidate=None, city=False):
+            Fake.calls += 1
+            return SentimentResult(label=SentimentLabel.POSITIVE, score=0.9, topic="otro tema", model="x", place_hint="La Paz")
+
+    m = _mention(db_session, "Balacera anoche, dos heridos", ext="bf1")  # place_hint None: clasificada antes del campo
+    assert backfill_place_hints(db_session, Fake(), limit=5) == 1
+    db_session.refresh(m)
+    assert m.sentiment.place_hint == "La Paz" and m.sentiment.label.name == "NEGATIVE" and m.sentiment.topic == "agua"
+    assert db_session.query(MentionPlace).filter_by(mention_id=m.id).one().place_id == "barrio:0214"
+    assert backfill_place_hints(db_session, Fake(), limit=5) == 0 and Fake.calls == 1  # ya no queda pendiente
+
+
+def test_backfill_place_hints_stops_when_the_llm_is_down(db_session):
+    from src.pipeline import backfill_place_hints
+
+    class Down:
+        def score(self, *a, **k):
+            raise RuntimeError("PC apagado")
+
+    m = _mention(db_session, "Huecos", ext="bf2")
+    assert backfill_place_hints(db_session, Down(), limit=5) == 0
+    db_session.refresh(m)
+    assert m.sentiment.place_hint is None

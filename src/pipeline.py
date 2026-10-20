@@ -232,6 +232,30 @@ def score_pending(session, engine, limit: int = 20) -> int:
     return scored
 
 
+def backfill_place_hints(session, engine, limit: int = 10) -> int:
+    """Pide el campo "lugar" al LLM para menciones clasificadas antes de que existiera (2026-10-20) y
+    recalcula su zona. Solo guarda `place_hint`: label, score, tema, emoción, etc. ya revisados no se
+    tocan. De la más reciente a la más vieja (lo reciente es lo que más se mira en el mapa). Devuelve
+    cuántas procesó; se detiene al primer fallo (PC del cliente apagado) para reintentar después."""
+    pending = (session.query(Mention).join(SentimentScore)
+               .filter(Mention.relevant.is_(True), SentimentScore.place_hint.is_(None),
+                       SentimentScore.model != "regla")
+               .order_by(Mention.fetched_at.desc()).limit(limit).all())
+    done = 0
+    for mention in pending:
+        try:
+            result = engine.score(context_text(mention), candidate=mention.candidate.name,
+                                  city=mention.candidate.kind == "city")
+        except Exception:
+            log.exception("backfill de lugar falló para mention %s", mention.id)
+            break
+        mention.sentiment.place_hint = getattr(result, "place_hint", "") or ""
+        assign_places(session, mention)
+        session.commit()
+        done += 1
+    return done
+
+
 def run_pipeline(session, source, connector: Connector, sentiment_engine) -> int:
     """Compatibilidad: ingesta + scoring en un paso."""
     count = ingest(session, source, connector)
