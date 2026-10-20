@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Globe2, Layers, MapPinned, MousePointerClick, Info } from "lucide-react";
+import { Globe2, Info, Layers, MapPinned, Maximize2, Minus, MousePointerClick, Plus } from "lucide-react";
 import { useApp } from "../lib/app";
 import { useApi } from "../lib/useApi";
 import { fmtNum } from "../lib/format";
@@ -36,7 +36,8 @@ function useShapes(names) {
       .then((arr) => alive && setData(Object.fromEntries(names.map((n, i) => [n, arr[i]]))));
     return () => { alive = false; };
   }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
-  return data;
+  // al pasar de Colombia a Cali, el estado aún trae las formas anteriores: no se entregan hasta tener las pedidas
+  return data && names.every((n) => data[n]) ? data : null;
 }
 
 /* Proyección equirectangular corregida por latitud: para una ciudad (o un país) es suficiente y no
@@ -58,6 +59,106 @@ function makeProjection(features, width = 1000) {
     return { x: cx, y: cy };
   };
   return { width, height: Math.max(1, height), path, centroid };
+}
+
+/* ---------- zoom y arrastre (rueda, pellizco, botones) ----------
+   Se transforma un <g> en unidades del SVG. Un arrastre de más de 5 px no cuenta como clic (no
+   cambia la selección). Sin zoom, en el teléfono el dedo sigue desplazando la página (touch-action
+   pan-y); con zoom, el dedo mueve el mapa. */
+const MAX_ZOOM = 14;
+function usePanZoom(width, height, resetKey) {
+  const svgRef = useRef(null);
+  const [t, setT] = useState({ k: 1, x: 0, y: 0 });
+  const pointers = useRef(new Map());
+  const gesture = useRef(null);
+  const moved = useRef(false);
+  useEffect(() => setT({ k: 1, x: 0, y: 0 }), [resetKey, width, height]);
+
+  const clamp = (n) => {
+    const k = Math.min(MAX_ZOOM, Math.max(1, n.k));
+    return { k, x: Math.min(0, Math.max(width - width * k, n.x)), y: Math.min(0, Math.max(height - height * k, n.y)) };
+  };
+  const toSvg = (cx, cy) => {
+    const r = svgRef.current.getBoundingClientRect();
+    return [((cx - r.left) * width) / r.width, ((cy - r.top) * height) / r.height];
+  };
+  const zoomAt = (px, py, factor) => setT((p) => {
+    const k = Math.min(MAX_ZOOM, Math.max(1, p.k * factor));
+    const f = k / p.k;
+    return clamp({ k, x: px - (px - p.x) * f, y: py - (py - p.y) * f });
+  });
+
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg) return undefined;
+    const onWheel = (e) => {
+      e.preventDefault();
+      const [px, py] = toSvg(e.clientX, e.clientY);
+      zoomAt(px, py, e.deltaY < 0 ? 1.25 : 1 / 1.25);
+    };
+    svg.addEventListener("wheel", onWheel, { passive: false });
+    return () => svg.removeEventListener("wheel", onWheel);
+  }); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const onPointerDown = (e) => {
+    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    moved.current = false;
+    gesture.current = { start: { x: e.clientX, y: e.clientY }, last: { x: e.clientX, y: e.clientY }, dist: null };
+    const move = (ev) => {
+      if (!pointers.current.has(ev.pointerId)) return;
+      pointers.current.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+      const pts = [...pointers.current.values()];
+      const g = gesture.current;
+      if (pts.length >= 2) {  // pellizco
+        const d = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+        if (g.dist) {
+          const [px, py] = toSvg((pts[0].x + pts[1].x) / 2, (pts[0].y + pts[1].y) / 2);
+          zoomAt(px, py, d / g.dist);
+        }
+        g.dist = d;
+        moved.current = true;
+        return;
+      }
+      if (Math.hypot(ev.clientX - g.start.x, ev.clientY - g.start.y) > 5) moved.current = true;
+      const r = svgRef.current.getBoundingClientRect();
+      const dx = ((ev.clientX - g.last.x) * width) / r.width, dy = ((ev.clientY - g.last.y) * height) / r.height;
+      g.last = { x: ev.clientX, y: ev.clientY };
+      setT((p) => (p.k > 1 ? clamp({ k: p.k, x: p.x + dx, y: p.y + dy }) : p));
+    };
+    const up = (ev) => {
+      pointers.current.delete(ev.pointerId);
+      if (gesture.current) gesture.current.dist = null;
+      if (!pointers.current.size) {
+        window.removeEventListener("pointermove", move);
+        window.removeEventListener("pointerup", up);
+        window.removeEventListener("pointercancel", up);
+      }
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
+  };
+  const onClickCapture = (e) => {
+    if (moved.current) { e.stopPropagation(); e.preventDefault(); moved.current = false; }
+  };
+  const btn = (factor) => zoomAt(width / 2, height / 2, factor);
+  return {
+    t, svgRef,
+    svgProps: { ref: svgRef, onPointerDown, onClickCapture, style: { touchAction: t.k > 1 ? "none" : "pan-y", cursor: t.k > 1 ? "grab" : undefined } },
+    transform: `translate(${t.x.toFixed(1)} ${t.y.toFixed(1)}) scale(${t.k.toFixed(3)})`,
+    zoomIn: () => btn(1.6), zoomOut: () => btn(1 / 1.6), reset: () => setT({ k: 1, x: 0, y: 0 }),
+  };
+}
+
+function ZoomControls({ pz }) {
+  const b = "grid size-8 place-items-center rounded-lg bg-white text-slate-700 shadow ring-1 ring-slate-200 hover:bg-slate-50 disabled:opacity-40";
+  return (
+    <div className="absolute right-2 top-2 z-10 grid gap-1">
+      <button type="button" className={b} onClick={pz.zoomIn} disabled={pz.t.k >= MAX_ZOOM} aria-label="Acercar"><Plus className="size-4" /></button>
+      <button type="button" className={b} onClick={pz.zoomOut} disabled={pz.t.k <= 1} aria-label="Alejar"><Minus className="size-4" /></button>
+      <button type="button" className={b} onClick={pz.reset} disabled={pz.t.k <= 1} aria-label="Ver todo el mapa"><Maximize2 className="size-4" /></button>
+    </div>
+  );
 }
 
 /* ---------- escalas de color (una sola tonalidad, de claro a oscuro) ---------- */
@@ -88,6 +189,8 @@ function CityMap({ shapes, zonesBy, mode, detail, showRural, selected, isSelecte
   const fineZones = detail === "barrios" ? zonesBy.barrio : zonesBy.comuna;
   const maxOf = (zs) => Math.max(1, ...Object.values(zs || {}).map((z) => z.mentions));
   const max = Math.max(maxOf(fineZones), showRural ? maxOf(zonesBy.corregimiento) : 1);
+  const pz = usePanZoom(proj.width, proj.height, showRural);
+  const k = pz.t.k;
 
   const fill = (f, zs) => {
     const z = zs?.[f.properties.id];
@@ -105,25 +208,35 @@ function CityMap({ shapes, zonesBy, mode, detail, showRural, selected, isSelecte
   const layer = (features, zs, cls) => features.map((f) => (
     <path key={f.properties.id} d={proj.path(f.geometry)} fill={fill(f, zs)} tabIndex={0} role="button" aria-label={f.properties.name}
       className={cx("cursor-pointer outline-none transition-opacity duration-200 hover:brightness-105 focus-visible:stroke-slate-900", cls, dimmed(f) && "opacity-20")}
-      stroke="#fff" strokeWidth={detail === "barrios" && cls === "fine" ? 0.6 : 1.4}
+      stroke="#fff" strokeWidth={detail === "barrios" && cls === "fine" ? 0.6 : 1.4} vectorEffect="non-scaling-stroke"
       onClick={(e) => onPick(f.properties.id, f.properties.parent, e)} onKeyDown={(e) => e.key === "Enter" && onPick(f.properties.id, f.properties.parent, e)}
       onMouseMove={(e) => move(e, f, zs)} onMouseLeave={() => setTip(null)} />
   ));
 
   return (
     <div ref={box} className="relative">
-      <svg viewBox={`0 0 ${proj.width} ${proj.height}`} className="block h-auto max-h-[78vh] w-full" role="img" aria-label="Mapa de Cali por zonas">
+      <ZoomControls pz={pz} />
+      <svg viewBox={`0 0 ${proj.width} ${proj.height}`} className="block h-auto max-h-[78vh] w-full overflow-hidden rounded-xl select-none" role="img" aria-label="Mapa de Cali por zonas" {...pz.svgProps}>
+        <g transform={pz.transform}>
         {showRural && layer(shapes.corregimientos.features, zonesBy.corregimiento, "rural")}
         {layer(fine, fineZones, "fine")}
         {detail === "barrios" && shapes.comunas.features.map((f) => (
-          <path key={f.properties.id} d={proj.path(f.geometry)} fill="none" stroke="#1d2330" strokeOpacity={dimmed(f) ? 0.15 : 0.55} strokeWidth={1.6} pointerEvents="none" />
+          <path key={f.properties.id} d={proj.path(f.geometry)} fill="none" stroke="#1d2330" strokeOpacity={dimmed(f) ? 0.15 : 0.55} strokeWidth={1.6} vectorEffect="non-scaling-stroke" pointerEvents="none" />
         ))}
         {shapes.comunas.features.map((f) => {
           const c = proj.centroid(f.geometry);
           return <text key={f.properties.id} x={c.x} y={c.y} textAnchor="middle" dominantBaseline="central" pointerEvents="none"
-            className={cx("select-none fill-slate-900 text-[22px] font-bold transition-opacity", dimmed(f) && "opacity-25")}
-            style={{ paintOrder: "stroke", stroke: "rgba(255,255,255,.85)", strokeWidth: 4 }}>{f.properties.id.split(":")[1].replace(/^0/, "")}</text>;
+            className={cx("select-none fill-slate-900 font-bold transition-opacity", dimmed(f) && "opacity-25")}
+            style={{ fontSize: 22 / Math.sqrt(k), paintOrder: "stroke", stroke: "rgba(255,255,255,.85)", strokeWidth: 4 / Math.sqrt(k) }}>{f.properties.id.split(":")[1].replace(/^0/, "")}</text>;
         })}
+        {detail === "barrios" && k >= 4 && shapes.barrios.features.map((f) => {
+          // con bastante zoom, el nombre de cada barrio
+          const c = proj.centroid(f.geometry);
+          return <text key={`n-${f.properties.id}`} x={c.x} y={c.y + 16 / k} textAnchor="middle" pointerEvents="none"
+            className={cx("select-none fill-slate-700", dimmed(f) && "opacity-25")}
+            style={{ fontSize: 24 / k, paintOrder: "stroke", stroke: "rgba(255,255,255,.9)", strokeWidth: 3 / k }}>{f.properties.name}</text>;
+        })}
+        </g>
       </svg>
       {tip && (
         <div className="pointer-events-none absolute z-10 max-w-[260px] -translate-x-1/2 -translate-y-[115%] rounded-lg bg-slate-900 px-3 py-2 text-xs leading-snug text-white shadow-lg"
@@ -134,6 +247,7 @@ function CityMap({ shapes, zonesBy, mode, detail, showRural, selected, isSelecte
         </div>
       )}
       <Legend mode={mode} max={max} minMentions={minMentions} />
+      <p className="mt-1 text-[11px] text-slate-500">Acerca con la rueda del mouse, pellizcando o con «+»; arrastra para moverte. Con zoom en «Barrios» aparecen sus nombres.</p>
     </div>
   );
 }
@@ -143,17 +257,21 @@ function ColombiaMap({ shapes, zones, selected, onPick }) {
   const box = useRef(null);
   const proj = useMemo(() => makeProjection(shapes.departamentos.features, 800), [shapes]);
   const max = Math.max(1, ...Object.values(zones).map((z) => z.mentions));
+  const pz = usePanZoom(proj.width, proj.height, "co");
   return (
-    <div ref={box} className="relative">
-      <svg viewBox={`0 0 ${proj.width} ${proj.height}`} className="mx-auto block h-auto max-h-[78vh] w-full max-w-[560px]" role="img" aria-label="Mapa de Colombia por departamento">
+    <div ref={box} className="relative mx-auto max-w-[560px]">
+      <ZoomControls pz={pz} />
+      <svg viewBox={`0 0 ${proj.width} ${proj.height}`} className="block h-auto max-h-[78vh] w-full overflow-hidden rounded-xl select-none" role="img" aria-label="Mapa de Colombia por departamento" {...pz.svgProps}>
+        <g transform={pz.transform}>
         {shapes.departamentos.features.map((f) => {
           const z = zones[f.properties.id];
-          return <path key={f.properties.id} d={proj.path(f.geometry)} fill={z ? step(Math.log1p(z.mentions), Math.log1p(max), BLUES) : NO_DATA} stroke="#fff" strokeWidth={1.2}
+          return <path key={f.properties.id} d={proj.path(f.geometry)} fill={z ? step(Math.log1p(z.mentions), Math.log1p(max), BLUES) : NO_DATA} stroke="#fff" strokeWidth={1.2} vectorEffect="non-scaling-stroke"
             className={cx("cursor-pointer transition-opacity hover:brightness-105", selected && selected !== f.properties.id && "opacity-30")}
             onClick={() => onPick(f.properties.id)}
             onMouseMove={(e) => { const r = box.current.getBoundingClientRect(); setTip({ x: e.clientX - r.left, y: e.clientY - r.top, name: f.properties.name, z }); }}
             onMouseLeave={() => setTip(null)} />;
         })}
+        </g>
       </svg>
       {tip && (
         <div className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-[115%] rounded-lg bg-slate-900 px-3 py-2 text-xs text-white shadow-lg" style={{ left: tip.x, top: tip.y }}>
