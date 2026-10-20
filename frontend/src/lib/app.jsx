@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { clearCache } from "./cache";
 
-export const TABS = ["resumen", "candidatos", "publicaciones", "meta", "analisis", "ciudad", "historico", "agenda", "reporte"];
+export const TABS = ["resumen", "candidatos", "publicaciones", "meta", "analisis", "ciudad", "mapa", "historico", "agenda", "reporte"];
 export const PERIODS = [[1, "24 h"], [7, "7 días"], [30, "30 días"], [60, "60 días"], [90, "90 días"], [180, "180 días"]];
 
 const AppCtx = createContext(null);
