@@ -55,17 +55,18 @@ function ActiveChips({ f, set, facets }) {
   );
 }
 
-export function ZoneDetail({ ids, title, days, color }) {
+export function ZoneDetail({ ids, title, days, color, candidateId }) {
   const [f, setF] = useState(EMPTY_F);
   const [view, setView] = useState("tema");
   const [sort, setSort] = useState("recent");
   const [limit, setLimit] = useState(PAGE);
   const idsKey = ids.join(",");
-  useEffect(() => { setF(EMPTY_F); setLimit(PAGE); }, [idsKey]);
+  useEffect(() => { setF(EMPTY_F); setLimit(PAGE); }, [idsKey, candidateId]);
   const set = (next) => { setF(next); setLimit(PAGE); };
 
   const qs = new URLSearchParams({ days: String(days), ids: idsKey, sort, limit: String(view === "lista" ? limit : 1) });
   Object.entries(f).forEach(([k, v]) => v && qs.set(k, v));
+  if (candidateId) qs.set("candidate_id", candidateId);
   if (view === "tema") qs.set("group", "category");
   const api = useApi(ids.length ? `/api/geo/detail?${qs}` : null);
   // al cambiar un filtro o pedir más, se sigue viendo lo anterior (atenuado) en vez de un esqueleto

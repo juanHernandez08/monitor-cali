@@ -314,10 +314,15 @@ export default function Mapa() {
   const [selDpto, setSelDpto] = useState(null);
 
   const shapes = useShapes(scope === "cali" ? ["comunas", "barrios", "corregimientos"] : ["departamentos"]);
-  const zc = useApi(`/api/geo/zones?days=${days}&level=comuna`);
-  const zb = useApi(scope === "cali" ? `/api/geo/zones?days=${days}&level=barrio` : null);
-  const zr = useApi(scope === "cali" ? `/api/geo/zones?days=${days}&level=corregimiento` : null);
-  const zd = useApi(scope === "colombia" ? `/api/geo/zones?days=${days}&level=departamento` : null);
+  // «De quién se habla»: toda la conversación o solo lo que se dice de un candidato (por defecto, todo)
+  const candList = useApi("/api/social/candidates");
+  const [cand, setCand] = useState("");
+  const candQ = cand ? `&candidate_id=${cand}` : "";
+  const candName = (candList.data || []).find((c) => String(c.candidate_id) === cand)?.name;
+  const zc = useApi(`/api/geo/zones?days=${days}&level=comuna${candQ}`);
+  const zb = useApi(scope === "cali" ? `/api/geo/zones?days=${days}&level=barrio${candQ}` : null);
+  const zr = useApi(scope === "cali" ? `/api/geo/zones?days=${days}&level=corregimiento${candQ}` : null);
+  const zd = useApi(scope === "colombia" ? `/api/geo/zones?days=${days}&level=departamento${candQ}` : null);
   const by = (r) => Object.fromEntries((r.data?.zones || []).map((z) => [z.id, z]));
   const zonesBy = { comuna: by(zc), barrio: by(zb), corregimiento: by(zr) };
   const cov = zc.data?.coverage;
@@ -366,7 +371,7 @@ export default function Mapa() {
     <div className="grid gap-5">
       <Intro icon={MapPinned} title="De qué zona se habla">
         <p>Cada publicación, comentario o nota se ubica en la comuna, barrio, corregimiento o vereda que <b>nombra</b> (o, si es un comentario, en la del video o publicación que comenta). Mide <b>de qué zona se habla</b>, no desde dónde escribe la gente: las redes no entregan esa ubicación, y nunca se ubica a una persona. Los límites son los oficiales de Planeación (IDESC, Acuerdo 0636 de 2026).</p>
-        {cov && <p className="mt-2 rounded-lg bg-white/10 px-3 py-2 text-white">En este período, <b>{fmtNum(cov.located_in_cali)} de {fmtNum(cov.mentions)} menciones ({cov.located_pct} %)</b> nombran una zona concreta de Cali. El mapa se lee con esa base: es lo que la conversación dice de cada zona, no una encuesta.</p>}
+        {cov && <p className="mt-2 rounded-lg bg-white/10 px-3 py-2 text-white">En este período, <b>{fmtNum(cov.located_in_cali)} de {fmtNum(cov.mentions)} menciones ({cov.located_pct} %)</b> nombran una zona concreta de Cali{candName ? <> y hablan de <b>{candName}</b></> : null}. El mapa se lee con esa base: es lo que la conversación dice de cada zona, no una encuesta.</p>}
       </Intro>
 
       <Panel icon={Layers} title={scope === "cali" ? "Mapa de Cali" : "Mapa de Colombia"}
@@ -375,6 +380,9 @@ export default function Mapa() {
           : "Menciones por departamento. El Valle concentra casi todo: el monitor escucha a Cali."}
         actions={<>
           <Segmented size="sm" value={scope} onChange={(v) => { setScope(v); setSelDpto(null); }} options={[["cali", "Cali", MapPinned], ["colombia", "Colombia", Globe2]]} label="Alcance" />
+          <Select value={cand} onChange={setCand} label="De quién se habla"
+            options={[["", "Toda la conversación"], ...(candList.data || []).filter((c) => !c.is_councilor).map((c) => [String(c.candidate_id), `Solo ${c.name}`]),
+              ...(candList.data || []).filter((c) => c.is_councilor).map((c) => [String(c.candidate_id), `Solo ${c.name} (concejal)`])]} />
           {scope === "cali" && <Select value={group} onChange={changeGroup} label="Agrupar" options={[["nucleo", "Agrupar por núcleo"], ["comuna", "Zona por zona"], ["custom", "Grupo personalizado"]]} />}
         </>}>
         {scope === "cali" ? (
@@ -421,8 +429,8 @@ export default function Mapa() {
       {scope === "cali" && !selected && (
         <Reading><Info className="mr-1 inline size-4" />Elige un núcleo, una zona o arma un grupo para ver sus menciones, temas y emociones.</Reading>
       )}
-      {scope === "cali" && <ZoneDetail ids={selIds} title={selTitle} days={days} color={selColor} />}
-      {scope === "colombia" && selDpto && <ZoneDetail ids={[selDpto]} title={by(zd)[selDpto]?.name || "Departamento"} days={days} />}
+      {scope === "cali" && <ZoneDetail ids={selIds} title={candName ? `${selTitle} · ${candName}` : selTitle} days={days} color={selColor} candidateId={cand} />}
+      {scope === "colombia" && selDpto && <ZoneDetail ids={[selDpto]} title={by(zd)[selDpto]?.name || "Departamento"} days={days} candidateId={cand} />}
     </div>
   );
 }
