@@ -37,6 +37,19 @@ _LEVEL_OF_TRIGGER = (("barrio", "barrio"), ("b/", "barrio"), ("urbaniz", "barrio
 REGIONS = {"distrito de aguablanca": ["13", "14", "15", "21"], "aguablanca": ["13", "14", "15", "21"]}
 
 
+# Fútbol: "Deportes Tolima", "Junior de Barranquilla" o una tabla de posiciones ("2. tolima 16 pts")
+# no hablan de esos lugares. Los nombres de equipo se borran antes de buscar, y en un texto claramente
+# deportivo no se cuentan municipios ni departamentos (sí las zonas de Cali: "hinchas en Siloé").
+_TEAMS = re.compile(r"\b(deportes tolima|deportivo pereira|atletico bucaramanga|independiente medellin|"
+                    r"atletico nacional|junior de barranquilla|junior fc|boyaca chico|once caldas|deportivo pasto|"
+                    r"deportes quindio|cucuta deportivo|alianza valledupar|alianza fc|aguilas doradas|"
+                    r"union magdalena|jaguares de cordoba|real cartagena|patriotas boyaca|america de cali|"
+                    r"deportivo cali|atletico huila|llaneros fc|fortaleza ceif|real santander|internacional de bogota|"
+                    r"tigres fc|orsomarso|boca juniors de cali|atletico fc|bogota fc|leones fc|real cundinamarca)\b")
+_SPORTS = re.compile(r"\b(liga betplay|betplay|futbol|partido|gol(es)?|hinchas?|entrenador|tecnico|delantero|"
+                     r"arquero|fecha \d+|\d+ pts|clasico|estadio|torneo|campeonato|dimayor|convocatoria)\b")
+
+
 def norm(text: str) -> str:
     t = unicodedata.normalize("NFKD", text or "")
     t = "".join(c for c in t if not unicodedata.combining(c)).lower()
@@ -101,6 +114,8 @@ def locate(text: str) -> list[dict]:
     auditar por qué se ubicó ahí)."""
     places, by_variant, rx = _index()
     t = norm(text)
+    sports = len(set(m.group(0) for m in _SPORTS.finditer(t))) >= 2
+    t = _TEAMS.sub(" ", t)
     found: dict[str, str] = {}
     # un nombre ambiguo con "barrio"/"vereda" delante puede ser de OTRO municipio ("vereda La Esperanza"
     # en una operación militar del Cauca): solo cuenta si el texto habla de Cali
@@ -129,6 +144,8 @@ def locate(text: str) -> list[dict]:
         if not cands:
             continue
         pid = _resolve(cands, trig.group(1) if trig else None)
+        if pid and sports and places[pid]["level"] in ("municipio", "departamento"):
+            continue
         if pid:
             found.setdefault(pid, v)
 

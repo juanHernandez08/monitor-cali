@@ -22,7 +22,7 @@ def test_ambiguous_names_need_a_barrio_trigger_and_to_be_about_cali():
 def test_trigger_word_picks_the_level_and_cities_win_over_homonym_barrios():
     assert "barrio:0214" in ids("Balacera en el barrio La Paz de Cali")
     assert "corregimiento:63" in ids("corregimiento La Paz, Cali")
-    assert ids("Junior de Barranquilla") == {"municipio:08001"}  # no el barrio Los Parques - Barranquilla
+    assert ids("El alcalde viajó a Barranquilla") == {"municipio:08001"}  # no el barrio Los Parques - Barranquilla
     assert "municipio:11001" in ids("En Bogotá")
 
 
@@ -98,3 +98,10 @@ def test_sentiment_parser_reads_the_place_hint():
     r = _parse_payload('{"label": "negative", "score": -0.4, "topic": "agua", "lugar": "barrio Siloé"}', "m")
     assert r.place_hint == "barrio Siloé"
     assert _parse_payload('{"label": "neutral", "score": 0}', "m").place_hint == ""
+
+
+def test_football_teams_and_standings_are_not_places():
+    assert ids("Deportes Tolima empató con el Junior de Barranquilla") == set()
+    assert ids("Tabla de la liga BetPlay: 1. América 20 pts, 2. Tolima 16 pts, 3. Medellín 15 pts") == set()
+    assert "barrio:2003" in ids("Los hinchas celebraron el gol en Siloé, Cali")
+    assert "departamento:73" in ids("Lluvias fuertes en el Tolima y el Huila")
