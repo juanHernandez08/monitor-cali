@@ -10,3 +10,4 @@ monitor.db-wal
 monitor.db-shm
 frontend/node_modules/
 src/static/app/
+data/geo_raw/

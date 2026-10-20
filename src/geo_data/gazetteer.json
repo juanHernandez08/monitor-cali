@@ -1,0 +1,8310 @@
+{
+"source": "IDESC Cali (Acuerdo 0636 de 2026) + DANE Divipola 2018",
+"places": [
+{
+"id": "comuna:01",
+"level": "comuna",
+"code": "01",
+"name": "Comuna 1",
+"parent": "76001",
+"variants": []
+},
+{
+"id": "comuna:02",
+"level": "comuna",
+"code": "02",
+"name": "Comuna 2",
+"parent": "76001",
+"variants": []
+},
+{
+"id": "comuna:03",
+"level": "comuna",
+"code": "03",
+"name": "Comuna 3",
+"parent": "76001",
+"variants": []
+},
+{
+"id": "comuna:04",
+"level": "comuna",
+"code": "04",
+"name": "Comuna 4",
+"parent": "76001",
+"variants": []
+},
+{
+"id": "comuna:05",
+"level": "comuna",
+"code": "05",
+"name": "Comuna 5",
+"parent": "76001",
+"variants": []
+},
+{
+"id": "comuna:06",
+"level": "comuna",
+"code": "06",
+"name": "Comuna 6",
+"parent": "76001",
+"variants": []
+},
+{
+"id": "comuna:07",
+"level": "comuna",
+"code": "07",
+"name": "Comuna 7",
+"parent": "76001",
+"variants": []
+},
+{
+"id": "comuna:08",
+"level": "comuna",
+"code": "08",
+"name": "Comuna 8",
+"parent": "76001",
+"variants": []
+},
+{
+"id": "comuna:09",
+"level": "comuna",
+"code": "09",
+"name": "Comuna 9",
+"parent": "76001",
+"variants": []
+},
+{
+"id": "comuna:10",
+"level": "comuna",
+"code": "10",
+"name": "Comuna 10",
+"parent": "76001",
+"variants": []
+},
+{
+"id": "comuna:11",
+"level": "comuna",
+"code": "11",
+"name": "Comuna 11",
+"parent": "76001",
+"variants": []
+},
+{
+"id": "comuna:12",
+"level": "comuna",
+"code": "12",
+"name": "Comuna 12",
+"parent": "76001",
+"variants": []
+},
+{
+"id": "comuna:13",
+"level": "comuna",
+"code": "13",
+"name": "Comuna 13",
+"parent": "76001",
+"variants": []
+},
+{
+"id": "comuna:14",
+"level": "comuna",
+"code": "14",
+"name": "Comuna 14",
+"parent": "76001",
+"variants": []
+},
+{
+"id": "comuna:15",
+"level": "comuna",
+"code": "15",
+"name": "Comuna 15",
+"parent": "76001",
+"variants": []
+},
+{
+"id": "comuna:16",
+"level": "comuna",
+"code": "16",
+"name": "Comuna 16",
+"parent": "76001",
+"variants": []
+},
+{
+"id": "comuna:17",
+"level": "comuna",
+"code": "17",
+"name": "Comuna 17",
+"parent": "76001",
+"variants": []
+},
+{
+"id": "comuna:18",
+"level": "comuna",
+"code": "18",
+"name": "Comuna 18",
+"parent": "76001",
+"variants": []
+},
+{
+"id": "comuna:19",
+"level": "comuna",
+"code": "19",
+"name": "Comuna 19",
+"parent": "76001",
+"variants": []
+},
+{
+"id": "comuna:20",
+"level": "comuna",
+"code": "20",
+"name": "Comuna 20",
+"parent": "76001",
+"variants": []
+},
+{
+"id": "comuna:21",
+"level": "comuna",
+"code": "21",
+"name": "Comuna 21",
+"parent": "76001",
+"variants": []
+},
+{
+"id": "comuna:22",
+"level": "comuna",
+"code": "22",
+"name": "Comuna 22",
+"parent": "76001",
+"variants": []
+},
+{
+"id": "barrio:0216",
+"level": "barrio",
+"code": "0216",
+"name": "Menga",
+"category": "Barrio",
+"parent": "comuna:02",
+"variants": [
+{
+"text": "menga",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:0603",
+"level": "barrio",
+"code": "0603",
+"name": "Paso del Comercio",
+"category": "Barrio",
+"parent": "comuna:06",
+"variants": [
+{
+"text": "paso del comercio",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0222",
+"level": "barrio",
+"code": "0222",
+"name": "Urbanización La Flora",
+"category": "Barrio",
+"parent": "comuna:02",
+"variants": [
+{
+"text": "urbanizacion la flora",
+"ambiguous": false
+},
+{
+"text": "la flora",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:0614",
+"level": "barrio",
+"code": "0614",
+"name": "San Luis II",
+"category": "Barrio",
+"parent": "comuna:06",
+"variants": [
+{
+"text": "san luis ii",
+"ambiguous": false
+},
+{
+"text": "san luis",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1408",
+"level": "barrio",
+"code": "1408",
+"name": "Los Naranjos I",
+"category": "Barrio",
+"parent": "comuna:14",
+"variants": [
+{
+"text": "los naranjos i",
+"ambiguous": false
+},
+{
+"text": "los naranjos",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1710",
+"level": "barrio",
+"code": "1710",
+"name": "Mayapan - Las Vegas",
+"category": "Barrio",
+"parent": "comuna:17",
+"variants": [
+{
+"text": "mayapan - las vegas",
+"ambiguous": false
+},
+{
+"text": "las vegas",
+"ambiguous": true
+},
+{
+"text": "mayapan",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0223",
+"level": "barrio",
+"code": "0223",
+"name": "Sector Altos de Menga",
+"category": "Sector",
+"parent": "comuna:02",
+"variants": [
+{
+"text": "sector altos de menga",
+"ambiguous": false
+},
+{
+"text": "altos de menga",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:0220",
+"level": "barrio",
+"code": "0220",
+"name": "Urbanización La Merced",
+"category": "Barrio",
+"parent": "comuna:02",
+"variants": [
+{
+"text": "urbanizacion la merced",
+"ambiguous": false
+},
+{
+"text": "la merced",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0217",
+"level": "barrio",
+"code": "0217",
+"name": "Ciudad Los Álamos",
+"category": "Barrio",
+"parent": "comuna:02",
+"variants": [
+{
+"text": "ciudad los alamos",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0610",
+"level": "barrio",
+"code": "0610",
+"name": "Ciudadela Floralia",
+"category": "Barrio",
+"parent": "comuna:06",
+"variants": [
+{
+"text": "ciudadela floralia",
+"ambiguous": false
+},
+{
+"text": "floralia",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:0508",
+"level": "barrio",
+"code": "0508",
+"name": "Villa del Sol",
+"category": "Barrio",
+"parent": "comuna:05",
+"variants": [
+{
+"text": "villa del sol",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0615",
+"level": "barrio",
+"code": "0615",
+"name": "Urbanización Calimio",
+"category": "Barrio",
+"parent": "comuna:06",
+"variants": [
+{
+"text": "urbanizacion calimio",
+"ambiguous": false
+},
+{
+"text": "calimio",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:0212",
+"level": "barrio",
+"code": "0212",
+"name": "La Flora",
+"category": "Barrio",
+"parent": "comuna:02",
+"variants": [
+{
+"text": "la flora",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:0616",
+"level": "barrio",
+"code": "0616",
+"name": "Puente del Comercio",
+"category": "Barrio",
+"parent": "comuna:06",
+"variants": [
+{
+"text": "puente del comercio",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0611",
+"level": "barrio",
+"code": "0611",
+"name": "Los Alcázares Segunda Etapa",
+"category": "Barrio",
+"parent": "comuna:06",
+"variants": [
+{
+"text": "los alcazares segunda etapa",
+"ambiguous": false
+},
+{
+"text": "los alcazares",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:0421",
+"level": "barrio",
+"code": "0421",
+"name": "Calima",
+"category": "Barrio",
+"parent": "comuna:04",
+"variants": [
+{
+"text": "calima",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0219",
+"level": "barrio",
+"code": "0219",
+"name": "Brisas de los Álamos",
+"category": "Barrio",
+"parent": "comuna:02",
+"variants": [
+{
+"text": "brisas de los alamos",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0506",
+"level": "barrio",
+"code": "0506",
+"name": "Metropolitano del Norte",
+"category": "Barrio",
+"parent": "comuna:05",
+"variants": [
+{
+"text": "metropolitano del norte",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0215",
+"level": "barrio",
+"code": "0215",
+"name": "El Bosque",
+"category": "Barrio",
+"parent": "comuna:02",
+"variants": [
+{
+"text": "el bosque",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0613",
+"level": "barrio",
+"code": "0613",
+"name": "Fonaviemcali",
+"category": "Barrio",
+"parent": "comuna:06",
+"variants": [
+{
+"text": "fonaviemcali",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:1204",
+"level": "barrio",
+"code": "1204",
+"name": "Alfonso Barberena A.",
+"category": "Barrio",
+"parent": "comuna:12",
+"variants": [
+{
+"text": "alfonso barberena a.",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0213",
+"level": "barrio",
+"code": "0213",
+"name": "La Campiña",
+"category": "Barrio",
+"parent": "comuna:02",
+"variants": [
+{
+"text": "la campina",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0221",
+"level": "barrio",
+"code": "0221",
+"name": "Vipasa",
+"category": "Barrio",
+"parent": "comuna:02",
+"variants": [
+{
+"text": "vipasa",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:0601",
+"level": "barrio",
+"code": "0601",
+"name": "San Luis",
+"category": "Barrio",
+"parent": "comuna:06",
+"variants": [
+{
+"text": "san luis",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0420",
+"level": "barrio",
+"code": "0420",
+"name": "Flora Industrial",
+"category": "Barrio",
+"parent": "comuna:04",
+"variants": [
+{
+"text": "flora industrial",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0214",
+"level": "barrio",
+"code": "0214",
+"name": "La Paz",
+"category": "Barrio",
+"parent": "comuna:02",
+"variants": [
+{
+"text": "la paz",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0606",
+"level": "barrio",
+"code": "0606",
+"name": "Petecuy Segunda Etapa",
+"category": "Barrio",
+"parent": "comuna:06",
+"variants": [
+{
+"text": "petecuy segunda etapa",
+"ambiguous": false
+},
+{
+"text": "petecuy",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:0511",
+"level": "barrio",
+"code": "0511",
+"name": "Torres de Comfandi",
+"category": "Barrio",
+"parent": "comuna:05",
+"variants": [
+{
+"text": "torres de comfandi",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:0505",
+"level": "barrio",
+"code": "0505",
+"name": "Chiminangos Primera Etapa",
+"category": "Barrio",
+"parent": "comuna:05",
+"variants": [
+{
+"text": "chiminangos primera etapa",
+"ambiguous": false
+},
+{
+"text": "chiminangos",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1104",
+"level": "barrio",
+"code": "1104",
+"name": "La Esperanza",
+"category": "Barrio",
+"parent": "comuna:11",
+"variants": [
+{
+"text": "la esperanza",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0507",
+"level": "barrio",
+"code": "0507",
+"name": "Los Parques - Barranquilla",
+"category": "Barrio",
+"parent": "comuna:05",
+"variants": [
+{
+"text": "los parques - barranquilla",
+"ambiguous": false
+},
+{
+"text": "barranquilla",
+"ambiguous": true
+},
+{
+"text": "los parques",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0504",
+"level": "barrio",
+"code": "0504",
+"name": "Chiminangos Segunda Etapa",
+"category": "Barrio",
+"parent": "comuna:05",
+"variants": [
+{
+"text": "chiminangos segunda etapa",
+"ambiguous": false
+},
+{
+"text": "chiminangos",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0708",
+"level": "barrio",
+"code": "0708",
+"name": "Los Pinos",
+"category": "Barrio",
+"parent": "comuna:07",
+"variants": [
+{
+"text": "los pinos",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0418",
+"level": "barrio",
+"code": "0418",
+"name": "Olaya Herrera",
+"category": "Barrio",
+"parent": "comuna:04",
+"variants": [
+{
+"text": "olaya herrera",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0405",
+"level": "barrio",
+"code": "0405",
+"name": "Manzanares",
+"category": "Barrio",
+"parent": "comuna:04",
+"variants": [
+{
+"text": "manzanares",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0218",
+"level": "barrio",
+"code": "0218",
+"name": "Chipichape",
+"category": "Barrio",
+"parent": "comuna:02",
+"variants": [
+{
+"text": "chipichape",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:0617",
+"level": "barrio",
+"code": "0617",
+"name": "Portada de Comfandi - Las Encinas",
+"category": "Barrio",
+"parent": "comuna:06",
+"variants": [
+{
+"text": "portada de comfandi - las encinas",
+"ambiguous": false
+},
+{
+"text": "portada de comfandi",
+"ambiguous": false
+},
+{
+"text": "las encinas",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0609",
+"level": "barrio",
+"code": "0609",
+"name": "Petecuy Tercera Etapa",
+"category": "Barrio",
+"parent": "comuna:06",
+"variants": [
+{
+"text": "petecuy tercera etapa",
+"ambiguous": false
+},
+{
+"text": "petecuy",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:0415",
+"level": "barrio",
+"code": "0415",
+"name": "Evaristo García",
+"category": "Barrio",
+"parent": "comuna:04",
+"variants": [
+{
+"text": "evaristo garcia",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0413",
+"level": "barrio",
+"code": "0413",
+"name": "La Isla",
+"category": "Barrio",
+"parent": "comuna:04",
+"variants": [
+{
+"text": "la isla",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1819",
+"level": "barrio",
+"code": "1819",
+"name": "Altos de Santa Elena",
+"category": "Barrio",
+"parent": "comuna:18",
+"variants": [
+{
+"text": "altos de santa elena",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:0414",
+"level": "barrio",
+"code": "0414",
+"name": "Marco Fidel Suárez",
+"category": "Barrio",
+"parent": "comuna:04",
+"variants": [
+{
+"text": "marco fidel suarez",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0210",
+"level": "barrio",
+"code": "0210",
+"name": "Santa Mónica",
+"category": "Barrio",
+"parent": "comuna:02",
+"variants": [
+{
+"text": "santa monica",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0803",
+"level": "barrio",
+"code": "0803",
+"name": "Saavedra Galindo",
+"category": "Barrio",
+"parent": "comuna:08",
+"variants": [
+{
+"text": "saavedra galindo",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0211",
+"level": "barrio",
+"code": "0211",
+"name": "Prados del Norte",
+"category": "Barrio",
+"parent": "comuna:02",
+"variants": [
+{
+"text": "prados del norte",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0607",
+"level": "barrio",
+"code": "0607",
+"name": "La Rivera Primera Etapa",
+"category": "Barrio",
+"parent": "comuna:06",
+"variants": [
+{
+"text": "la rivera primera etapa",
+"ambiguous": false
+},
+{
+"text": "la rivera",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:0503",
+"level": "barrio",
+"code": "0503",
+"name": "Los Guayacanes",
+"category": "Barrio",
+"parent": "comuna:05",
+"variants": [
+{
+"text": "los guayacanes",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0209",
+"level": "barrio",
+"code": "0209",
+"name": "San Vicente",
+"category": "Barrio",
+"parent": "comuna:02",
+"variants": [
+{
+"text": "san vicente",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0605",
+"level": "barrio",
+"code": "0605",
+"name": "Petecuy Primera Etapa",
+"category": "Barrio",
+"parent": "comuna:06",
+"variants": [
+{
+"text": "petecuy primera etapa",
+"ambiguous": false
+},
+{
+"text": "petecuy",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:0422",
+"level": "barrio",
+"code": "0422",
+"name": "La Alianza",
+"category": "Barrio",
+"parent": "comuna:04",
+"variants": [
+{
+"text": "la alianza",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0412",
+"level": "barrio",
+"code": "0412",
+"name": "Guillermo Valencia",
+"category": "Barrio",
+"parent": "comuna:04",
+"variants": [
+{
+"text": "guillermo valencia",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0509",
+"level": "barrio",
+"code": "0509",
+"name": "Paseo de Los Almendros",
+"category": "Barrio",
+"parent": "comuna:05",
+"variants": [
+{
+"text": "paseo de los almendros",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:0502",
+"level": "barrio",
+"code": "0502",
+"name": "Los Andes",
+"category": "Barrio",
+"parent": "comuna:05",
+"variants": [
+{
+"text": "los andes",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0408",
+"level": "barrio",
+"code": "0408",
+"name": "Sultana - Berlín - San Francisco",
+"category": "Barrio",
+"parent": "comuna:04",
+"variants": [
+{
+"text": "sultana - berlin - san francisco",
+"ambiguous": false
+},
+{
+"text": "san francisco",
+"ambiguous": true
+},
+{
+"text": "sultana",
+"ambiguous": true
+},
+{
+"text": "berlin",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0411",
+"level": "barrio",
+"code": "0411",
+"name": "Ignacio Rengifo",
+"category": "Barrio",
+"parent": "comuna:04",
+"variants": [
+{
+"text": "ignacio rengifo",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0501",
+"level": "barrio",
+"code": "0501",
+"name": "El Sena",
+"category": "Barrio",
+"parent": "comuna:05",
+"variants": [
+{
+"text": "el sena",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0410",
+"level": "barrio",
+"code": "0410",
+"name": "Popular",
+"category": "Barrio",
+"parent": "comuna:04",
+"variants": [
+{
+"text": "popular",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0407",
+"level": "barrio",
+"code": "0407",
+"name": "Fátima",
+"category": "Barrio",
+"parent": "comuna:04",
+"variants": [
+{
+"text": "fatima",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1102",
+"level": "barrio",
+"code": "1102",
+"name": "Maracaibo",
+"category": "Barrio",
+"parent": "comuna:11",
+"variants": [
+{
+"text": "maracaibo",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0417",
+"level": "barrio",
+"code": "0417",
+"name": "Bolivariano",
+"category": "Barrio",
+"parent": "comuna:04",
+"variants": [
+{
+"text": "bolivariano",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0510",
+"level": "barrio",
+"code": "0510",
+"name": "Los Andes B - La Riviera",
+"category": "Barrio",
+"parent": "comuna:05",
+"variants": [
+{
+"text": "los andes b - la riviera",
+"ambiguous": false
+},
+{
+"text": "los andes b",
+"ambiguous": false
+},
+{
+"text": "la riviera",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0208",
+"level": "barrio",
+"code": "0208",
+"name": "Versalles",
+"category": "Barrio",
+"parent": "comuna:02",
+"variants": [
+{
+"text": "versalles",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0104",
+"level": "barrio",
+"code": "0104",
+"name": "Aguacatal",
+"category": "Barrio",
+"parent": "comuna:01",
+"variants": [
+{
+"text": "aguacatal",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:0713",
+"level": "barrio",
+"code": "0713",
+"name": "Fepicol",
+"category": "Barrio",
+"parent": "comuna:07",
+"variants": [
+{
+"text": "fepicol",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:0419",
+"level": "barrio",
+"code": "0419",
+"name": "Unidad Residencial Bueno Madrid",
+"category": "Barrio",
+"parent": "comuna:04",
+"variants": [
+{
+"text": "unidad residencial bueno madrid",
+"ambiguous": false
+},
+{
+"text": "bueno madrid",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0406",
+"level": "barrio",
+"code": "0406",
+"name": "Salomia",
+"category": "Barrio",
+"parent": "comuna:04",
+"variants": [
+{
+"text": "salomia",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:0402",
+"level": "barrio",
+"code": "0402",
+"name": "Santander",
+"category": "Barrio",
+"parent": "comuna:04",
+"variants": [
+{
+"text": "santander",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1930",
+"level": "barrio",
+"code": "1930",
+"name": "Cañaveral",
+"category": "Barrio",
+"parent": "comuna:19",
+"variants": [
+{
+"text": "canaveral",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0701",
+"level": "barrio",
+"code": "0701",
+"name": "Alfonso Lopez Pumarejo 1a Etapa",
+"category": "Barrio",
+"parent": "comuna:07",
+"variants": [
+{
+"text": "alfonso lopez pumarejo 1a etapa",
+"ambiguous": false
+},
+{
+"text": "alfonso lopez pumarejo",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0103",
+"level": "barrio",
+"code": "0103",
+"name": "Patio Bonito",
+"category": "Barrio",
+"parent": "comuna:01",
+"variants": [
+{
+"text": "patio bonito",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0709",
+"level": "barrio",
+"code": "0709",
+"name": "San Marino",
+"category": "Barrio",
+"parent": "comuna:07",
+"variants": [
+{
+"text": "san marino",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0908",
+"level": "barrio",
+"code": "0908",
+"name": "Belalcázar",
+"category": "Barrio",
+"parent": "comuna:09",
+"variants": [
+{
+"text": "belalcazar",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0416",
+"level": "barrio",
+"code": "0416",
+"name": "La Esmeralda",
+"category": "Barrio",
+"parent": "comuna:04",
+"variants": [
+{
+"text": "la esmeralda",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:0404",
+"level": "barrio",
+"code": "0404",
+"name": "Las Delicias",
+"category": "Barrio",
+"parent": "comuna:04",
+"variants": [
+{
+"text": "las delicias",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0423",
+"level": "barrio",
+"code": "0423",
+"name": "Sector Industria de Licores",
+"category": "Sector",
+"parent": "comuna:04",
+"variants": [
+{
+"text": "sector industria de licores",
+"ambiguous": false
+},
+{
+"text": "industria de licores",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0710",
+"level": "barrio",
+"code": "0710",
+"name": "Las Ceibas",
+"category": "Barrio",
+"parent": "comuna:07",
+"variants": [
+{
+"text": "las ceibas",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0102",
+"level": "barrio",
+"code": "0102",
+"name": "Vista Hermosa",
+"category": "Barrio",
+"parent": "comuna:01",
+"variants": [
+{
+"text": "vista hermosa",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0812",
+"level": "barrio",
+"code": "0812",
+"name": "Atanasio Girardot",
+"category": "Barrio",
+"parent": "comuna:08",
+"variants": [
+{
+"text": "atanasio girardot",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0711",
+"level": "barrio",
+"code": "0711",
+"name": "Sector Base Aérea",
+"category": "Sector",
+"parent": "comuna:07",
+"variants": [
+{
+"text": "sector base aerea",
+"ambiguous": false
+},
+{
+"text": "base aerea",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0313",
+"level": "barrio",
+"code": "0313",
+"name": "El Manantial",
+"category": "Barrio",
+"parent": "comuna:03",
+"variants": [
+{
+"text": "el manantial",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0712",
+"level": "barrio",
+"code": "0712",
+"name": "Sector Parque de la Caña",
+"category": "Sector",
+"parent": "comuna:07",
+"variants": [
+{
+"text": "sector parque de la cana",
+"ambiguous": false
+},
+{
+"text": "parque de la cana",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:2008",
+"level": "barrio",
+"code": "2008",
+"name": "Pueblo Joven",
+"category": "Barrio",
+"parent": "comuna:20",
+"variants": [
+{
+"text": "pueblo joven",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1118",
+"level": "barrio",
+"code": "1118",
+"name": "San Pedro Claver",
+"category": "Barrio",
+"parent": "comuna:11",
+"variants": [
+{
+"text": "san pedro claver",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0403",
+"level": "barrio",
+"code": "0403",
+"name": "Porvenir",
+"category": "Barrio",
+"parent": "comuna:04",
+"variants": [
+{
+"text": "porvenir",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0206",
+"level": "barrio",
+"code": "0206",
+"name": "Centenario",
+"category": "Barrio",
+"parent": "comuna:02",
+"variants": [
+{
+"text": "centenario",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0207",
+"level": "barrio",
+"code": "0207",
+"name": "Granada",
+"category": "Barrio",
+"parent": "comuna:02",
+"variants": [
+{
+"text": "granada",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0314",
+"level": "barrio",
+"code": "0314",
+"name": "El Piloto",
+"category": "Barrio",
+"parent": "comuna:03",
+"variants": [
+{
+"text": "el piloto",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0204",
+"level": "barrio",
+"code": "0204",
+"name": "Normandía",
+"category": "Barrio",
+"parent": "comuna:02",
+"variants": [
+{
+"text": "normandia",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0101",
+"level": "barrio",
+"code": "0101",
+"name": "Terrón Colorado",
+"category": "Barrio",
+"parent": "comuna:01",
+"variants": [
+{
+"text": "terron colorado",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:0702",
+"level": "barrio",
+"code": "0702",
+"name": "Alfonso Lopez Pumarejo 2a Etapa",
+"category": "Barrio",
+"parent": "comuna:07",
+"variants": [
+{
+"text": "alfonso lopez pumarejo 2a etapa",
+"ambiguous": false
+},
+{
+"text": "alfonso lopez pumarejo",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0201",
+"level": "barrio",
+"code": "0201",
+"name": "Santa Rita",
+"category": "Barrio",
+"parent": "comuna:02",
+"variants": [
+{
+"text": "santa rita",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:2002",
+"level": "barrio",
+"code": "2002",
+"name": "Belisario Caicedo",
+"category": "Barrio",
+"parent": "comuna:20",
+"variants": [
+{
+"text": "belisario caicedo",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0910",
+"level": "barrio",
+"code": "0910",
+"name": "Barrio Obrero",
+"category": "Barrio",
+"parent": "comuna:09",
+"variants": [
+{
+"text": "barrio obrero",
+"ambiguous": false
+},
+{
+"text": "obrero",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0312",
+"level": "barrio",
+"code": "0312",
+"name": "San Nicolás",
+"category": "Barrio",
+"parent": "comuna:03",
+"variants": [
+{
+"text": "san nicolas",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0310",
+"level": "barrio",
+"code": "0310",
+"name": "Ciudad Paraíso",
+"category": "Barrio",
+"parent": "comuna:03",
+"variants": [
+{
+"text": "ciudad paraiso",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1115",
+"level": "barrio",
+"code": "1115",
+"name": "José Holguín Garcés",
+"category": "Barrio",
+"parent": "comuna:11",
+"variants": [
+{
+"text": "jose holguin garces",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0401",
+"level": "barrio",
+"code": "0401",
+"name": "Jorge Isaacs",
+"category": "Barrio",
+"parent": "comuna:04",
+"variants": [
+{
+"text": "jorge isaacs",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0818",
+"level": "barrio",
+"code": "0818",
+"name": "Urbanización La Nueva Base",
+"category": "Barrio",
+"parent": "comuna:08",
+"variants": [
+{
+"text": "urbanizacion la nueva base",
+"ambiguous": false
+},
+{
+"text": "la nueva base",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:0205",
+"level": "barrio",
+"code": "0205",
+"name": "Juanambú",
+"category": "Barrio",
+"parent": "comuna:02",
+"variants": [
+{
+"text": "juanambu",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:0703",
+"level": "barrio",
+"code": "0703",
+"name": "Alfonso Lopez Pumarejo 3a Etapa",
+"category": "Barrio",
+"parent": "comuna:07",
+"variants": [
+{
+"text": "alfonso lopez pumarejo 3a etapa",
+"ambiguous": false
+},
+{
+"text": "alfonso lopez pumarejo",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0809",
+"level": "barrio",
+"code": "0809",
+"name": "Industrial",
+"category": "Barrio",
+"parent": "comuna:08",
+"variants": [
+{
+"text": "industrial",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0311",
+"level": "barrio",
+"code": "0311",
+"name": "San Pedro",
+"category": "Barrio",
+"parent": "comuna:03",
+"variants": [
+{
+"text": "san pedro",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0202",
+"level": "barrio",
+"code": "0202",
+"name": "Santa Teresita",
+"category": "Barrio",
+"parent": "comuna:02",
+"variants": [
+{
+"text": "santa teresita",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0808",
+"level": "barrio",
+"code": "0808",
+"name": "Municipal",
+"category": "Barrio",
+"parent": "comuna:08",
+"variants": [
+{
+"text": "municipal",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:2115",
+"level": "barrio",
+"code": "2115",
+"name": "Ciudadela Río Cauca",
+"category": "Barrio",
+"parent": "comuna:21",
+"variants": [
+{
+"text": "ciudadela rio cauca",
+"ambiguous": false
+},
+{
+"text": "rio cauca",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0810",
+"level": "barrio",
+"code": "0810",
+"name": "El Troncal",
+"category": "Barrio",
+"parent": "comuna:08",
+"variants": [
+{
+"text": "el troncal",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0308",
+"level": "barrio",
+"code": "0308",
+"name": "La Merced",
+"category": "Barrio",
+"parent": "comuna:03",
+"variants": [
+{
+"text": "la merced",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0815",
+"level": "barrio",
+"code": "0815",
+"name": "Villa Colombia",
+"category": "Barrio",
+"parent": "comuna:08",
+"variants": [
+{
+"text": "villa colombia",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1003",
+"level": "barrio",
+"code": "1003",
+"name": "La Libertad",
+"category": "Barrio",
+"parent": "comuna:10",
+"variants": [
+{
+"text": "la libertad",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0817",
+"level": "barrio",
+"code": "0817",
+"name": "La Base",
+"category": "Barrio",
+"parent": "comuna:08",
+"variants": [
+{
+"text": "la base",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0707",
+"level": "barrio",
+"code": "0707",
+"name": "Siete de Agosto",
+"category": "Barrio",
+"parent": "comuna:07",
+"variants": [
+{
+"text": "siete de agosto",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0814",
+"level": "barrio",
+"code": "0814",
+"name": "Chapinero",
+"category": "Barrio",
+"parent": "comuna:08",
+"variants": [
+{
+"text": "chapinero",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0813",
+"level": "barrio",
+"code": "0813",
+"name": "Santa Fé",
+"category": "Barrio",
+"parent": "comuna:08",
+"variants": [
+{
+"text": "santa fe",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0203",
+"level": "barrio",
+"code": "0203",
+"name": "Arboledas",
+"category": "Barrio",
+"parent": "comuna:02",
+"variants": [
+{
+"text": "arboledas",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0307",
+"level": "barrio",
+"code": "0307",
+"name": "Santa Rosa",
+"category": "Barrio",
+"parent": "comuna:03",
+"variants": [
+{
+"text": "santa rosa",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0802",
+"level": "barrio",
+"code": "0802",
+"name": "Simón Bolívar",
+"category": "Barrio",
+"parent": "comuna:08",
+"variants": [
+{
+"text": "simon bolivar",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0909",
+"level": "barrio",
+"code": "0909",
+"name": "Sucre",
+"category": "Barrio",
+"parent": "comuna:09",
+"variants": [
+{
+"text": "sucre",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0302",
+"level": "barrio",
+"code": "0302",
+"name": "El Peñón",
+"category": "Barrio",
+"parent": "comuna:03",
+"variants": [
+{
+"text": "el penon",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0304",
+"level": "barrio",
+"code": "0304",
+"name": "San Cayetano",
+"category": "Barrio",
+"parent": "comuna:03",
+"variants": [
+{
+"text": "san cayetano",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0315",
+"level": "barrio",
+"code": "0315",
+"name": "Navarro - La Chanca",
+"category": "Barrio",
+"parent": "comuna:03",
+"variants": [
+{
+"text": "navarro - la chanca",
+"ambiguous": false
+},
+{
+"text": "la chanca",
+"ambiguous": true
+},
+{
+"text": "navarro",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0706",
+"level": "barrio",
+"code": "0706",
+"name": "Urbanización El Ángel del Hogar",
+"category": "Barrio",
+"parent": "comuna:07",
+"variants": [
+{
+"text": "urbanizacion el angel del hogar",
+"ambiguous": false
+},
+{
+"text": "el angel del hogar",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:0816",
+"level": "barrio",
+"code": "0816",
+"name": "El Trébol",
+"category": "Barrio",
+"parent": "comuna:08",
+"variants": [
+{
+"text": "el trebol",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1402",
+"level": "barrio",
+"code": "1402",
+"name": "Alirio Mora Beltrán",
+"category": "Barrio",
+"parent": "comuna:14",
+"variants": [
+{
+"text": "alirio mora beltran",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:0303",
+"level": "barrio",
+"code": "0303",
+"name": "San Antonio",
+"category": "Barrio",
+"parent": "comuna:03",
+"variants": [
+{
+"text": "san antonio",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0811",
+"level": "barrio",
+"code": "0811",
+"name": "Las Américas",
+"category": "Barrio",
+"parent": "comuna:08",
+"variants": [
+{
+"text": "las americas",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0807",
+"level": "barrio",
+"code": "0807",
+"name": "Benjamín Herrera",
+"category": "Barrio",
+"parent": "comuna:08",
+"variants": [
+{
+"text": "benjamin herrera",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1909",
+"level": "barrio",
+"code": "1909",
+"name": "Bellavista",
+"category": "Barrio",
+"parent": "comuna:19",
+"variants": [
+{
+"text": "bellavista",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0806",
+"level": "barrio",
+"code": "0806",
+"name": "La Floresta",
+"category": "Barrio",
+"parent": "comuna:08",
+"variants": [
+{
+"text": "la floresta",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1926",
+"level": "barrio",
+"code": "1926",
+"name": "Tejares - Cristales",
+"category": "Barrio",
+"parent": "comuna:19",
+"variants": [
+{
+"text": "tejares - cristales",
+"ambiguous": false
+},
+{
+"text": "cristales",
+"ambiguous": true
+},
+{
+"text": "tejares",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0309",
+"level": "barrio",
+"code": "0309",
+"name": "San Pascual",
+"category": "Barrio",
+"parent": "comuna:03",
+"variants": [
+{
+"text": "san pascual",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0901",
+"level": "barrio",
+"code": "0901",
+"name": "Alameda",
+"category": "Barrio",
+"parent": "comuna:09",
+"variants": [
+{
+"text": "alameda",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0306",
+"level": "barrio",
+"code": "0306",
+"name": "San Juan Bosco",
+"category": "Barrio",
+"parent": "comuna:03",
+"variants": [
+{
+"text": "san juan bosco",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1202",
+"level": "barrio",
+"code": "1202",
+"name": "Asturias",
+"category": "Barrio",
+"parent": "comuna:12",
+"variants": [
+{
+"text": "asturias",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1918",
+"level": "barrio",
+"code": "1918",
+"name": "Urbanización Militar",
+"category": "Barrio",
+"parent": "comuna:19",
+"variants": [
+{
+"text": "urbanizacion militar",
+"ambiguous": false
+},
+{
+"text": "militar",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0301",
+"level": "barrio",
+"code": "0301",
+"name": "El Nacional",
+"category": "Barrio",
+"parent": "comuna:03",
+"variants": [
+{
+"text": "el nacional",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1405",
+"level": "barrio",
+"code": "1405",
+"name": "José Manuel Marroquín Segunda Etapa",
+"category": "Barrio",
+"parent": "comuna:14",
+"variants": [
+{
+"text": "jose manuel marroquin segunda etapa",
+"ambiguous": false
+},
+{
+"text": "jose manuel marroquin",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1301",
+"level": "barrio",
+"code": "1301",
+"name": "Ulpiano Lloreda",
+"category": "Barrio",
+"parent": "comuna:13",
+"variants": [
+{
+"text": "ulpiano lloreda",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1407",
+"level": "barrio",
+"code": "1407",
+"name": "Puerta del Sol",
+"category": "Barrio",
+"parent": "comuna:14",
+"variants": [
+{
+"text": "puerta del sol",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1313",
+"level": "barrio",
+"code": "1313",
+"name": "Charco Azul",
+"category": "Barrio",
+"parent": "comuna:13",
+"variants": [
+{
+"text": "charco azul",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:1207",
+"level": "barrio",
+"code": "1207",
+"name": "Nueva Floresta",
+"category": "Barrio",
+"parent": "comuna:12",
+"variants": [
+{
+"text": "nueva floresta",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:1917",
+"level": "barrio",
+"code": "1917",
+"name": "El Mortiñal",
+"category": "Barrio",
+"parent": "comuna:19",
+"variants": [
+{
+"text": "el mortinal",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:0305",
+"level": "barrio",
+"code": "0305",
+"name": "Los Libertadores",
+"category": "Barrio",
+"parent": "comuna:03",
+"variants": [
+{
+"text": "los libertadores",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0907",
+"level": "barrio",
+"code": "0907",
+"name": "Santa Mónica Belalcázar",
+"category": "Barrio",
+"parent": "comuna:09",
+"variants": [
+{
+"text": "santa monica belalcazar",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:1925",
+"level": "barrio",
+"code": "1925",
+"name": "Santa Bárbara",
+"category": "Barrio",
+"parent": "comuna:19",
+"variants": [
+{
+"text": "santa barbara",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0902",
+"level": "barrio",
+"code": "0902",
+"name": "Bretaña",
+"category": "Barrio",
+"parent": "comuna:09",
+"variants": [
+{
+"text": "bretana",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1924",
+"level": "barrio",
+"code": "1924",
+"name": "Altos de Santa Isabel",
+"category": "Barrio",
+"parent": "comuna:19",
+"variants": [
+{
+"text": "altos de santa isabel",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:1005",
+"level": "barrio",
+"code": "1005",
+"name": "Las Acacias",
+"category": "Barrio",
+"parent": "comuna:10",
+"variants": [
+{
+"text": "las acacias",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1317",
+"level": "barrio",
+"code": "1317",
+"name": "Lleras Restrepo II",
+"category": "Barrio",
+"parent": "comuna:13",
+"variants": [
+{
+"text": "lleras restrepo ii",
+"ambiguous": true
+},
+{
+"text": "lleras restrepo",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1111",
+"level": "barrio",
+"code": "1111",
+"name": "20 de Julio",
+"category": "Barrio",
+"parent": "comuna:11",
+"variants": [
+{
+"text": "20 de julio",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0904",
+"level": "barrio",
+"code": "0904",
+"name": "Guayaquil",
+"category": "Barrio",
+"parent": "comuna:09",
+"variants": [
+{
+"text": "guayaquil",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1911",
+"level": "barrio",
+"code": "1911",
+"name": "Miraflores",
+"category": "Barrio",
+"parent": "comuna:19",
+"variants": [
+{
+"text": "miraflores",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:2113",
+"level": "barrio",
+"code": "2113",
+"name": "Valle Grande",
+"category": "Barrio",
+"parent": "comuna:21",
+"variants": [
+{
+"text": "valle grande",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1015",
+"level": "barrio",
+"code": "1015",
+"name": "San Cristóbal",
+"category": "Barrio",
+"parent": "comuna:10",
+"variants": [
+{
+"text": "san cristobal",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1109",
+"level": "barrio",
+"code": "1109",
+"name": "Aguablanca",
+"category": "Barrio",
+"parent": "comuna:11",
+"variants": [
+{
+"text": "aguablanca",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:1910",
+"level": "barrio",
+"code": "1910",
+"name": "San Fernando Viejo",
+"category": "Barrio",
+"parent": "comuna:19",
+"variants": [
+{
+"text": "san fernando viejo",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:0804",
+"level": "barrio",
+"code": "0804",
+"name": "Rafael Uribe Uribe",
+"category": "Barrio",
+"parent": "comuna:08",
+"variants": [
+{
+"text": "rafael uribe uribe",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0906",
+"level": "barrio",
+"code": "0906",
+"name": "Manuel María Buenaventura",
+"category": "Barrio",
+"parent": "comuna:09",
+"variants": [
+{
+"text": "manuel maria buenaventura",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1318",
+"level": "barrio",
+"code": "1318",
+"name": "Marroquín III",
+"category": "Barrio",
+"parent": "comuna:13",
+"variants": [
+{
+"text": "marroquin iii",
+"ambiguous": true
+},
+{
+"text": "marroquin",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1212",
+"level": "barrio",
+"code": "1212",
+"name": "Bello Horizonte",
+"category": "Barrio",
+"parent": "comuna:12",
+"variants": [
+{
+"text": "bello horizonte",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0801",
+"level": "barrio",
+"code": "0801",
+"name": "Primitivo Crespo",
+"category": "Barrio",
+"parent": "comuna:08",
+"variants": [
+{
+"text": "primitivo crespo",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1310",
+"level": "barrio",
+"code": "1310",
+"name": "Villa del Lago",
+"category": "Barrio",
+"parent": "comuna:13",
+"variants": [
+{
+"text": "villa del lago",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:0805",
+"level": "barrio",
+"code": "0805",
+"name": "Santa Mónica Popular",
+"category": "Barrio",
+"parent": "comuna:08",
+"variants": [
+{
+"text": "santa monica popular",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:0905",
+"level": "barrio",
+"code": "0905",
+"name": "Aranjuez",
+"category": "Barrio",
+"parent": "comuna:09",
+"variants": [
+{
+"text": "aranjuez",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1309",
+"level": "barrio",
+"code": "1309",
+"name": "Lleras Restrepo",
+"category": "Barrio",
+"parent": "comuna:13",
+"variants": [
+{
+"text": "lleras restrepo",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1320",
+"level": "barrio",
+"code": "1320",
+"name": "Sector Laguna del Pondaje",
+"category": "Sector",
+"parent": "comuna:13",
+"variants": [
+{
+"text": "sector laguna del pondaje",
+"ambiguous": false
+},
+{
+"text": "laguna del pondaje",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:0225",
+"level": "barrio",
+"code": "0225",
+"name": "Senderos de La Flora",
+"category": "Barrio",
+"parent": "comuna:02",
+"variants": [
+{
+"text": "senderos de la flora",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:1206",
+"level": "barrio",
+"code": "1206",
+"name": "Fenalco Kennedy",
+"category": "Barrio",
+"parent": "comuna:12",
+"variants": [
+{
+"text": "fenalco kennedy",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:1210",
+"level": "barrio",
+"code": "1210",
+"name": "El Rodeo",
+"category": "Barrio",
+"parent": "comuna:12",
+"variants": [
+{
+"text": "el rodeo",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1913",
+"level": "barrio",
+"code": "1913",
+"name": "El Cedro",
+"category": "Barrio",
+"parent": "comuna:19",
+"variants": [
+{
+"text": "el cedro",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1912",
+"level": "barrio",
+"code": "1912",
+"name": "3 de Julio",
+"category": "Barrio",
+"parent": "comuna:19",
+"variants": [
+{
+"text": "3 de julio",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1306",
+"level": "barrio",
+"code": "1306",
+"name": "Ricardo Balcázar",
+"category": "Barrio",
+"parent": "comuna:13",
+"variants": [
+{
+"text": "ricardo balcazar",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:2108",
+"level": "barrio",
+"code": "2108",
+"name": "Ciudad Talanga",
+"category": "Barrio",
+"parent": "comuna:21",
+"variants": [
+{
+"text": "ciudad talanga",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:1410",
+"level": "barrio",
+"code": "1410",
+"name": "Los Naranjos II",
+"category": "Barrio",
+"parent": "comuna:14",
+"variants": [
+{
+"text": "los naranjos ii",
+"ambiguous": false
+},
+{
+"text": "los naranjos",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1110",
+"level": "barrio",
+"code": "1110",
+"name": "El Prado",
+"category": "Barrio",
+"parent": "comuna:11",
+"variants": [
+{
+"text": "el prado",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0903",
+"level": "barrio",
+"code": "0903",
+"name": "Junín",
+"category": "Barrio",
+"parent": "comuna:09",
+"variants": [
+{
+"text": "junin",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1201",
+"level": "barrio",
+"code": "1201",
+"name": "Villanueva",
+"category": "Barrio",
+"parent": "comuna:12",
+"variants": [
+{
+"text": "villanueva",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1112",
+"level": "barrio",
+"code": "1112",
+"name": "Prados de Oriente",
+"category": "Barrio",
+"parent": "comuna:11",
+"variants": [
+{
+"text": "prados de oriente",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:1933",
+"level": "barrio",
+"code": "1933",
+"name": "Sector Unidad Deportiva Jaime Aparicio",
+"category": "Sector",
+"parent": "comuna:19",
+"variants": [
+{
+"text": "sector unidad deportiva jaime aparicio",
+"ambiguous": false
+},
+{
+"text": "unidad deportiva jaime aparicio",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:1705",
+"level": "barrio",
+"code": "1705",
+"name": "Sector Ciudad Universitaria",
+"category": "Sector",
+"parent": "comuna:17",
+"variants": [
+{
+"text": "sector ciudad universitaria",
+"ambiguous": false
+},
+{
+"text": "ciudad universitaria",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1723",
+"level": "barrio",
+"code": "1723",
+"name": "Urbanización San Joaquín",
+"category": "Barrio",
+"parent": "comuna:17",
+"variants": [
+{
+"text": "urbanizacion san joaquin",
+"ambiguous": false
+},
+{
+"text": "san joaquin",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1927",
+"level": "barrio",
+"code": "1927",
+"name": "Unidad Residencial Santiago de Cali",
+"category": "Barrio",
+"parent": "comuna:19",
+"variants": [
+{
+"text": "unidad residencial santiago de cali",
+"ambiguous": false
+},
+{
+"text": "santiago de cali",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1720",
+"level": "barrio",
+"code": "1720",
+"name": "Unicentro Cali",
+"category": "Barrio",
+"parent": "comuna:17",
+"variants": [
+{
+"text": "unicentro cali",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:1804",
+"level": "barrio",
+"code": "1804",
+"name": "Meléndez",
+"category": "Barrio",
+"parent": "comuna:18",
+"variants": [
+{
+"text": "melendez",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1116",
+"level": "barrio",
+"code": "1116",
+"name": "León XIII",
+"category": "Barrio",
+"parent": "comuna:11",
+"variants": [
+{
+"text": "leon xiii",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1608",
+"level": "barrio",
+"code": "1608",
+"name": "La Alborada",
+"category": "Barrio",
+"parent": "comuna:16",
+"variants": [
+{
+"text": "la alborada",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1908",
+"level": "barrio",
+"code": "1908",
+"name": "Santa Isabel",
+"category": "Barrio",
+"parent": "comuna:19",
+"variants": [
+{
+"text": "santa isabel",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1321",
+"level": "barrio",
+"code": "1321",
+"name": "El Pondaje",
+"category": "Barrio",
+"parent": "comuna:13",
+"variants": [
+{
+"text": "el pondaje",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:1915",
+"level": "barrio",
+"code": "1915",
+"name": "Urbanización Colseguros",
+"category": "Barrio",
+"parent": "comuna:19",
+"variants": [
+{
+"text": "urbanizacion colseguros",
+"ambiguous": false
+},
+{
+"text": "colseguros",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1205",
+"level": "barrio",
+"code": "1205",
+"name": "El Paraíso",
+"category": "Barrio",
+"parent": "comuna:12",
+"variants": [
+{
+"text": "el paraiso",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:2107",
+"level": "barrio",
+"code": "2107",
+"name": "Compartir",
+"category": "Barrio",
+"parent": "comuna:21",
+"variants": [
+{
+"text": "compartir",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1004",
+"level": "barrio",
+"code": "1004",
+"name": "Santa Elena",
+"category": "Barrio",
+"parent": "comuna:10",
+"variants": [
+{
+"text": "santa elena",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1211",
+"level": "barrio",
+"code": "1211",
+"name": "Sindical",
+"category": "Barrio",
+"parent": "comuna:12",
+"variants": [
+{
+"text": "sindical",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1906",
+"level": "barrio",
+"code": "1906",
+"name": "San Fernando Nuevo",
+"category": "Barrio",
+"parent": "comuna:19",
+"variants": [
+{
+"text": "san fernando nuevo",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:1319",
+"level": "barrio",
+"code": "1319",
+"name": "Los Lagos",
+"category": "Barrio",
+"parent": "comuna:13",
+"variants": [
+{
+"text": "los lagos",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1108",
+"level": "barrio",
+"code": "1108",
+"name": "El Recuerdo",
+"category": "Barrio",
+"parent": "comuna:11",
+"variants": [
+{
+"text": "el recuerdo",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1409",
+"level": "barrio",
+"code": "1409",
+"name": "Promociones Populares B",
+"category": "Barrio",
+"parent": "comuna:14",
+"variants": [
+{
+"text": "promociones populares b",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1014",
+"level": "barrio",
+"code": "1014",
+"name": "Colseguros Andes",
+"category": "Barrio",
+"parent": "comuna:10",
+"variants": [
+{
+"text": "colseguros andes",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:2105",
+"level": "barrio",
+"code": "2105",
+"name": "Los Líderes",
+"category": "Barrio",
+"parent": "comuna:21",
+"variants": [
+{
+"text": "los lideres",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1314",
+"level": "barrio",
+"code": "1314",
+"name": "Villablanca",
+"category": "Barrio",
+"parent": "comuna:13",
+"variants": [
+{
+"text": "villablanca",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:1105",
+"level": "barrio",
+"code": "1105",
+"name": "Urbanización Boyaca",
+"category": "Barrio",
+"parent": "comuna:11",
+"variants": [
+{
+"text": "urbanizacion boyaca",
+"ambiguous": false
+},
+{
+"text": "boyaca",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1203",
+"level": "barrio",
+"code": "1203",
+"name": "Eduardo Santos",
+"category": "Barrio",
+"parent": "comuna:12",
+"variants": [
+{
+"text": "eduardo santos",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1121",
+"level": "barrio",
+"code": "1121",
+"name": "San Benito",
+"category": "Barrio",
+"parent": "comuna:11",
+"variants": [
+{
+"text": "san benito",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:2112",
+"level": "barrio",
+"code": "2112",
+"name": "Ciudadela del Rio",
+"category": "Barrio",
+"parent": "comuna:21",
+"variants": [
+{
+"text": "ciudadela del rio",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1209",
+"level": "barrio",
+"code": "1209",
+"name": "Doce de Octubre",
+"category": "Barrio",
+"parent": "comuna:12",
+"variants": [
+{
+"text": "doce de octubre",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:2106",
+"level": "barrio",
+"code": "2106",
+"name": "Desepaz Invicali",
+"category": "Barrio",
+"parent": "comuna:21",
+"variants": [
+{
+"text": "desepaz invicali",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:1106",
+"level": "barrio",
+"code": "1106",
+"name": "El Jardín",
+"category": "Barrio",
+"parent": "comuna:11",
+"variants": [
+{
+"text": "el jardin",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1208",
+"level": "barrio",
+"code": "1208",
+"name": "Julio Rincón",
+"category": "Barrio",
+"parent": "comuna:12",
+"variants": [
+{
+"text": "julio rincon",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1312",
+"level": "barrio",
+"code": "1312",
+"name": "Rodrigo Lara Bonilla",
+"category": "Barrio",
+"parent": "comuna:13",
+"variants": [
+{
+"text": "rodrigo lara bonilla",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1316",
+"level": "barrio",
+"code": "1316",
+"name": "Yira Castro",
+"category": "Barrio",
+"parent": "comuna:13",
+"variants": [
+{
+"text": "yira castro",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:1305",
+"level": "barrio",
+"code": "1305",
+"name": "Los Comuneros II Etapa",
+"category": "Barrio",
+"parent": "comuna:13",
+"variants": [
+{
+"text": "los comuneros ii etapa",
+"ambiguous": false
+},
+{
+"text": "los comuneros",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1107",
+"level": "barrio",
+"code": "1107",
+"name": "La Fortaleza",
+"category": "Barrio",
+"parent": "comuna:11",
+"variants": [
+{
+"text": "la fortaleza",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1905",
+"level": "barrio",
+"code": "1905",
+"name": "Eucarístico",
+"category": "Barrio",
+"parent": "comuna:19",
+"variants": [
+{
+"text": "eucaristico",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1009",
+"level": "barrio",
+"code": "1009",
+"name": "Cristóbal Colón",
+"category": "Barrio",
+"parent": "comuna:10",
+"variants": [
+{
+"text": "cristobal colon",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1119",
+"level": "barrio",
+"code": "1119",
+"name": "Los Conquistadores",
+"category": "Barrio",
+"parent": "comuna:11",
+"variants": [
+{
+"text": "los conquistadores",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1307",
+"level": "barrio",
+"code": "1307",
+"name": "Omar Torrijos",
+"category": "Barrio",
+"parent": "comuna:13",
+"variants": [
+{
+"text": "omar torrijos",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1406",
+"level": "barrio",
+"code": "1406",
+"name": "José Manuel Marroquín Primera Etapa",
+"category": "Barrio",
+"parent": "comuna:14",
+"variants": [
+{
+"text": "jose manuel marroquin primera etapa",
+"ambiguous": false
+},
+{
+"text": "jose manuel marroquin",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1921",
+"level": "barrio",
+"code": "1921",
+"name": "Nueva Tequendama",
+"category": "Barrio",
+"parent": "comuna:19",
+"variants": [
+{
+"text": "nueva tequendama",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1315",
+"level": "barrio",
+"code": "1315",
+"name": "Calipso",
+"category": "Barrio",
+"parent": "comuna:13",
+"variants": [
+{
+"text": "calipso",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1401",
+"level": "barrio",
+"code": "1401",
+"name": "Alfonso Bonilla Aragón",
+"category": "Barrio",
+"parent": "comuna:14",
+"variants": [
+{
+"text": "alfonso bonilla aragon",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1403",
+"level": "barrio",
+"code": "1403",
+"name": "Manuela Beltrán",
+"category": "Barrio",
+"parent": "comuna:14",
+"variants": [
+{
+"text": "manuela beltran",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:1907",
+"level": "barrio",
+"code": "1907",
+"name": "Urbanización Nueva Granada",
+"category": "Barrio",
+"parent": "comuna:19",
+"variants": [
+{
+"text": "urbanizacion nueva granada",
+"ambiguous": false
+},
+{
+"text": "nueva granada",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1122",
+"level": "barrio",
+"code": "1122",
+"name": "Primavera",
+"category": "Barrio",
+"parent": "comuna:11",
+"variants": [
+{
+"text": "primavera",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1101",
+"level": "barrio",
+"code": "1101",
+"name": "San Carlos",
+"category": "Barrio",
+"parent": "comuna:11",
+"variants": [
+{
+"text": "san carlos",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1114",
+"level": "barrio",
+"code": "1114",
+"name": "Villa del Sur",
+"category": "Barrio",
+"parent": "comuna:11",
+"variants": [
+{
+"text": "villa del sur",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:1322",
+"level": "barrio",
+"code": "1322",
+"name": "Asprosocial - Diamante",
+"category": "Barrio",
+"parent": "comuna:13",
+"variants": [
+{
+"text": "asprosocial - diamante",
+"ambiguous": false
+},
+{
+"text": "asprosocial",
+"ambiguous": true
+},
+{
+"text": "diamante",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1008",
+"level": "barrio",
+"code": "1008",
+"name": "Olímpico",
+"category": "Barrio",
+"parent": "comuna:10",
+"variants": [
+{
+"text": "olimpico",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1117",
+"level": "barrio",
+"code": "1117",
+"name": "José María Córdoba",
+"category": "Barrio",
+"parent": "comuna:11",
+"variants": [
+{
+"text": "jose maria cordoba",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1932",
+"level": "barrio",
+"code": "1932",
+"name": "Cañaveralejo Guadalupe",
+"category": "Barrio",
+"parent": "comuna:19",
+"variants": [
+{
+"text": "canaveralejo guadalupe",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:1308",
+"level": "barrio",
+"code": "1308",
+"name": "El Diamante",
+"category": "Barrio",
+"parent": "comuna:13",
+"variants": [
+{
+"text": "el diamante",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1904",
+"level": "barrio",
+"code": "1904",
+"name": "Urbanización Tequendama",
+"category": "Barrio",
+"parent": "comuna:19",
+"variants": [
+{
+"text": "urbanizacion tequendama",
+"ambiguous": false
+},
+{
+"text": "tequendama",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1304",
+"level": "barrio",
+"code": "1304",
+"name": "El Poblado II",
+"category": "Barrio",
+"parent": "comuna:13",
+"variants": [
+{
+"text": "el poblado ii",
+"ambiguous": false
+},
+{
+"text": "el poblado",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1017",
+"level": "barrio",
+"code": "1017",
+"name": "San Judas Tadeo I",
+"category": "Barrio",
+"parent": "comuna:10",
+"variants": [
+{
+"text": "san judas tadeo i",
+"ambiguous": false
+},
+{
+"text": "san judas tadeo",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1311",
+"level": "barrio",
+"code": "1311",
+"name": "Los Robles",
+"category": "Barrio",
+"parent": "comuna:13",
+"variants": [
+{
+"text": "los robles",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1916",
+"level": "barrio",
+"code": "1916",
+"name": "Los Cámbulos",
+"category": "Barrio",
+"parent": "comuna:19",
+"variants": [
+{
+"text": "los cambulos",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1903",
+"level": "barrio",
+"code": "1903",
+"name": "El Lido",
+"category": "Barrio",
+"parent": "comuna:19",
+"variants": [
+{
+"text": "el lido",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1120",
+"level": "barrio",
+"code": "1120",
+"name": "La Gran Colombia",
+"category": "Barrio",
+"parent": "comuna:11",
+"variants": [
+{
+"text": "la gran colombia",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1001",
+"level": "barrio",
+"code": "1001",
+"name": "El Dorado",
+"category": "Barrio",
+"parent": "comuna:10",
+"variants": [
+{
+"text": "el dorado",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1303",
+"level": "barrio",
+"code": "1303",
+"name": "El Poblado I",
+"category": "Barrio",
+"parent": "comuna:13",
+"variants": [
+{
+"text": "el poblado i",
+"ambiguous": false
+},
+{
+"text": "el poblado",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1604",
+"level": "barrio",
+"code": "1604",
+"name": "Antonio Nariño",
+"category": "Barrio",
+"parent": "comuna:16",
+"variants": [
+{
+"text": "antonio narino",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1011",
+"level": "barrio",
+"code": "1011",
+"name": "Departamental",
+"category": "Barrio",
+"parent": "comuna:10",
+"variants": [
+{
+"text": "departamental",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:2104",
+"level": "barrio",
+"code": "2104",
+"name": "El Remanso",
+"category": "Barrio",
+"parent": "comuna:21",
+"variants": [
+{
+"text": "el remanso",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1012",
+"level": "barrio",
+"code": "1012",
+"name": "Pasoancho",
+"category": "Barrio",
+"parent": "comuna:10",
+"variants": [
+{
+"text": "pasoancho",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:1708",
+"level": "barrio",
+"code": "1708",
+"name": "Santa Anita - La Selva",
+"category": "Barrio",
+"parent": "comuna:17",
+"variants": [
+{
+"text": "santa anita - la selva",
+"ambiguous": false
+},
+{
+"text": "santa anita",
+"ambiguous": false
+},
+{
+"text": "la selva",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1601",
+"level": "barrio",
+"code": "1601",
+"name": "Mariano Ramos",
+"category": "Barrio",
+"parent": "comuna:16",
+"variants": [
+{
+"text": "mariano ramos",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:1113",
+"level": "barrio",
+"code": "1113",
+"name": "Los Sauces - Ciudad Modelo",
+"category": "Barrio",
+"parent": "comuna:11",
+"variants": [
+{
+"text": "los sauces - ciudad modelo",
+"ambiguous": false
+},
+{
+"text": "ciudad modelo",
+"ambiguous": true
+},
+{
+"text": "los sauces",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:1103",
+"level": "barrio",
+"code": "1103",
+"name": "La Independencia",
+"category": "Barrio",
+"parent": "comuna:11",
+"variants": [
+{
+"text": "la independencia",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1302",
+"level": "barrio",
+"code": "1302",
+"name": "El Vergel",
+"category": "Barrio",
+"parent": "comuna:13",
+"variants": [
+{
+"text": "el vergel",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1803",
+"level": "barrio",
+"code": "1803",
+"name": "Los Chorros",
+"category": "Barrio",
+"parent": "comuna:18",
+"variants": [
+{
+"text": "los chorros",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:1002",
+"level": "barrio",
+"code": "1002",
+"name": "El Guabal",
+"category": "Barrio",
+"parent": "comuna:10",
+"variants": [
+{
+"text": "el guabal",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:1716",
+"level": "barrio",
+"code": "1716",
+"name": "El Limonar",
+"category": "Barrio",
+"parent": "comuna:17",
+"variants": [
+{
+"text": "el limonar",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:2103",
+"level": "barrio",
+"code": "2103",
+"name": "Calimio Desepaz",
+"category": "Barrio",
+"parent": "comuna:21",
+"variants": [
+{
+"text": "calimio desepaz",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:1404",
+"level": "barrio",
+"code": "1404",
+"name": "Las Orquídeas",
+"category": "Barrio",
+"parent": "comuna:14",
+"variants": [
+{
+"text": "las orquideas",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1815",
+"level": "barrio",
+"code": "1815",
+"name": "El Jordán",
+"category": "Barrio",
+"parent": "comuna:18",
+"variants": [
+{
+"text": "el jordan",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1506",
+"level": "barrio",
+"code": "1506",
+"name": "Mojica",
+"category": "Barrio",
+"parent": "comuna:15",
+"variants": [
+{
+"text": "mojica",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:1902",
+"level": "barrio",
+"code": "1902",
+"name": "La Cascada",
+"category": "Barrio",
+"parent": "comuna:19",
+"variants": [
+{
+"text": "la cascada",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1013",
+"level": "barrio",
+"code": "1013",
+"name": "Panamericano",
+"category": "Barrio",
+"parent": "comuna:10",
+"variants": [
+{
+"text": "panamericano",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1809",
+"level": "barrio",
+"code": "1809",
+"name": "Horizontes",
+"category": "Barrio",
+"parent": "comuna:18",
+"variants": [
+{
+"text": "horizontes",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1502",
+"level": "barrio",
+"code": "1502",
+"name": "Los Comuneros I",
+"category": "Barrio",
+"parent": "comuna:15",
+"variants": [
+{
+"text": "los comuneros i",
+"ambiguous": false
+},
+{
+"text": "los comuneros",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1503",
+"level": "barrio",
+"code": "1503",
+"name": "Laureano Gómez",
+"category": "Barrio",
+"parent": "comuna:15",
+"variants": [
+{
+"text": "laureano gomez",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1018",
+"level": "barrio",
+"code": "1018",
+"name": "San Judas Tadeo II",
+"category": "Barrio",
+"parent": "comuna:10",
+"variants": [
+{
+"text": "san judas tadeo ii",
+"ambiguous": false
+},
+{
+"text": "san judas tadeo",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1717",
+"level": "barrio",
+"code": "1717",
+"name": "Bosques del Limonar",
+"category": "Barrio",
+"parent": "comuna:17",
+"variants": [
+{
+"text": "bosques del limonar",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1928",
+"level": "barrio",
+"code": "1928",
+"name": "Unidad Residencial El Coliseo",
+"category": "Barrio",
+"parent": "comuna:19",
+"variants": [
+{
+"text": "unidad residencial el coliseo",
+"ambiguous": false
+},
+{
+"text": "el coliseo",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1603",
+"level": "barrio",
+"code": "1603",
+"name": "Unión de Vivienda Popular",
+"category": "Barrio",
+"parent": "comuna:16",
+"variants": [
+{
+"text": "union de vivienda popular",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1934",
+"level": "barrio",
+"code": "1934",
+"name": "Sector Unidad Deportiva Alberto Galindo Plaza de Toros",
+"category": "Sector",
+"parent": "comuna:19",
+"variants": [
+{
+"text": "sector unidad deportiva alberto galindo plaza de toros",
+"ambiguous": false
+},
+{
+"text": "unidad deportiva alberto galindo plaza de toros",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:1006",
+"level": "barrio",
+"code": "1006",
+"name": "Santo Domingo",
+"category": "Barrio",
+"parent": "comuna:10",
+"variants": [
+{
+"text": "santo domingo",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1718",
+"level": "barrio",
+"code": "1718",
+"name": "El Gran Limonar - Cataya",
+"category": "Barrio",
+"parent": "comuna:17",
+"variants": [
+{
+"text": "el gran limonar - cataya",
+"ambiguous": false
+},
+{
+"text": "el gran limonar",
+"ambiguous": false
+},
+{
+"text": "cataya",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1501",
+"level": "barrio",
+"code": "1501",
+"name": "El Retiro",
+"category": "Barrio",
+"parent": "comuna:15",
+"variants": [
+{
+"text": "el retiro",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1010",
+"level": "barrio",
+"code": "1010",
+"name": "La Selva",
+"category": "Barrio",
+"parent": "comuna:10",
+"variants": [
+{
+"text": "la selva",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1007",
+"level": "barrio",
+"code": "1007",
+"name": "Jorge Zawadsky",
+"category": "Barrio",
+"parent": "comuna:10",
+"variants": [
+{
+"text": "jorge zawadsky",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1817",
+"level": "barrio",
+"code": "1817",
+"name": "Sector Alto de los Chorros",
+"category": "Sector",
+"parent": "comuna:18",
+"variants": [
+{
+"text": "sector alto de los chorros",
+"ambiguous": false
+},
+{
+"text": "alto de los chorros",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:1602",
+"level": "barrio",
+"code": "1602",
+"name": "República de Israel",
+"category": "Barrio",
+"parent": "comuna:16",
+"variants": [
+{
+"text": "republica de israel",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1016",
+"level": "barrio",
+"code": "1016",
+"name": "Las Granjas",
+"category": "Barrio",
+"parent": "comuna:10",
+"variants": [
+{
+"text": "las granjas",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1923",
+"level": "barrio",
+"code": "1923",
+"name": "Camino Real - Los Fundadores",
+"category": "Barrio",
+"parent": "comuna:19",
+"variants": [
+{
+"text": "camino real - los fundadores",
+"ambiguous": false
+},
+{
+"text": "los fundadores",
+"ambiguous": true
+},
+{
+"text": "camino real",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:2109",
+"level": "barrio",
+"code": "2109",
+"name": "Sector Villamercedes I - Villa Luz - Las Garzas",
+"category": "Sector",
+"parent": "comuna:21",
+"variants": [
+{
+"text": "sector villamercedes i - villa luz - las garzas",
+"ambiguous": false
+},
+{
+"text": "sector villamercedes i",
+"ambiguous": false
+},
+{
+"text": "villamercedes i",
+"ambiguous": false
+},
+{
+"text": "villamercedes",
+"ambiguous": true
+},
+{
+"text": "las garzas",
+"ambiguous": true
+},
+{
+"text": "villa luz",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1801",
+"level": "barrio",
+"code": "1801",
+"name": "Buenos Aires",
+"category": "Barrio",
+"parent": "comuna:18",
+"variants": [
+{
+"text": "buenos aires",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1931",
+"level": "barrio",
+"code": "1931",
+"name": "Pampa Linda",
+"category": "Barrio",
+"parent": "comuna:19",
+"variants": [
+{
+"text": "pampa linda",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:2111",
+"level": "barrio",
+"code": "2111",
+"name": "Nuevo Amanecer",
+"category": "Barrio",
+"parent": "comuna:21",
+"variants": [
+{
+"text": "nuevo amanecer",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1922",
+"level": "barrio",
+"code": "1922",
+"name": "Camino Real - Joaquín Borrero Sinisterra",
+"category": "Barrio",
+"parent": "comuna:19",
+"variants": [
+{
+"text": "camino real - joaquin borrero sinisterra",
+"ambiguous": false
+},
+{
+"text": "joaquin borrero sinisterra",
+"ambiguous": true
+},
+{
+"text": "camino real",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1919",
+"level": "barrio",
+"code": "1919",
+"name": "Cuarto de Legua - Guadalupe",
+"category": "Barrio",
+"parent": "comuna:19",
+"variants": [
+{
+"text": "cuarto de legua - guadalupe",
+"ambiguous": false
+},
+{
+"text": "cuarto de legua",
+"ambiguous": false
+},
+{
+"text": "guadalupe",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1805",
+"level": "barrio",
+"code": "1805",
+"name": "Los Farallones",
+"category": "Barrio",
+"parent": "comuna:18",
+"variants": [
+{
+"text": "los farallones",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:1711",
+"level": "barrio",
+"code": "1711",
+"name": "Las Quintas de Don Simón",
+"category": "Barrio",
+"parent": "comuna:17",
+"variants": [
+{
+"text": "las quintas de don simon",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1813",
+"level": "barrio",
+"code": "1813",
+"name": "Alférez Real",
+"category": "Barrio",
+"parent": "comuna:18",
+"variants": [
+{
+"text": "alferez real",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:1504",
+"level": "barrio",
+"code": "1504",
+"name": "El Vallado",
+"category": "Barrio",
+"parent": "comuna:15",
+"variants": [
+{
+"text": "el vallado",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:2110",
+"level": "barrio",
+"code": "2110",
+"name": "Pizamos III - Las Dalias",
+"category": "Barrio",
+"parent": "comuna:21",
+"variants": [
+{
+"text": "pizamos iii - las dalias",
+"ambiguous": false
+},
+{
+"text": "pizamos iii",
+"ambiguous": false
+},
+{
+"text": "las dalias",
+"ambiguous": true
+},
+{
+"text": "pizamos",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:1715",
+"level": "barrio",
+"code": "1715",
+"name": "Cañaverales - Los Samanes",
+"category": "Barrio",
+"parent": "comuna:17",
+"variants": [
+{
+"text": "canaverales - los samanes",
+"ambiguous": false
+},
+{
+"text": "canaverales",
+"ambiguous": true
+},
+{
+"text": "los samanes",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1823",
+"level": "barrio",
+"code": "1823",
+"name": "Sector Alto Nápoles",
+"category": "Sector",
+"parent": "comuna:18",
+"variants": [
+{
+"text": "sector alto napoles",
+"ambiguous": false
+},
+{
+"text": "alto napoles",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1929",
+"level": "barrio",
+"code": "1929",
+"name": "Cañaveralejo - Seguros Patria",
+"category": "Barrio",
+"parent": "comuna:19",
+"variants": [
+{
+"text": "canaveralejo - seguros patria",
+"ambiguous": false
+},
+{
+"text": "seguros patria",
+"ambiguous": true
+},
+{
+"text": "canaveralejo",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:1802",
+"level": "barrio",
+"code": "1802",
+"name": "Caldas",
+"category": "Barrio",
+"parent": "comuna:18",
+"variants": [
+{
+"text": "caldas",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1707",
+"level": "barrio",
+"code": "1707",
+"name": "Lili",
+"category": "Barrio",
+"parent": "comuna:17",
+"variants": [
+{
+"text": "lili",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1818",
+"level": "barrio",
+"code": "1818",
+"name": "Sector Polvorines",
+"category": "Sector",
+"parent": "comuna:18",
+"variants": [
+{
+"text": "sector polvorines",
+"ambiguous": false
+},
+{
+"text": "polvorines",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:2102",
+"level": "barrio",
+"code": "2102",
+"name": "Pizamos II",
+"category": "Barrio",
+"parent": "comuna:21",
+"variants": [
+{
+"text": "pizamos ii",
+"ambiguous": false
+},
+{
+"text": "pizamos",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:1702",
+"level": "barrio",
+"code": "1702",
+"name": "Primero de Mayo",
+"category": "Barrio",
+"parent": "comuna:17",
+"variants": [
+{
+"text": "primero de mayo",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1505",
+"level": "barrio",
+"code": "1505",
+"name": "Ciudad Córdoba",
+"category": "Barrio",
+"parent": "comuna:15",
+"variants": [
+{
+"text": "ciudad cordoba",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:2009",
+"level": "barrio",
+"code": "2009",
+"name": "Cañaveralejo",
+"category": "Barrio",
+"parent": "comuna:20",
+"variants": [
+{
+"text": "canaveralejo",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:1713",
+"level": "barrio",
+"code": "1713",
+"name": "La Hacienda",
+"category": "Barrio",
+"parent": "comuna:17",
+"variants": [
+{
+"text": "la hacienda",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0512",
+"level": "barrio",
+"code": "0512",
+"name": "Villa del Prado - El Guabito",
+"category": "Barrio",
+"parent": "comuna:05",
+"variants": [
+{
+"text": "villa del prado - el guabito",
+"ambiguous": false
+},
+{
+"text": "villa del prado",
+"ambiguous": true
+},
+{
+"text": "el guabito",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1507",
+"level": "barrio",
+"code": "1507",
+"name": "El Morichal",
+"category": "Barrio",
+"parent": "comuna:15",
+"variants": [
+{
+"text": "el morichal",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:0224",
+"level": "barrio",
+"code": "0224",
+"name": "Alto Normandía",
+"category": "Barrio",
+"parent": "comuna:02",
+"variants": [
+{
+"text": "alto normandia",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:2101",
+"level": "barrio",
+"code": "2101",
+"name": "Pizamos I",
+"category": "Barrio",
+"parent": "comuna:21",
+"variants": [
+{
+"text": "pizamos i",
+"ambiguous": false
+},
+{
+"text": "pizamos",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:1605",
+"level": "barrio",
+"code": "1605",
+"name": "Brisas del Limonar",
+"category": "Barrio",
+"parent": "comuna:16",
+"variants": [
+{
+"text": "brisas del limonar",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:1816",
+"level": "barrio",
+"code": "1816",
+"name": "Sector Cuarteles de Nápoles",
+"category": "Sector",
+"parent": "comuna:18",
+"variants": [
+{
+"text": "sector cuarteles de napoles",
+"ambiguous": false
+},
+{
+"text": "cuarteles de napoles",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1822",
+"level": "barrio",
+"code": "1822",
+"name": "Sector Alto Jordán",
+"category": "Sector",
+"parent": "comuna:18",
+"variants": [
+{
+"text": "sector alto jordan",
+"ambiguous": false
+},
+{
+"text": "alto jordan",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1901",
+"level": "barrio",
+"code": "1901",
+"name": "El Refugio",
+"category": "Barrio",
+"parent": "comuna:19",
+"variants": [
+{
+"text": "el refugio",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1719",
+"level": "barrio",
+"code": "1719",
+"name": "El Gran Limonar",
+"category": "Barrio",
+"parent": "comuna:17",
+"variants": [
+{
+"text": "el gran limonar",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:1821",
+"level": "barrio",
+"code": "1821",
+"name": "Bajo Meléndez",
+"category": "Barrio",
+"parent": "comuna:18",
+"variants": [
+{
+"text": "bajo melendez",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:1714",
+"level": "barrio",
+"code": "1714",
+"name": "Los Portales - Nuevo Rey",
+"category": "Barrio",
+"parent": "comuna:17",
+"variants": [
+{
+"text": "los portales - nuevo rey",
+"ambiguous": false
+},
+{
+"text": "los portales",
+"ambiguous": true
+},
+{
+"text": "nuevo rey",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1607",
+"level": "barrio",
+"code": "1607",
+"name": "Ciudad 2000",
+"category": "Barrio",
+"parent": "comuna:16",
+"variants": [
+{
+"text": "ciudad 2000",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:1606",
+"level": "barrio",
+"code": "1606",
+"name": "Sector Vendimia",
+"category": "Sector",
+"parent": "comuna:16",
+"variants": [
+{
+"text": "sector vendimia",
+"ambiguous": false
+},
+{
+"text": "vendimia",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:2201",
+"level": "barrio",
+"code": "2201",
+"name": "Urbanización Ciudad Jardín",
+"category": "Barrio",
+"parent": "comuna:22",
+"variants": [
+{
+"text": "urbanizacion ciudad jardin",
+"ambiguous": false
+},
+{
+"text": "ciudad jardin",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:2202",
+"level": "barrio",
+"code": "2202",
+"name": "Parcelaciones Pance",
+"category": "Barrio",
+"parent": "comuna:22",
+"variants": [
+{
+"text": "parcelaciones pance",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:1722",
+"level": "barrio",
+"code": "1722",
+"name": "Prados del Limonar",
+"category": "Barrio",
+"parent": "comuna:17",
+"variants": [
+{
+"text": "prados del limonar",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:1811",
+"level": "barrio",
+"code": "1811",
+"name": "Lourdes",
+"category": "Barrio",
+"parent": "comuna:18",
+"variants": [
+{
+"text": "lourdes",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1701",
+"level": "barrio",
+"code": "1701",
+"name": "La Playa",
+"category": "Barrio",
+"parent": "comuna:17",
+"variants": [
+{
+"text": "la playa",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1712",
+"level": "barrio",
+"code": "1712",
+"name": "Ciudad Capri",
+"category": "Barrio",
+"parent": "comuna:17",
+"variants": [
+{
+"text": "ciudad capri",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:2204",
+"level": "barrio",
+"code": "2204",
+"name": "Ciudad Campestre",
+"category": "Barrio",
+"parent": "comuna:22",
+"variants": [
+{
+"text": "ciudad campestre",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1914",
+"level": "barrio",
+"code": "1914",
+"name": "Champagnat",
+"category": "Barrio",
+"parent": "comuna:19",
+"variants": [
+{
+"text": "champagnat",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0612",
+"level": "barrio",
+"code": "0612",
+"name": "Los Alcázares Tercera Etapa",
+"category": "Barrio",
+"parent": "comuna:06",
+"variants": [
+{
+"text": "los alcazares tercera etapa",
+"ambiguous": false
+},
+{
+"text": "los alcazares",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:2114",
+"level": "barrio",
+"code": "2114",
+"name": "Sector Planta de Tratamiento",
+"category": "Sector",
+"parent": "comuna:21",
+"variants": [
+{
+"text": "sector planta de tratamiento",
+"ambiguous": false
+},
+{
+"text": "planta de tratamiento",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:2005",
+"level": "barrio",
+"code": "2005",
+"name": "Belén",
+"category": "Barrio",
+"parent": "comuna:20",
+"variants": [
+{
+"text": "belen",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1706",
+"level": "barrio",
+"code": "1706",
+"name": "Caney",
+"category": "Barrio",
+"parent": "comuna:17",
+"variants": [
+{
+"text": "caney",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1807",
+"level": "barrio",
+"code": "1807",
+"name": "Francisco Eladio Ramírez",
+"category": "Barrio",
+"parent": "comuna:18",
+"variants": [
+{
+"text": "francisco eladio ramirez",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1808",
+"level": "barrio",
+"code": "1808",
+"name": "Prados del Sur",
+"category": "Barrio",
+"parent": "comuna:18",
+"variants": [
+{
+"text": "prados del sur",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1812",
+"level": "barrio",
+"code": "1812",
+"name": "Colinas del Sur",
+"category": "Barrio",
+"parent": "comuna:18",
+"variants": [
+{
+"text": "colinas del sur",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1810",
+"level": "barrio",
+"code": "1810",
+"name": "Mario Correa Rengifo",
+"category": "Barrio",
+"parent": "comuna:18",
+"variants": [
+{
+"text": "mario correa rengifo",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0604",
+"level": "barrio",
+"code": "0604",
+"name": "Los Alcázares Primera Etapa",
+"category": "Barrio",
+"parent": "comuna:06",
+"variants": [
+{
+"text": "los alcazares primera etapa",
+"ambiguous": false
+},
+{
+"text": "los alcazares",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:1703",
+"level": "barrio",
+"code": "1703",
+"name": "Ciudadela Comfandi",
+"category": "Barrio",
+"parent": "comuna:17",
+"variants": [
+{
+"text": "ciudadela comfandi",
+"ambiguous": false
+},
+{
+"text": "comfandi",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:2004",
+"level": "barrio",
+"code": "2004",
+"name": "Lleras Camargo",
+"category": "Barrio",
+"parent": "comuna:20",
+"variants": [
+{
+"text": "lleras camargo",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:2006",
+"level": "barrio",
+"code": "2006",
+"name": "Brisas de Mayo",
+"category": "Barrio",
+"parent": "comuna:20",
+"variants": [
+{
+"text": "brisas de mayo",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1721",
+"level": "barrio",
+"code": "1721",
+"name": "Ciudadela Pasoancho",
+"category": "Barrio",
+"parent": "comuna:17",
+"variants": [
+{
+"text": "ciudadela pasoancho",
+"ambiguous": false
+},
+{
+"text": "pasoancho",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:2003",
+"level": "barrio",
+"code": "2003",
+"name": "Siloé",
+"category": "Barrio",
+"parent": "comuna:20",
+"variants": [
+{
+"text": "siloe",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:2011",
+"level": "barrio",
+"code": "2011",
+"name": "Sector La Sultana",
+"category": "Sector",
+"parent": "comuna:20",
+"variants": [
+{
+"text": "sector la sultana",
+"ambiguous": false
+},
+{
+"text": "la sultana",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:2203",
+"level": "barrio",
+"code": "2203",
+"name": "Urbanización Río Lili",
+"category": "Barrio",
+"parent": "comuna:22",
+"variants": [
+{
+"text": "urbanizacion rio lili",
+"ambiguous": false
+},
+{
+"text": "rio lili",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0705",
+"level": "barrio",
+"code": "0705",
+"name": "Puerto Mallarino",
+"category": "Barrio",
+"parent": "comuna:07",
+"variants": [
+{
+"text": "puerto mallarino",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:0608",
+"level": "barrio",
+"code": "0608",
+"name": "Los Guaduales",
+"category": "Barrio",
+"parent": "comuna:06",
+"variants": [
+{
+"text": "los guaduales",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1709",
+"level": "barrio",
+"code": "1709",
+"name": "El Ingenio",
+"category": "Barrio",
+"parent": "comuna:17",
+"variants": [
+{
+"text": "el ingenio",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1814",
+"level": "barrio",
+"code": "1814",
+"name": "Nápoles",
+"category": "Barrio",
+"parent": "comuna:18",
+"variants": [
+{
+"text": "napoles",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:2007",
+"level": "barrio",
+"code": "2007",
+"name": "Tierra Blanca",
+"category": "Barrio",
+"parent": "comuna:20",
+"variants": [
+{
+"text": "tierra blanca",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:2205",
+"level": "barrio",
+"code": "2205",
+"name": "Club Campestre",
+"category": "Sector",
+"parent": "comuna:22",
+"variants": [
+{
+"text": "club campestre",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:1820",
+"level": "barrio",
+"code": "1820",
+"name": "Altos del Madrigal",
+"category": "Barrio",
+"parent": "comuna:18",
+"variants": [
+{
+"text": "altos del madrigal",
+"ambiguous": false
+}
+]
+},
+{
+"id": "barrio:2001",
+"level": "barrio",
+"code": "2001",
+"name": "El Cortijo",
+"category": "Barrio",
+"parent": "comuna:20",
+"variants": [
+{
+"text": "el cortijo",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:2010",
+"level": "barrio",
+"code": "2010",
+"name": "Venezuela",
+"category": "Barrio",
+"parent": "comuna:20",
+"variants": [
+{
+"text": "venezuela",
+"ambiguous": true
+}
+]
+},
+{
+"id": "barrio:0602",
+"level": "barrio",
+"code": "0602",
+"name": "Jorge Eliécer Gaitán",
+"category": "Barrio",
+"parent": "comuna:06",
+"variants": [
+{
+"text": "jorge eliecer gaitan",
+"ambiguous": true
+}
+]
+},
+{
+"id": "corregimiento:51",
+"level": "corregimiento",
+"code": "51",
+"name": "Navarro",
+"parent": "76001",
+"variants": [
+{
+"text": "navarro",
+"ambiguous": true
+}
+]
+},
+{
+"id": "corregimiento:52",
+"level": "corregimiento",
+"code": "52",
+"name": "El Hormiguero",
+"parent": "76001",
+"variants": [
+{
+"text": "el hormiguero",
+"ambiguous": true
+}
+]
+},
+{
+"id": "corregimiento:53",
+"level": "corregimiento",
+"code": "53",
+"name": "Pance",
+"parent": "76001",
+"variants": [
+{
+"text": "pance",
+"ambiguous": false
+}
+]
+},
+{
+"id": "corregimiento:54",
+"level": "corregimiento",
+"code": "54",
+"name": "La Buitrera",
+"parent": "76001",
+"variants": [
+{
+"text": "la buitrera",
+"ambiguous": false
+}
+]
+},
+{
+"id": "corregimiento:55",
+"level": "corregimiento",
+"code": "55",
+"name": "Villacarmelo",
+"parent": "76001",
+"variants": [
+{
+"text": "villacarmelo",
+"ambiguous": false
+}
+]
+},
+{
+"id": "corregimiento:56",
+"level": "corregimiento",
+"code": "56",
+"name": "Los Andes",
+"parent": "76001",
+"variants": [
+{
+"text": "los andes",
+"ambiguous": true
+}
+]
+},
+{
+"id": "corregimiento:57",
+"level": "corregimiento",
+"code": "57",
+"name": "Pichinde",
+"parent": "76001",
+"variants": [
+{
+"text": "pichinde",
+"ambiguous": false
+},
+{
+"text": "pichinde",
+"ambiguous": false
+}
+]
+},
+{
+"id": "corregimiento:58",
+"level": "corregimiento",
+"code": "58",
+"name": "La Leonera",
+"parent": "76001",
+"variants": [
+{
+"text": "la leonera",
+"ambiguous": true
+}
+]
+},
+{
+"id": "corregimiento:59",
+"level": "corregimiento",
+"code": "59",
+"name": "Felidia",
+"parent": "76001",
+"variants": [
+{
+"text": "felidia",
+"ambiguous": false
+}
+]
+},
+{
+"id": "corregimiento:60",
+"level": "corregimiento",
+"code": "60",
+"name": "El Saladito",
+"parent": "76001",
+"variants": [
+{
+"text": "el saladito",
+"ambiguous": false
+}
+]
+},
+{
+"id": "corregimiento:61",
+"level": "corregimiento",
+"code": "61",
+"name": "La Elvira",
+"parent": "76001",
+"variants": [
+{
+"text": "la elvira",
+"ambiguous": true
+}
+]
+},
+{
+"id": "corregimiento:62",
+"level": "corregimiento",
+"code": "62",
+"name": "La Castilla",
+"parent": "76001",
+"variants": [
+{
+"text": "la castilla",
+"ambiguous": true
+}
+]
+},
+{
+"id": "corregimiento:63",
+"level": "corregimiento",
+"code": "63",
+"name": "La Paz",
+"parent": "76001",
+"variants": [
+{
+"text": "la paz",
+"ambiguous": true
+}
+]
+},
+{
+"id": "corregimiento:64",
+"level": "corregimiento",
+"code": "64",
+"name": "Montebello",
+"parent": "76001",
+"variants": [
+{
+"text": "montebello",
+"ambiguous": true
+}
+]
+},
+{
+"id": "corregimiento:65",
+"level": "corregimiento",
+"code": "65",
+"name": "Golondrinas",
+"parent": "76001",
+"variants": [
+{
+"text": "golondrinas",
+"ambiguous": true
+}
+]
+},
+{
+"id": "vereda:6207",
+"level": "vereda",
+"code": "6207",
+"name": "El Pinar",
+"parent": "corregimiento:62",
+"variants": [
+{
+"text": "el pinar",
+"ambiguous": true
+}
+]
+},
+{
+"id": "vereda:6206",
+"level": "vereda",
+"code": "6206",
+"name": "El Futuro",
+"parent": "corregimiento:62",
+"variants": [
+{
+"text": "el futuro",
+"ambiguous": true
+}
+]
+},
+{
+"id": "vereda:6205",
+"level": "vereda",
+"code": "6205",
+"name": "Las Brisas",
+"parent": "corregimiento:62",
+"variants": [
+{
+"text": "las brisas",
+"ambiguous": true
+}
+]
+},
+{
+"id": "vereda:6201",
+"level": "vereda",
+"code": "6201",
+"name": "La Castilla (Cabecera)",
+"parent": "corregimiento:62",
+"variants": [
+{
+"text": "la castilla cabecera",
+"ambiguous": false
+}
+]
+},
+{
+"id": "vereda:6208",
+"level": "vereda",
+"code": "6208",
+"name": "Galeras",
+"parent": "corregimiento:62",
+"variants": [
+{
+"text": "galeras",
+"ambiguous": true
+}
+]
+},
+{
+"id": "vereda:6008",
+"level": "vereda",
+"code": "6008",
+"name": "El Cerezo",
+"parent": "corregimiento:60",
+"variants": [
+{
+"text": "el cerezo",
+"ambiguous": true
+}
+]
+},
+{
+"id": "vereda:6002",
+"level": "vereda",
+"code": "6002",
+"name": "San Antonio",
+"parent": "corregimiento:60",
+"variants": [
+{
+"text": "san antonio",
+"ambiguous": true
+}
+]
+},
+{
+"id": "vereda:6007",
+"level": "vereda",
+"code": "6007",
+"name": "Las Nieves",
+"parent": "corregimiento:60",
+"variants": [
+{
+"text": "las nieves",
+"ambiguous": true
+}
+]
+},
+{
+"id": "vereda:6005",
+"level": "vereda",
+"code": "6005",
+"name": "Montañuelas",
+"parent": "corregimiento:60",
+"variants": [
+{
+"text": "montanuelas",
+"ambiguous": true
+}
+]
+},
+{
+"id": "vereda:6001",
+"level": "vereda",
+"code": "6001",
+"name": "El Saladito (Cabecera)",
+"parent": "corregimiento:60",
+"variants": [
+{
+"text": "el saladito cabecera",
+"ambiguous": false
+}
+]
+},
+{
+"id": "vereda:6102",
+"level": "vereda",
+"code": "6102",
+"name": "Los Laureles",
+"parent": "corregimiento:61",
+"variants": [
+{
+"text": "los laureles",
+"ambiguous": true
+}
+]
+},
+{
+"id": "vereda:6203",
+"level": "vereda",
+"code": "6203",
+"name": "Limones",
+"parent": "corregimiento:62",
+"variants": [
+{
+"text": "limones",
+"ambiguous": true
+}
+]
+},
+{
+"id": "vereda:5403",
+"level": "vereda",
+"code": "5403",
+"name": "Bella Suiza",
+"parent": "corregimiento:54",
+"variants": [
+{
+"text": "bella suiza",
+"ambiguous": true
+}
+]
+},
+{
+"id": "vereda:5405",
+"level": "vereda",
+"code": "5405",
+"name": "La Luisa",
+"parent": "corregimiento:54",
+"variants": [
+{
+"text": "la luisa",
+"ambiguous": true
+}
+]
+},
+{
+"id": "vereda:5407",
+"level": "vereda",
+"code": "5407",
+"name": "Alto de los Mangos",
+"parent": "corregimiento:54",
+"variants": [
+{
+"text": "alto de los mangos",
+"ambiguous": true
+}
+]
+},
+{
+"id": "vereda:5410",
+"level": "vereda",
+"code": "5410",
+"name": "El Otoño",
+"parent": "corregimiento:54",
+"variants": [
+{
+"text": "el otono",
+"ambiguous": true
+}
+]
+},
+{
+"id": "vereda:5502",
+"level": "vereda",
+"code": "5502",
+"name": "La Fonda",
+"parent": "corregimiento:55",
+"variants": [
+{
+"text": "la fonda",
+"ambiguous": true
+}
+]
+},
+{
+"id": "vereda:5505",
+"level": "vereda",
+"code": "5505",
+"name": "El Carmen",
+"parent": "corregimiento:55",
+"variants": [
+{
+"text": "el carmen",
+"ambiguous": true
+}
+]
+},
+{
+"id": "vereda:5413",
+"level": "vereda",
+"code": "5413",
+"name": "Sector Club Campestre",
+"parent": "corregimiento:54",
+"variants": [
+{
+"text": "sector club campestre",
+"ambiguous": false
+},
+{
+"text": "club campestre",
+"ambiguous": true
+}
+]
+},
+{
+"id": "vereda:5402",
+"level": "vereda",
+"code": "5402",
+"name": "Acueducto La Reforma",
+"parent": "corregimiento:54",
+"variants": [
+{
+"text": "acueducto la reforma",
+"ambiguous": false
+}
+]
+},
+{
+"id": "vereda:5409",
+"level": "vereda",
+"code": "5409",
+"name": "El Rosario",
+"parent": "corregimiento:54",
+"variants": [
+{
+"text": "el rosario",
+"ambiguous": true
+}
+]
+},
+{
+"id": "vereda:5401",
+"level": "vereda",
+"code": "5401",
+"name": "La Buitrera (Cabecera)",
+"parent": "corregimiento:54",
+"variants": [
+{
+"text": "la buitrera cabecera",
+"ambiguous": false
+}
+]
+},
+{
+"id": "vereda:5411",
+"level": "vereda",
+"code": "5411",
+"name": "Parque La Bandera",
+"parent": "corregimiento:54",
+"variants": [
+{
+"text": "parque la bandera",
+"ambiguous": true
+}
+]
+},
+{
+"id": "vereda:5406",
+"level": "vereda",
+"code": "5406",
+"name": "La Riverita",
+"parent": "corregimiento:54",
+"variants": [
+{
+"text": "la riverita",
+"ambiguous": true
+}
+]
+},
+{
+"id": "vereda:6301",
+"level": "vereda",
+"code": "6301",
+"name": "La Paz (Cabecera)",
+"parent": "corregimiento:63",
+"variants": [
+{
+"text": "la paz cabecera",
+"ambiguous": false
+}
+]
+},
+{
+"id": "vereda:6303",
+"level": "vereda",
+"code": "6303",
+"name": "Lomitas",
+"parent": "corregimiento:63",
+"variants": [
+{
+"text": "lomitas",
+"ambiguous": true
+}
+]
+},
+{
+"id": "vereda:6202",
+"level": "vereda",
+"code": "6202",
+"name": "Las Palmas",
+"parent": "corregimiento:62",
+"variants": [
+{
+"text": "las palmas",
+"ambiguous": true
+}
+]
+},
+{
+"id": "vereda:6004",
+"level": "vereda",
+"code": "6004",
+"name": "San Miguel",
+"parent": "corregimiento:60",
+"variants": [
+{
+"text": "san miguel",
+"ambiguous": true
+}
+]
+},
+{
+"id": "vereda:6006",
+"level": "vereda",
+"code": "6006",
+"name": "El Palomar",
+"parent": "corregimiento:60",
+"variants": [
+{
+"text": "el palomar",
+"ambiguous": true
+}
+]
+},
+{
+"id": "vereda:6401",
+"level": "vereda",
+"code": "6401",
+"name": "Montebello (Cabecera)",
+"parent": "corregimiento:64",
+"variants": [
+{
+"text": "montebello cabecera",
+"ambiguous": false
+}
+]
+},
+{
+"id": "vereda:6402",
+"level": "vereda",
+"code": "6402",
+"name": "Campoalegre",
+"parent": "corregimiento:64",
+"variants": [
+{
+"text": "campoalegre",
+"ambiguous": true
+}
+]
+},
+{
+"id": "vereda:6502",
+"level": "vereda",
+"code": "6502",
+"name": "La María",
+"parent": "corregimiento:65",
+"variants": [
+{
+"text": "la maria",
+"ambiguous": true
+}
+]
+},
+{
+"id": "vereda:6504",
+"level": "vereda",
+"code": "6504",
+"name": "Las Tres Cruces",
+"parent": "corregimiento:65",
+"variants": [
+{
+"text": "las tres cruces",
+"ambiguous": true
+}
+]
+},
+{
+"id": "vereda:5903",
+"level": "vereda",
+"code": "5903",
+"name": "Las Nieves",
+"parent": "corregimiento:59",
+"variants": [
+{
+"text": "las nieves",
+"ambiguous": true
+}
+]
+},
+{
+"id": "vereda:5905",
+"level": "vereda",
+"code": "5905",
+"name": "Santa Helena",
+"parent": "corregimiento:59",
+"variants": [
+{
+"text": "santa helena",
+"ambiguous": true
+}
+]
+},
+{
+"id": "vereda:5902",
+"level": "vereda",
+"code": "5902",
+"name": "La Esperanza",
+"parent": "corregimiento:59",
+"variants": [
+{
+"text": "la esperanza",
+"ambiguous": true
+}
+]
+},
+{
+"id": "vereda:5901",
+"level": "vereda",
+"code": "5901",
+"name": "Felidia (Cabecera)",
+"parent": "corregimiento:59",
+"variants": [
+{
+"text": "felidia cabecera",
+"ambiguous": false
+}
+]
+},
+{
+"id": "vereda:5904",
+"level": "vereda",
+"code": "5904",
+"name": "El Diamante",
+"parent": "corregimiento:59",
+"variants": [
+{
+"text": "el diamante",
+"ambiguous": true
+}
+]
+},
+{
+"id": "vereda:5803",
+"level": "vereda",
+"code": "5803",
+"name": "El Porvenir",
+"parent": "corregimiento:58",
+"variants": [
+{
+"text": "el porvenir",
+"ambiguous": true
+}
+]
+},
+{
+"id": "vereda:5802",
+"level": "vereda",
+"code": "5802",
+"name": "El Pato",
+"parent": "corregimiento:58",
+"variants": [
+{
+"text": "el pato",
+"ambiguous": true
+}
+]
+},
+{
+"id": "vereda:5801",
+"level": "vereda",
+"code": "5801",
+"name": "La Leonera (Cabecera)",
+"parent": "corregimiento:58",
+"variants": [
+{
+"text": "la leonera cabecera",
+"ambiguous": false
+}
+]
+},
+{
+"id": "vereda:5804",
+"level": "vereda",
+"code": "5804",
+"name": "El Pajuil",
+"parent": "corregimiento:58",
+"variants": [
+{
+"text": "el pajuil",
+"ambiguous": false
+}
+]
+},
+{
+"id": "vereda:6204",
+"level": "vereda",
+"code": "6204",
+"name": "Montañitas",
+"parent": "corregimiento:62",
+"variants": [
+{
+"text": "montanitas",
+"ambiguous": true
+}
+]
+},
+{
+"id": "vereda:6501",
+"level": "vereda",
+"code": "6501",
+"name": "Golondrinas (Cabecera)",
+"parent": "corregimiento:65",
+"variants": [
+{
+"text": "golondrinas cabecera",
+"ambiguous": false
+}
+]
+},
+{
+"id": "vereda:5501",
+"level": "vereda",
+"code": "5501",
+"name": "Villacarmelo (Cabecera)",
+"parent": "corregimiento:55",
+"variants": [
+{
+"text": "villacarmelo cabecera",
+"ambiguous": false
+}
+]
+},
+{
+"id": "vereda:5412",
+"level": "vereda",
+"code": "5412",
+"name": "Los Arrayanes - Los Pinos",
+"parent": "corregimiento:54",
+"variants": [
+{
+"text": "los arrayanes - los pinos",
+"ambiguous": false
+},
+{
+"text": "los arrayanes",
+"ambiguous": true
+},
+{
+"text": "los pinos",
+"ambiguous": true
+}
+]
+},
+{
+"id": "vereda:6003",
+"level": "vereda",
+"code": "6003",
+"name": "San Pablo",
+"parent": "corregimiento:60",
+"variants": [
+{
+"text": "san pablo",
+"ambiguous": true
+}
+]
+},
+{
+"id": "vereda:6104",
+"level": "vereda",
+"code": "6104",
+"name": "Kilómetro 18",
+"parent": "corregimiento:61",
+"variants": [
+{
+"text": "kilometro 18",
+"ambiguous": true
+}
+]
+},
+{
+"id": "vereda:6009",
+"level": "vereda",
+"code": "6009",
+"name": "Zoológico - Jardín Botánico",
+"parent": "corregimiento:60",
+"variants": [
+{
+"text": "zoologico - jardin botanico",
+"ambiguous": false
+},
+{
+"text": "jardin botanico",
+"ambiguous": true
+},
+{
+"text": "zoologico",
+"ambiguous": true
+}
+]
+},
+{
+"id": "vereda:6010",
+"level": "vereda",
+"code": "6010",
+"name": "Bajo Aguacatal",
+"parent": "corregimiento:60",
+"variants": [
+{
+"text": "bajo aguacatal",
+"ambiguous": false
+}
+]
+},
+{
+"id": "vereda:5614",
+"level": "vereda",
+"code": "5614",
+"name": "Brisas de los Cristales",
+"parent": "corregimiento:56",
+"variants": [
+{
+"text": "brisas de los cristales",
+"ambiguous": false
+}
+]
+},
+{
+"id": "vereda:5615",
+"level": "vereda",
+"code": "5615",
+"name": "Atenas",
+"parent": "corregimiento:56",
+"variants": [
+{
+"text": "atenas",
+"ambiguous": true
+}
+]
+},
+{
+"id": "vereda:5611",
+"level": "vereda",
+"code": "5611",
+"name": "Pilas del Cabuyal",
+"parent": "corregimiento:56",
+"variants": [
+{
+"text": "pilas del cabuyal",
+"ambiguous": true
+}
+]
+},
+{
+"id": "vereda:5613",
+"level": "vereda",
+"code": "5613",
+"name": "Ecoparque Cristo Rey",
+"parent": "corregimiento:56",
+"variants": [
+{
+"text": "ecoparque cristo rey",
+"ambiguous": false
+}
+]
+},
+{
+"id": "vereda:5606",
+"level": "vereda",
+"code": "5606",
+"name": "Cristo Rey - La Hamaca",
+"parent": "corregimiento:56",
+"variants": [
+{
+"text": "cristo rey - la hamaca",
+"ambiguous": false
+},
+{
+"text": "cristo rey",
+"ambiguous": true
+},
+{
+"text": "la hamaca",
+"ambiguous": true
+}
+]
+},
+{
+"id": "vereda:5503",
+"level": "vereda",
+"code": "5503",
+"name": "Dos Quebradas",
+"parent": "corregimiento:55",
+"variants": [
+{
+"text": "dos quebradas",
+"ambiguous": true
+}
+]
+},
+{
+"id": "vereda:5504",
+"level": "vereda",
+"code": "5504",
+"name": "La Candelaria",
+"parent": "corregimiento:55",
+"variants": [
+{
+"text": "la candelaria",
+"ambiguous": true
+}
+]
+},
+{
+"id": "vereda:5702",
+"level": "vereda",
+"code": "5702",
+"name": "La Cajita",
+"parent": "corregimiento:57",
+"variants": [
+{
+"text": "la cajita",
+"ambiguous": true
+}
+]
+},
+{
+"id": "vereda:5506",
+"level": "vereda",
+"code": "5506",
+"name": "Alto de los Mangos",
+"parent": "corregimiento:55",
+"variants": [
+{
+"text": "alto de los mangos",
+"ambiguous": true
+}
+]
+},
+{
+"id": "vereda:5805",
+"level": "vereda",
+"code": "5805",
+"name": "La Cajita",
+"parent": "corregimiento:58",
+"variants": [
+{
+"text": "la cajita",
+"ambiguous": true
+}
+]
+},
+{
+"id": "vereda:5703",
+"level": "vereda",
+"code": "5703",
+"name": "Peñas Blancas",
+"parent": "corregimiento:57",
+"variants": [
+{
+"text": "penas blancas",
+"ambiguous": true
+}
+]
+},
+{
+"id": "vereda:6103",
+"level": "vereda",
+"code": "6103",
+"name": "Alto Aguacatal",
+"parent": "corregimiento:61",
+"variants": [
+{
+"text": "alto aguacatal",
+"ambiguous": false
+}
+]
+},
+{
+"id": "vereda:6101",
+"level": "vereda",
+"code": "6101",
+"name": "La Elvira (Cabecera)",
+"parent": "corregimiento:61",
+"variants": [
+{
+"text": "la elvira cabecera",
+"ambiguous": false
+}
+]
+},
+{
+"id": "vereda:6302",
+"level": "vereda",
+"code": "6302",
+"name": "Villa del Rosario",
+"parent": "corregimiento:63",
+"variants": [
+{
+"text": "villa del rosario",
+"ambiguous": true
+}
+]
+},
+{
+"id": "vereda:5701",
+"level": "vereda",
+"code": "5701",
+"name": "Pichindé (Cabecera)",
+"parent": "corregimiento:57",
+"variants": [
+{
+"text": "pichinde cabecera",
+"ambiguous": false
+}
+]
+},
+{
+"id": "vereda:5203",
+"level": "vereda",
+"code": "5203",
+"name": "La Paila",
+"parent": "corregimiento:52",
+"variants": [
+{
+"text": "la paila",
+"ambiguous": true
+}
+]
+},
+{
+"id": "vereda:5201",
+"level": "vereda",
+"code": "5201",
+"name": "El Hormiguero (Cabecera)",
+"parent": "corregimiento:52",
+"variants": [
+{
+"text": "el hormiguero cabecera",
+"ambiguous": false
+}
+]
+},
+{
+"id": "vereda:5204",
+"level": "vereda",
+"code": "5204",
+"name": "Cauca Viejo",
+"parent": "corregimiento:52",
+"variants": [
+{
+"text": "cauca viejo",
+"ambiguous": false
+}
+]
+},
+{
+"id": "vereda:5202",
+"level": "vereda",
+"code": "5202",
+"name": "Morgan",
+"parent": "corregimiento:52",
+"variants": [
+{
+"text": "morgan",
+"ambiguous": true
+}
+]
+},
+{
+"id": "vereda:5301",
+"level": "vereda",
+"code": "5301",
+"name": "Pance (Cabecera)",
+"parent": "corregimiento:53",
+"variants": [
+{
+"text": "pance cabecera",
+"ambiguous": false
+}
+]
+},
+{
+"id": "vereda:5308",
+"level": "vereda",
+"code": "5308",
+"name": "El Jardín",
+"parent": "corregimiento:53",
+"variants": [
+{
+"text": "el jardin",
+"ambiguous": true
+}
+]
+},
+{
+"id": "vereda:5306",
+"level": "vereda",
+"code": "5306",
+"name": "El Banqueo",
+"parent": "corregimiento:53",
+"variants": [
+{
+"text": "el banqueo",
+"ambiguous": true
+}
+]
+},
+{
+"id": "vereda:5305",
+"level": "vereda",
+"code": "5305",
+"name": "Pico de Águila",
+"parent": "corregimiento:53",
+"variants": [
+{
+"text": "pico de aguila",
+"ambiguous": true
+}
+]
+},
+{
+"id": "vereda:5303",
+"level": "vereda",
+"code": "5303",
+"name": "San Francisco",
+"parent": "corregimiento:53",
+"variants": [
+{
+"text": "san francisco",
+"ambiguous": true
+}
+]
+},
+{
+"id": "vereda:5302",
+"level": "vereda",
+"code": "5302",
+"name": "La Vorágine",
+"parent": "corregimiento:53",
+"variants": [
+{
+"text": "la voragine",
+"ambiguous": false
+}
+]
+},
+{
+"id": "vereda:5307",
+"level": "vereda",
+"code": "5307",
+"name": "El Peón",
+"parent": "corregimiento:53",
+"variants": [
+{
+"text": "el peon",
+"ambiguous": false
+}
+]
+},
+{
+"id": "vereda:5101",
+"level": "vereda",
+"code": "5101",
+"name": "Navarro (Cabecera)",
+"parent": "corregimiento:51",
+"variants": [
+{
+"text": "navarro cabecera",
+"ambiguous": false
+}
+]
+},
+{
+"id": "vereda:5304",
+"level": "vereda",
+"code": "5304",
+"name": "La Viga",
+"parent": "corregimiento:53",
+"variants": [
+{
+"text": "la viga",
+"ambiguous": true
+}
+]
+},
+{
+"id": "vereda:5309",
+"level": "vereda",
+"code": "5309",
+"name": "La María",
+"parent": "corregimiento:53",
+"variants": [
+{
+"text": "la maria",
+"ambiguous": true
+}
+]
+},
+{
+"id": "vereda:5601",
+"level": "vereda",
+"code": "5601",
+"name": "Los Andes (Cabecera)",
+"parent": "corregimiento:56",
+"variants": [
+{
+"text": "los andes cabecera",
+"ambiguous": false
+}
+]
+},
+{
+"id": "vereda:5105",
+"level": "vereda",
+"code": "5105",
+"name": "Sector Jarillón río Cauca",
+"parent": "corregimiento:51",
+"variants": [
+{
+"text": "sector jarillon rio cauca",
+"ambiguous": false
+},
+{
+"text": "jarillon rio cauca",
+"ambiguous": false
+}
+]
+},
+{
+"id": "vereda:5206",
+"level": "vereda",
+"code": "5206",
+"name": "Valle del Lili",
+"parent": "corregimiento:52",
+"variants": [
+{
+"text": "valle del lili",
+"ambiguous": true
+}
+]
+},
+{
+"id": "vereda:5608",
+"level": "vereda",
+"code": "5608",
+"name": "La Carolina - Andes Bajo",
+"parent": "corregimiento:56",
+"variants": [
+{
+"text": "la carolina - andes bajo",
+"ambiguous": false
+},
+{
+"text": "la carolina",
+"ambiguous": true
+},
+{
+"text": "andes bajo",
+"ambiguous": true
+}
+]
+},
+{
+"id": "vereda:5404",
+"level": "vereda",
+"code": "5404",
+"name": "La Fonda",
+"parent": "corregimiento:54",
+"variants": [
+{
+"text": "la fonda",
+"ambiguous": true
+}
+]
+},
+{
+"id": "vereda:5102",
+"level": "vereda",
+"code": "5102",
+"name": "El Estero",
+"parent": "corregimiento:51",
+"variants": [
+{
+"text": "el estero",
+"ambiguous": true
+}
+]
+},
+{
+"id": "vereda:5205",
+"level": "vereda",
+"code": "5205",
+"name": "Cascajal",
+"parent": "corregimiento:52",
+"variants": [
+{
+"text": "cascajal",
+"ambiguous": true
+}
+]
+},
+{
+"id": "vereda:5603",
+"level": "vereda",
+"code": "5603",
+"name": "Quebrada Honda",
+"parent": "corregimiento:56",
+"variants": [
+{
+"text": "quebrada honda",
+"ambiguous": true
+}
+]
+},
+{
+"id": "vereda:5604",
+"level": "vereda",
+"code": "5604",
+"name": "Pueblo Nuevo",
+"parent": "corregimiento:56",
+"variants": [
+{
+"text": "pueblo nuevo",
+"ambiguous": true
+}
+]
+},
+{
+"id": "vereda:5607",
+"level": "vereda",
+"code": "5607",
+"name": "El Mango - La Reforma",
+"parent": "corregimiento:56",
+"variants": [
+{
+"text": "el mango - la reforma",
+"ambiguous": false
+},
+{
+"text": "la reforma",
+"ambiguous": true
+},
+{
+"text": "el mango",
+"ambiguous": true
+}
+]
+},
+{
+"id": "vereda:5605",
+"level": "vereda",
+"code": "5605",
+"name": "El Faro",
+"parent": "corregimiento:56",
+"variants": [
+{
+"text": "el faro",
+"ambiguous": true
+}
+]
+},
+{
+"id": "vereda:5602",
+"level": "vereda",
+"code": "5602",
+"name": "Cárpatos",
+"parent": "corregimiento:56",
+"variants": [
+{
+"text": "carpatos",
+"ambiguous": true
+}
+]
+},
+{
+"id": "vereda:5612",
+"level": "vereda",
+"code": "5612",
+"name": "Dinastía Ventiaderos",
+"parent": "corregimiento:56",
+"variants": [
+{
+"text": "dinastia ventiaderos",
+"ambiguous": false
+}
+]
+},
+{
+"id": "vereda:5408",
+"level": "vereda",
+"code": "5408",
+"name": "La Sirena",
+"parent": "corregimiento:54",
+"variants": [
+{
+"text": "la sirena",
+"ambiguous": true
+}
+]
+},
+{
+"id": "vereda:5616",
+"level": "vereda",
+"code": "5616",
+"name": "Mónaco",
+"parent": "corregimiento:56",
+"variants": [
+{
+"text": "monaco",
+"ambiguous": true
+}
+]
+},
+{
+"id": "vereda:5609",
+"level": "vereda",
+"code": "5609",
+"name": "Mameyal",
+"parent": "corregimiento:56",
+"variants": [
+{
+"text": "mameyal",
+"ambiguous": true
+}
+]
+},
+{
+"id": "departamento:05",
+"level": "departamento",
+"code": "05",
+"name": "Antioquia",
+"parent": "co",
+"variants": [
+{
+"text": "antioquia",
+"ambiguous": false
+}
+]
+},
+{
+"id": "departamento:08",
+"level": "departamento",
+"code": "08",
+"name": "Atlántico",
+"parent": "co",
+"variants": [
+{
+"text": "atlantico",
+"ambiguous": true
+}
+]
+},
+{
+"id": "departamento:11",
+"level": "departamento",
+"code": "11",
+"name": "Bogotá",
+"parent": "co",
+"variants": [
+{
+"text": "bogota",
+"ambiguous": false
+},
+{
+"text": "bogota, d.c.",
+"ambiguous": true
+}
+]
+},
+{
+"id": "departamento:13",
+"level": "departamento",
+"code": "13",
+"name": "Bolívar",
+"parent": "co",
+"variants": [
+{
+"text": "bolivar",
+"ambiguous": true
+}
+]
+},
+{
+"id": "departamento:15",
+"level": "departamento",
+"code": "15",
+"name": "Boyacá",
+"parent": "co",
+"variants": [
+{
+"text": "boyaca",
+"ambiguous": false
+}
+]
+},
+{
+"id": "departamento:17",
+"level": "departamento",
+"code": "17",
+"name": "Caldas",
+"parent": "co",
+"variants": [
+{
+"text": "caldas",
+"ambiguous": true
+}
+]
+},
+{
+"id": "departamento:18",
+"level": "departamento",
+"code": "18",
+"name": "Caquetá",
+"parent": "co",
+"variants": [
+{
+"text": "caqueta",
+"ambiguous": false
+}
+]
+},
+{
+"id": "departamento:19",
+"level": "departamento",
+"code": "19",
+"name": "Cauca",
+"parent": "co",
+"variants": [
+{
+"text": "cauca",
+"ambiguous": true
+}
+]
+},
+{
+"id": "departamento:20",
+"level": "departamento",
+"code": "20",
+"name": "Cesar",
+"parent": "co",
+"variants": [
+{
+"text": "cesar",
+"ambiguous": true
+}
+]
+},
+{
+"id": "departamento:23",
+"level": "departamento",
+"code": "23",
+"name": "Córdoba",
+"parent": "co",
+"variants": [
+{
+"text": "cordoba",
+"ambiguous": true
+}
+]
+},
+{
+"id": "departamento:25",
+"level": "departamento",
+"code": "25",
+"name": "Cundinamarca",
+"parent": "co",
+"variants": [
+{
+"text": "cundinamarca",
+"ambiguous": false
+}
+]
+},
+{
+"id": "departamento:27",
+"level": "departamento",
+"code": "27",
+"name": "Chocó",
+"parent": "co",
+"variants": [
+{
+"text": "choco",
+"ambiguous": false
+}
+]
+},
+{
+"id": "departamento:41",
+"level": "departamento",
+"code": "41",
+"name": "Huila",
+"parent": "co",
+"variants": [
+{
+"text": "huila",
+"ambiguous": false
+}
+]
+},
+{
+"id": "departamento:44",
+"level": "departamento",
+"code": "44",
+"name": "La Guajira",
+"parent": "co",
+"variants": [
+{
+"text": "la guajira",
+"ambiguous": false
+}
+]
+},
+{
+"id": "departamento:47",
+"level": "departamento",
+"code": "47",
+"name": "Magdalena",
+"parent": "co",
+"variants": [
+{
+"text": "magdalena",
+"ambiguous": true
+}
+]
+},
+{
+"id": "departamento:50",
+"level": "departamento",
+"code": "50",
+"name": "Meta",
+"parent": "co",
+"variants": [
+{
+"text": "meta",
+"ambiguous": true
+}
+]
+},
+{
+"id": "departamento:52",
+"level": "departamento",
+"code": "52",
+"name": "Nariño",
+"parent": "co",
+"variants": [
+{
+"text": "narino",
+"ambiguous": true
+}
+]
+},
+{
+"id": "departamento:54",
+"level": "departamento",
+"code": "54",
+"name": "Norte de Santander",
+"parent": "co",
+"variants": [
+{
+"text": "norte de santander",
+"ambiguous": false
+}
+]
+},
+{
+"id": "departamento:63",
+"level": "departamento",
+"code": "63",
+"name": "Quindio",
+"parent": "co",
+"variants": [
+{
+"text": "quindio",
+"ambiguous": false
+}
+]
+},
+{
+"id": "departamento:66",
+"level": "departamento",
+"code": "66",
+"name": "Risaralda",
+"parent": "co",
+"variants": [
+{
+"text": "risaralda",
+"ambiguous": false
+}
+]
+},
+{
+"id": "departamento:68",
+"level": "departamento",
+"code": "68",
+"name": "Santander",
+"parent": "co",
+"variants": [
+{
+"text": "santander",
+"ambiguous": true
+}
+]
+},
+{
+"id": "departamento:70",
+"level": "departamento",
+"code": "70",
+"name": "Sucre",
+"parent": "co",
+"variants": [
+{
+"text": "sucre",
+"ambiguous": true
+}
+]
+},
+{
+"id": "departamento:73",
+"level": "departamento",
+"code": "73",
+"name": "Tolima",
+"parent": "co",
+"variants": [
+{
+"text": "tolima",
+"ambiguous": false
+}
+]
+},
+{
+"id": "departamento:76",
+"level": "departamento",
+"code": "76",
+"name": "Valle del Cauca",
+"parent": "co",
+"variants": [
+{
+"text": "valle del cauca",
+"ambiguous": false
+}
+]
+},
+{
+"id": "departamento:81",
+"level": "departamento",
+"code": "81",
+"name": "Arauca",
+"parent": "co",
+"variants": [
+{
+"text": "arauca",
+"ambiguous": false
+}
+]
+},
+{
+"id": "departamento:85",
+"level": "departamento",
+"code": "85",
+"name": "Casanare",
+"parent": "co",
+"variants": [
+{
+"text": "casanare",
+"ambiguous": false
+}
+]
+},
+{
+"id": "departamento:86",
+"level": "departamento",
+"code": "86",
+"name": "Putumayo",
+"parent": "co",
+"variants": [
+{
+"text": "putumayo",
+"ambiguous": false
+}
+]
+},
+{
+"id": "departamento:88",
+"level": "departamento",
+"code": "88",
+"name": "San Andrés",
+"parent": "co",
+"variants": [
+{
+"text": "archipielago de san andres",
+"ambiguous": true
+},
+{
+"text": "archipielago de san andres, providencia y santa catalina",
+"ambiguous": true
+},
+{
+"text": "san andres",
+"ambiguous": false
+}
+]
+},
+{
+"id": "departamento:91",
+"level": "departamento",
+"code": "91",
+"name": "Amazonas",
+"parent": "co",
+"variants": [
+{
+"text": "amazonas",
+"ambiguous": true
+}
+]
+},
+{
+"id": "departamento:94",
+"level": "departamento",
+"code": "94",
+"name": "Guainía",
+"parent": "co",
+"variants": [
+{
+"text": "guainia",
+"ambiguous": false
+}
+]
+},
+{
+"id": "departamento:95",
+"level": "departamento",
+"code": "95",
+"name": "Guaviare",
+"parent": "co",
+"variants": [
+{
+"text": "guaviare",
+"ambiguous": false
+}
+]
+},
+{
+"id": "departamento:97",
+"level": "departamento",
+"code": "97",
+"name": "Vaupés",
+"parent": "co",
+"variants": [
+{
+"text": "vaupes",
+"ambiguous": false
+}
+]
+},
+{
+"id": "departamento:99",
+"level": "departamento",
+"code": "99",
+"name": "Vichada",
+"parent": "co",
+"variants": [
+{
+"text": "vichada",
+"ambiguous": false
+}
+]
+},
+{
+"id": "municipio:05001",
+"level": "municipio",
+"code": "05001",
+"name": "Medellín",
+"parent": "departamento:05",
+"variants": [
+{
+"text": "medellin",
+"ambiguous": false
+}
+]
+},
+{
+"id": "municipio:08001",
+"level": "municipio",
+"code": "08001",
+"name": "Barranquilla",
+"parent": "departamento:08",
+"variants": [
+{
+"text": "barranquilla",
+"ambiguous": false
+},
+{
+"text": "distrito especial",
+"ambiguous": true
+},
+{
+"text": "distrito especial, industrial y portuario de barranquilla",
+"ambiguous": true
+}
+]
+},
+{
+"id": "municipio:11001",
+"level": "municipio",
+"code": "11001",
+"name": "Bogotá",
+"parent": "departamento:11",
+"variants": [
+{
+"text": "bogota",
+"ambiguous": false
+},
+{
+"text": "bogota, d.c.",
+"ambiguous": true
+}
+]
+},
+{
+"id": "municipio:13001",
+"level": "municipio",
+"code": "13001",
+"name": "Cartagena de Indias",
+"parent": "departamento:13",
+"variants": [
+{
+"text": "cartagena",
+"ambiguous": false
+},
+{
+"text": "cartagena de indias",
+"ambiguous": true
+}
+]
+},
+{
+"id": "municipio:15001",
+"level": "municipio",
+"code": "15001",
+"name": "Tunja",
+"parent": "departamento:15",
+"variants": [
+{
+"text": "tunja",
+"ambiguous": false
+}
+]
+},
+{
+"id": "municipio:17001",
+"level": "municipio",
+"code": "17001",
+"name": "Manizales",
+"parent": "departamento:17",
+"variants": [
+{
+"text": "manizales",
+"ambiguous": false
+}
+]
+},
+{
+"id": "municipio:18001",
+"level": "municipio",
+"code": "18001",
+"name": "Florencia",
+"parent": "departamento:18",
+"variants": [
+{
+"text": "florencia",
+"ambiguous": true
+}
+]
+},
+{
+"id": "municipio:19001",
+"level": "municipio",
+"code": "19001",
+"name": "Popayán",
+"parent": "departamento:19",
+"variants": [
+{
+"text": "popayan",
+"ambiguous": false
+}
+]
+},
+{
+"id": "municipio:20001",
+"level": "municipio",
+"code": "20001",
+"name": "Valledupar",
+"parent": "departamento:20",
+"variants": [
+{
+"text": "valledupar",
+"ambiguous": false
+}
+]
+},
+{
+"id": "municipio:23001",
+"level": "municipio",
+"code": "23001",
+"name": "Montería",
+"parent": "departamento:23",
+"variants": [
+{
+"text": "monteria",
+"ambiguous": false
+}
+]
+},
+{
+"id": "municipio:25001",
+"level": "municipio",
+"code": "25001",
+"name": "Agua de Dios",
+"parent": "departamento:25",
+"variants": [
+{
+"text": "agua de dios",
+"ambiguous": true
+}
+]
+},
+{
+"id": "municipio:27001",
+"level": "municipio",
+"code": "27001",
+"name": "Quibdó",
+"parent": "departamento:27",
+"variants": [
+{
+"text": "quibdo",
+"ambiguous": false
+}
+]
+},
+{
+"id": "municipio:41001",
+"level": "municipio",
+"code": "41001",
+"name": "Neiva",
+"parent": "departamento:41",
+"variants": [
+{
+"text": "neiva",
+"ambiguous": false
+}
+]
+},
+{
+"id": "municipio:44001",
+"level": "municipio",
+"code": "44001",
+"name": "Riohacha",
+"parent": "departamento:44",
+"variants": [
+{
+"text": "riohacha",
+"ambiguous": false
+}
+]
+},
+{
+"id": "municipio:47001",
+"level": "municipio",
+"code": "47001",
+"name": "Santa Marta",
+"parent": "departamento:47",
+"variants": [
+{
+"text": "santa marta",
+"ambiguous": false
+}
+]
+},
+{
+"id": "municipio:50001",
+"level": "municipio",
+"code": "50001",
+"name": "Villavicencio",
+"parent": "departamento:50",
+"variants": [
+{
+"text": "villavicencio",
+"ambiguous": false
+}
+]
+},
+{
+"id": "municipio:52001",
+"level": "municipio",
+"code": "52001",
+"name": "Pasto",
+"parent": "departamento:52",
+"variants": [
+{
+"text": "pasto",
+"ambiguous": true
+}
+]
+},
+{
+"id": "municipio:54001",
+"level": "municipio",
+"code": "54001",
+"name": "Cúcuta",
+"parent": "departamento:54",
+"variants": [
+{
+"text": "cucuta",
+"ambiguous": false
+}
+]
+},
+{
+"id": "municipio:63001",
+"level": "municipio",
+"code": "63001",
+"name": "Armenia",
+"parent": "departamento:63",
+"variants": [
+{
+"text": "armenia",
+"ambiguous": true
+}
+]
+},
+{
+"id": "municipio:66001",
+"level": "municipio",
+"code": "66001",
+"name": "Pereira",
+"parent": "departamento:66",
+"variants": [
+{
+"text": "pereira",
+"ambiguous": false
+}
+]
+},
+{
+"id": "municipio:68001",
+"level": "municipio",
+"code": "68001",
+"name": "Bucaramanga",
+"parent": "departamento:68",
+"variants": [
+{
+"text": "bucaramanga",
+"ambiguous": false
+}
+]
+},
+{
+"id": "municipio:70001",
+"level": "municipio",
+"code": "70001",
+"name": "Sincelejo",
+"parent": "departamento:70",
+"variants": [
+{
+"text": "sincelejo",
+"ambiguous": false
+}
+]
+},
+{
+"id": "municipio:73001",
+"level": "municipio",
+"code": "73001",
+"name": "Ibagué",
+"parent": "departamento:73",
+"variants": [
+{
+"text": "ibague",
+"ambiguous": false
+}
+]
+},
+{
+"id": "municipio:76001",
+"level": "municipio",
+"code": "76001",
+"name": "Cali",
+"parent": "departamento:76",
+"variants": [
+{
+"text": "cali",
+"ambiguous": false
+}
+]
+},
+{
+"id": "municipio:76036",
+"level": "municipio",
+"code": "76036",
+"name": "Andalucía",
+"parent": "departamento:76",
+"variants": [
+{
+"text": "andalucia",
+"ambiguous": true
+}
+]
+},
+{
+"id": "municipio:76041",
+"level": "municipio",
+"code": "76041",
+"name": "Ansermanuevo",
+"parent": "departamento:76",
+"variants": [
+{
+"text": "ansermanuevo",
+"ambiguous": false
+}
+]
+},
+{
+"id": "municipio:76054",
+"level": "municipio",
+"code": "76054",
+"name": "Argelia",
+"parent": "departamento:76",
+"variants": [
+{
+"text": "argelia",
+"ambiguous": true
+}
+]
+},
+{
+"id": "municipio:76111",
+"level": "municipio",
+"code": "76111",
+"name": "Buga",
+"parent": "departamento:76",
+"variants": [
+{
+"text": "buga",
+"ambiguous": true
+},
+{
+"text": "guadalajara de buga",
+"ambiguous": true
+}
+]
+},
+{
+"id": "municipio:76113",
+"level": "municipio",
+"code": "76113",
+"name": "Bugalagrande",
+"parent": "departamento:76",
+"variants": [
+{
+"text": "bugalagrande",
+"ambiguous": false
+}
+]
+},
+{
+"id": "municipio:76122",
+"level": "municipio",
+"code": "76122",
+"name": "Caicedonia",
+"parent": "departamento:76",
+"variants": [
+{
+"text": "caicedonia",
+"ambiguous": false
+}
+]
+},
+{
+"id": "municipio:76126",
+"level": "municipio",
+"code": "76126",
+"name": "Calima",
+"parent": "departamento:76",
+"variants": [
+{
+"text": "calima",
+"ambiguous": true
+}
+]
+},
+{
+"id": "municipio:76130",
+"level": "municipio",
+"code": "76130",
+"name": "Candelaria",
+"parent": "departamento:76",
+"variants": [
+{
+"text": "candelaria",
+"ambiguous": true
+}
+]
+},
+{
+"id": "municipio:76147",
+"level": "municipio",
+"code": "76147",
+"name": "Cartago",
+"parent": "departamento:76",
+"variants": [
+{
+"text": "cartago",
+"ambiguous": false
+}
+]
+},
+{
+"id": "municipio:76243",
+"level": "municipio",
+"code": "76243",
+"name": "El Águila",
+"parent": "departamento:76",
+"variants": [
+{
+"text": "el aguila",
+"ambiguous": false
+}
+]
+},
+{
+"id": "municipio:76246",
+"level": "municipio",
+"code": "76246",
+"name": "El Cairo",
+"parent": "departamento:76",
+"variants": [
+{
+"text": "el cairo",
+"ambiguous": true
+}
+]
+},
+{
+"id": "municipio:76248",
+"level": "municipio",
+"code": "76248",
+"name": "El Cerrito",
+"parent": "departamento:76",
+"variants": [
+{
+"text": "el cerrito",
+"ambiguous": false
+}
+]
+},
+{
+"id": "municipio:76250",
+"level": "municipio",
+"code": "76250",
+"name": "El Dovio",
+"parent": "departamento:76",
+"variants": [
+{
+"text": "el dovio",
+"ambiguous": false
+}
+]
+},
+{
+"id": "municipio:76275",
+"level": "municipio",
+"code": "76275",
+"name": "Florida",
+"parent": "departamento:76",
+"variants": [
+{
+"text": "florida",
+"ambiguous": true
+}
+]
+},
+{
+"id": "municipio:76306",
+"level": "municipio",
+"code": "76306",
+"name": "Ginebra",
+"parent": "departamento:76",
+"variants": [
+{
+"text": "ginebra",
+"ambiguous": true
+}
+]
+},
+{
+"id": "municipio:76318",
+"level": "municipio",
+"code": "76318",
+"name": "Guacarí",
+"parent": "departamento:76",
+"variants": [
+{
+"text": "guacari",
+"ambiguous": false
+}
+]
+},
+{
+"id": "municipio:76020",
+"level": "municipio",
+"code": "76020",
+"name": "Alcalá",
+"parent": "departamento:76",
+"variants": [
+{
+"text": "alcala",
+"ambiguous": true
+}
+]
+},
+{
+"id": "municipio:76497",
+"level": "municipio",
+"code": "76497",
+"name": "Obando",
+"parent": "departamento:76",
+"variants": [
+{
+"text": "obando",
+"ambiguous": true
+}
+]
+},
+{
+"id": "municipio:76520",
+"level": "municipio",
+"code": "76520",
+"name": "Palmira",
+"parent": "departamento:76",
+"variants": [
+{
+"text": "palmira",
+"ambiguous": false
+}
+]
+},
+{
+"id": "municipio:76563",
+"level": "municipio",
+"code": "76563",
+"name": "Pradera",
+"parent": "departamento:76",
+"variants": [
+{
+"text": "pradera",
+"ambiguous": false
+}
+]
+},
+{
+"id": "municipio:76606",
+"level": "municipio",
+"code": "76606",
+"name": "Restrepo",
+"parent": "departamento:76",
+"variants": [
+{
+"text": "restrepo",
+"ambiguous": true
+}
+]
+},
+{
+"id": "municipio:76616",
+"level": "municipio",
+"code": "76616",
+"name": "Riofrío",
+"parent": "departamento:76",
+"variants": [
+{
+"text": "riofrio",
+"ambiguous": false
+}
+]
+},
+{
+"id": "municipio:76622",
+"level": "municipio",
+"code": "76622",
+"name": "Roldanillo",
+"parent": "departamento:76",
+"variants": [
+{
+"text": "roldanillo",
+"ambiguous": false
+}
+]
+},
+{
+"id": "municipio:76670",
+"level": "municipio",
+"code": "76670",
+"name": "San Pedro",
+"parent": "departamento:76",
+"variants": [
+{
+"text": "san pedro",
+"ambiguous": true
+}
+]
+},
+{
+"id": "municipio:76736",
+"level": "municipio",
+"code": "76736",
+"name": "Sevilla",
+"parent": "departamento:76",
+"variants": [
+{
+"text": "sevilla",
+"ambiguous": true
+}
+]
+},
+{
+"id": "municipio:76823",
+"level": "municipio",
+"code": "76823",
+"name": "Toro",
+"parent": "departamento:76",
+"variants": [
+{
+"text": "toro",
+"ambiguous": true
+}
+]
+},
+{
+"id": "municipio:76828",
+"level": "municipio",
+"code": "76828",
+"name": "Trujillo",
+"parent": "departamento:76",
+"variants": [
+{
+"text": "trujillo",
+"ambiguous": true
+}
+]
+},
+{
+"id": "municipio:76834",
+"level": "municipio",
+"code": "76834",
+"name": "Tuluá",
+"parent": "departamento:76",
+"variants": [
+{
+"text": "tulua",
+"ambiguous": false
+}
+]
+},
+{
+"id": "municipio:76845",
+"level": "municipio",
+"code": "76845",
+"name": "Ulloa",
+"parent": "departamento:76",
+"variants": [
+{
+"text": "ulloa",
+"ambiguous": true
+}
+]
+},
+{
+"id": "municipio:76863",
+"level": "municipio",
+"code": "76863",
+"name": "Versalles",
+"parent": "departamento:76",
+"variants": [
+{
+"text": "versalles",
+"ambiguous": true
+}
+]
+},
+{
+"id": "municipio:76869",
+"level": "municipio",
+"code": "76869",
+"name": "Vijes",
+"parent": "departamento:76",
+"variants": [
+{
+"text": "vijes",
+"ambiguous": false
+}
+]
+},
+{
+"id": "municipio:76890",
+"level": "municipio",
+"code": "76890",
+"name": "Yotoco",
+"parent": "departamento:76",
+"variants": [
+{
+"text": "yotoco",
+"ambiguous": false
+}
+]
+},
+{
+"id": "municipio:76892",
+"level": "municipio",
+"code": "76892",
+"name": "Yumbo",
+"parent": "departamento:76",
+"variants": [
+{
+"text": "yumbo",
+"ambiguous": false
+}
+]
+},
+{
+"id": "municipio:76895",
+"level": "municipio",
+"code": "76895",
+"name": "Zarzal",
+"parent": "departamento:76",
+"variants": [
+{
+"text": "zarzal",
+"ambiguous": false
+}
+]
+},
+{
+"id": "municipio:76403",
+"level": "municipio",
+"code": "76403",
+"name": "La Victoria",
+"parent": "departamento:76",
+"variants": [
+{
+"text": "la victoria",
+"ambiguous": true
+}
+]
+},
+{
+"id": "municipio:76400",
+"level": "municipio",
+"code": "76400",
+"name": "La Unión",
+"parent": "departamento:76",
+"variants": [
+{
+"text": "la union",
+"ambiguous": true
+}
+]
+},
+{
+"id": "municipio:76377",
+"level": "municipio",
+"code": "76377",
+"name": "La Cumbre",
+"parent": "departamento:76",
+"variants": [
+{
+"text": "la cumbre",
+"ambiguous": false
+}
+]
+},
+{
+"id": "municipio:76364",
+"level": "municipio",
+"code": "76364",
+"name": "Jamundí",
+"parent": "departamento:76",
+"variants": [
+{
+"text": "jamundi",
+"ambiguous": false
+}
+]
+},
+{
+"id": "municipio:76100",
+"level": "municipio",
+"code": "76100",
+"name": "Bolívar",
+"parent": "departamento:76",
+"variants": [
+{
+"text": "bolivar",
+"ambiguous": true
+}
+]
+},
+{
+"id": "municipio:76233",
+"level": "municipio",
+"code": "76233",
+"name": "Dagua",
+"parent": "departamento:76",
+"variants": [
+{
+"text": "dagua",
+"ambiguous": false
+}
+]
+},
+{
+"id": "municipio:76109",
+"level": "municipio",
+"code": "76109",
+"name": "Buenaventura",
+"parent": "departamento:76",
+"variants": [
+{
+"text": "buenaventura",
+"ambiguous": false
+}
+]
+},
+{
+"id": "municipio:81001",
+"level": "municipio",
+"code": "81001",
+"name": "Arauca",
+"parent": "departamento:81",
+"variants": [
+{
+"text": "arauca",
+"ambiguous": false
+}
+]
+},
+{
+"id": "municipio:85001",
+"level": "municipio",
+"code": "85001",
+"name": "Yopal",
+"parent": "departamento:85",
+"variants": [
+{
+"text": "yopal",
+"ambiguous": false
+}
+]
+},
+{
+"id": "municipio:86001",
+"level": "municipio",
+"code": "86001",
+"name": "Mocoa",
+"parent": "departamento:86",
+"variants": [
+{
+"text": "mocoa",
+"ambiguous": false
+}
+]
+},
+{
+"id": "municipio:88001",
+"level": "municipio",
+"code": "88001",
+"name": "San Andrés",
+"parent": "departamento:88",
+"variants": [
+{
+"text": "san andres",
+"ambiguous": false
+}
+]
+},
+{
+"id": "municipio:91001",
+"level": "municipio",
+"code": "91001",
+"name": "Leticia",
+"parent": "departamento:91",
+"variants": [
+{
+"text": "leticia",
+"ambiguous": false
+}
+]
+},
+{
+"id": "municipio:94001",
+"level": "municipio",
+"code": "94001",
+"name": "Inírida",
+"parent": "departamento:94",
+"variants": [
+{
+"text": "inirida",
+"ambiguous": false
+}
+]
+},
+{
+"id": "municipio:95001",
+"level": "municipio",
+"code": "95001",
+"name": "San José del Guaviare",
+"parent": "departamento:95",
+"variants": [
+{
+"text": "san jose del guaviare",
+"ambiguous": false
+}
+]
+},
+{
+"id": "municipio:97001",
+"level": "municipio",
+"code": "97001",
+"name": "Mitú",
+"parent": "departamento:97",
+"variants": [
+{
+"text": "mitu",
+"ambiguous": false
+}
+]
+},
+{
+"id": "municipio:99001",
+"level": "municipio",
+"code": "99001",
+"name": "Puerto Carreño",
+"parent": "departamento:99",
+"variants": [
+{
+"text": "puerto carreno",
+"ambiguous": true
+}
+]
+}
+]
+}
