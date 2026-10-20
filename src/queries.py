@@ -1483,9 +1483,16 @@ def geo_zones(session, days: int = 30, level: str = "comuna", candidate_id: int 
             "methods": dict(methods)}
 
 
-def geo_detail(session, ids: list[str], days: int = 30, candidate_id: int | None = None, limit: int = 40) -> dict:
+def geo_detail(session, ids: list[str], days: int = 30, candidate_id: int | None = None, limit: int = 30,
+               offset: int = 0, filters: dict | None = None, sort: str = "recent", group: str | None = None) -> dict:
     """Una zona o un GRUPO de zonas (p. ej. las 4 comunas del Distrito de Aguablanca): una mención que
-    nombra a varias del grupo cuenta una vez. Incluye las menciones para leerlas con su enlace."""
+    nombra a varias del grupo cuenta una vez. Incluye las menciones para leerlas con su enlace.
+
+    `filters` (todos opcionales): kind (noticia|publicacion|comentario|video), channel
+    (prensa|redes|youtube), category, topic, label (positive|negative|neutral), subzone (id de barrio
+    o comuna dentro del grupo). Las cifras (menciones, % negativo...) se calculan sobre lo filtrado;
+    `total` es el de la zona sin filtros. `group="category"` agrega un bloque por tema con sus
+    primeras menciones (vista organizada)."""
     from src import geo
     ids = [i for i in ids if geo.place(i)][:400]
     wanted = set(ids)
@@ -1499,12 +1506,111 @@ def geo_detail(session, ids: list[str], days: int = 30, candidate_id: int | None
             # la sub-zona más específica dentro del grupo (barrio dentro de la comuna elegida)
             sub[pid if pid != hit else hit].add(m.id)
     rows = sorted(ms.values(), key=lambda m: _when(m), reverse=True)
-    topics = Counter((m.sentiment.topic or "").lower() for m in rows
-                     if m.sentiment and m.sentiment.topic and m.sentiment.topic.lower() not in META_TOPICS)
-    sources = Counter(m.source.type.value for m in rows)
-    return {"ids": ids, "names": [geo.place(i)["name"] for i in ids], "days": days, **_zone_stats(rows),
-            "topics": [{"topic": t, "count": n} for t, n in topics.most_common(8)],
-            "sources": [{"source": s, "count": n} for s, n in sources.most_common()],
-            "subzones": sorted(({"id": z, "name": geo.place(z)["name"], "level": geo.place(z)["level"], "mentions": len(v)}
-                                for z, v in sub.items() if z not in wanted), key=lambda r: -r["mentions"])[:15],
-            "items": [_mention_dict(m) for m in rows[:limit]]}
+    zones_of: dict[int, set[str]] = defaultdict(set)
+    for z, mids in sub.items():
+        for mid in mids:
+            zones_of[mid].add(z)
+
+    # --- filtros (cada uno opcional) y conteos por faceta: cada faceta cuenta con los DEMÁS filtros
+    # aplicados, para que el número de cada opción diga cuántas menciones quedarían al elegirla.
+    f = {k: v for k, v in (filters or {}).items() if v}
+    dims = {
+        "kind": _content_kind,
+        "channel": _channel,
+        "category": lambda m: (m.sentiment.category if m.sentiment else None) or "otro",
+        "topic": _clean_topic,
+        "label": lambda m: m.sentiment.label.value if m.sentiment else None,
+        "subzone": None,  # especial: una mención puede tener varias sub-zonas
+    }
+
+    def passes(m, skip=None):
+        for k, v in f.items():
+            if k == skip or k not in dims:
+                continue
+            if k == "subzone":
+                if v not in zones_of.get(m.id, ()):
+                    return False
+            elif dims[k](m) != v:
+                return False
+        return True
+
+    facets = {}
+    for k, fn in dims.items():
+        c = Counter()
+        for m in rows:
+            if not passes(m, skip=k):
+                continue
+            if k == "subzone":
+                c.update(z for z in zones_of.get(m.id, ()) if z not in wanted)
+            elif (val := fn(m)):
+                c[val] += 1
+        facets[k] = c
+    picked = [m for m in rows if passes(m)]
+    if sort == "negative":
+        picked.sort(key=lambda m: (m.sentiment.score if m.sentiment else 0))
+    elif sort == "positive":
+        picked.sort(key=lambda m: -(m.sentiment.score if m.sentiment else 0))
+
+    groups = []
+    if group == "category":
+        by_cat: dict[str, list[Mention]] = defaultdict(list)
+        for m in picked:
+            by_cat[dims["category"](m)].append(m)
+        for cat, ms_ in sorted(by_cat.items(), key=lambda kv: -len(kv[1])):
+            st = _zone_stats(ms_)
+            tops = Counter(t for m in ms_ if (t := _clean_topic(m)))
+            groups.append({"category": cat, "mentions": len(ms_), "negative_pct": st["negative_pct"],
+                           "positive_pct": st["positive_pct"],
+                           "kinds": dict(Counter(_content_kind(m) for m in ms_)),
+                           "topics": [{"topic": t, "count": n} for t, n in tops.most_common(4)],
+                           "items": [_mention_dict(m) for m in ms_[:3]]})
+
+    zname = lambda z: geo.place(z)["name"]  # noqa: E731
+    return {"ids": ids, "names": [zname(i) for i in ids], "days": days,
+            "total": len(rows), **_zone_stats(picked), "filters": f, "sort": sort,
+            "facets": {
+                "kind": [{"value": k, "count": n} for k, n in facets["kind"].most_common()],
+                "channel": [{"value": k, "count": n} for k, n in facets["channel"].most_common()],
+                "category": [{"value": k, "count": n} for k, n in facets["category"].most_common()],
+                "topic": [{"value": k, "count": n} for k, n in facets["topic"].most_common(12)],
+                "label": [{"value": k, "count": n} for k, n in facets["label"].most_common()],
+                "subzone": [{"value": z, "name": zname(z), "level": geo.place(z)["level"], "count": n}
+                            for z, n in facets["subzone"].most_common(15)],
+            },
+            "groups": groups,
+            "items": [_mention_dict(m) for m in picked[offset:offset + limit]], "offset": offset, "limit": limit}
+
+
+def _content_kind(m: Mention) -> str:
+    """noticia | publicacion | comentario | video."""
+    kind = (m.raw or {}).get("kind")
+    if m.source.type in (SourceType.GOOGLE_NEWS, SourceType.RSS):
+        return "noticia"
+    if kind == "comment":
+        return "comentario"
+    if kind == "video" or (m.source.type == SourceType.YOUTUBE and kind != "comment"):
+        return "video"
+    return "publicacion"
+
+
+def _channel(m: Mention) -> str:
+    """prensa | redes | youtube."""
+    if m.source.type in (SourceType.GOOGLE_NEWS, SourceType.RSS):
+        return "prensa"
+    return "youtube" if m.source.type == SourceType.YOUTUBE else "redes"
+
+
+_CATEGORY_NAMES = None
+
+
+def _clean_topic(m: Mention) -> str | None:
+    """El asunto concreto, sin etiquetas de control y sin repetir el nombre de una categoría (el LLM a
+    veces pone la categoría como asunto: "orden público y protestas" aparecía dos veces en el detalle)."""
+    global _CATEGORY_NAMES
+    if _CATEGORY_NAMES is None:
+        from src.sentiment import CATEGORIES
+        _CATEGORY_NAMES = set(CATEGORIES) | {"seguridad", "política", "politica"}
+    t = ((m.sentiment.topic if m.sentiment else None) or "").strip().lower()
+    if not t or t in META_TOPICS or t in _CATEGORY_NAMES:
+        return None
+    return t

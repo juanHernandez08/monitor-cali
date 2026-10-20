@@ -88,7 +88,7 @@ def test_geo_zones_rolls_up_to_comuna_and_detail_merges_a_group(db_session):
     assert z["comuna:20"]["mentions"] == 2 and z["comuna:20"]["conclusive"] and z["comuna:20"]["negative_pct"] == 100
     assert z["comuna:21"]["mentions"] == 1 and not z["comuna:21"]["conclusive"]
     d = queries.geo_detail(db_session, ["comuna:20", "comuna:21"], days=7)
-    assert d["mentions"] == 3 and d["subzones"][0] == {"id": "barrio:2003", "name": "Siloé", "level": "barrio", "mentions": 2}
+    assert d["mentions"] == 3 and d["facets"]["subzone"][0] == {"value": "barrio:2003", "name": "Siloé", "level": "barrio", "count": 2}
     c = queries.geo_zones(db_session, days=7, level="corregimiento")
     assert [r["id"] for r in c["zones"]] == ["corregimiento:53"]
 
@@ -162,3 +162,42 @@ def test_backfill_place_hints_stops_when_the_llm_is_down(db_session):
     assert backfill_place_hints(db_session, Down(), limit=5) == 0
     db_session.refresh(m)
     assert m.sentiment.place_hint is None
+
+
+def test_geo_detail_filters_facets_pagination_and_groups(db_session):
+    from src import queries
+    from src.geo import assign_places
+    from src.models import Source, SourceType
+    a = _mention(db_session, "Balacera en Siloé, Cali", ext="g1")                       # noticia (RSS), negativa
+    social = Source(type=SourceType.SOCIAL, name="Instagram / Facebook (cuentas)")
+    db_session.add(social)
+    db_session.commit()
+    b = _mention(db_session, "Sin agua en Siloé, Cali", ext="g2", label="POSITIVE")      # noticia, positiva
+    c = _mention(db_session, "qué miedo vivir en Siloé, Cali", ext="g3",
+                 raw={"kind": "comment", "platform": "instagram"})
+    c.source_id = social.id
+    b.sentiment.category = "seguridad y convivencia"
+    b.sentiment.topic = "seguridad y convivencia"  # el LLM repitió la categoría como asunto: no debe salir como asunto
+    db_session.commit()
+    for m in (a, b, c):
+        assign_places(db_session, m)
+    db_session.commit()
+
+    d = queries.geo_detail(db_session, ["comuna:20"], days=7)
+    assert d["total"] == 3 and {f["value"]: f["count"] for f in d["facets"]["kind"]} == {"noticia": 2, "comentario": 1}
+    assert {f["value"] for f in d["facets"]["channel"]} == {"prensa", "redes"}
+    assert "seguridad y convivencia" not in {f["value"] for f in d["facets"]["topic"]}
+
+    only = queries.geo_detail(db_session, ["comuna:20"], days=7, filters={"kind": "comentario"})
+    assert only["mentions"] == 1 and only["total"] == 3 and only["items"][0]["text"].startswith("qué miedo")
+    # la faceta del filtro activo sigue mostrando todas sus opciones (para poder cambiar de opción)
+    assert {f["value"] for f in only["facets"]["kind"]} == {"noticia", "comentario"}
+
+    cat = queries.geo_detail(db_session, ["comuna:20"], days=7, filters={"category": "seguridad y convivencia"})
+    assert cat["mentions"] == 1
+    page = queries.geo_detail(db_session, ["comuna:20"], days=7, limit=2, offset=2)
+    assert len(page["items"]) == 1
+    neg = queries.geo_detail(db_session, ["comuna:20"], days=7, sort="negative")
+    assert neg["items"][0]["label"] == "negative"
+    g = queries.geo_detail(db_session, ["comuna:20"], days=7, group="category")
+    assert sum(x["mentions"] for x in g["groups"]) == 3 and all(len(x["items"]) <= 3 for x in g["groups"])

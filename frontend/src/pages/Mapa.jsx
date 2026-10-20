@@ -2,9 +2,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Globe2, Layers, MapPinned, MousePointerClick, Info } from "lucide-react";
 import { useApp } from "../lib/app";
 import { useApi } from "../lib/useApi";
-import { cap, fmtNum } from "../lib/format";
-import { Button, Callout, Empty, Intro, Kpi, KpiGrid, Panel, PanelSkeleton, Reading, Segmented, Select, Skeleton, Tag, cx } from "../components/ui";
-import { FeedList } from "../components/Feed";
+import { fmtNum } from "../lib/format";
+import { Button, Empty, Intro, Panel, Reading, Segmented, Select, Skeleton, Tag, cx } from "../components/ui";
+import { ZoneDetail } from "../components/ZoneDetail";
 
 /* Núcleos territoriales de la campaña (los mismos del mapa «Núcleos Territoriales de Cali»): cada
    comuna pertenece a uno; el Núcleo Rural son los 15 corregimientos. Colores del mismo mapa. */
@@ -183,46 +183,6 @@ function NucleoCard({ n, stats, on, onClick }) {
   );
 }
 
-/* ---------- detalle de la selección (una zona o un grupo) ---------- */
-function Detail({ ids, title, days, color }) {
-  const url = ids.length ? `/api/geo/detail?days=${days}&ids=${encodeURIComponent(ids.join(","))}` : null;
-  const { data: d } = useApi(url);
-  if (!ids.length) return null;
-  if (!d) return <PanelSkeleton h="h-72" />;
-  const few = d.mentions < 5;
-  return (
-    <Panel icon={MapPinned} title={title} hint={`${d.names.length > 3 ? `${d.names.length} zonas` : d.names.join(", ")} · últimos ${days} días`}
-      actions={color && <span className="inline-block h-3 w-10 rounded" style={{ background: color }} />}>
-      <KpiGrid>
-        <Kpi label="Menciones de la zona" value={d.mentions} foot={`${d.scored} clasificadas`} />
-        <Kpi delay={60} label="Negativas" value={d.negative_pct} suffix=" %" tone={d.negative_pct >= 40 ? "neg" : "default"} foot={`${d.negative} menciones`} />
-        <Kpi delay={120} label="Positivas" value={d.positive_pct} suffix=" %" foot={`${d.positive} menciones`} />
-        <Kpi delay={180} label="Sentimiento neto" value={d.net ?? 0} foot="% positivas − % negativas" />
-      </KpiGrid>
-      {few && <Callout label="Pocas menciones">Con menos de 5 menciones el tono de esta zona no es concluyente: léelas una por una abajo.</Callout>}
-      <div className="mt-4 grid gap-4 lg:grid-cols-3">
-        <div>
-          <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-500">Temas</h3>
-          <div className="flex flex-wrap gap-1.5">{d.categories.length ? d.categories.map((c) => <Tag key={c.category} tone="brand">{cap(c.category)} · {c.count}</Tag>) : <span className="text-sm text-slate-500">—</span>}</div>
-          <div className="mt-2 flex flex-wrap gap-1.5">{d.topics.slice(0, 6).map((t) => <Tag key={t.topic}>{t.topic} · {t.count}</Tag>)}</div>
-        </div>
-        <div>
-          <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-500">Emociones</h3>
-          <div className="flex flex-wrap gap-1.5">{d.emotions.length ? d.emotions.map((e) => <Tag key={e.emotion} tone="violet">{cap(e.emotion)} · {e.count}</Tag>) : <span className="text-sm text-slate-500">—</span>}</div>
-        </div>
-        <div>
-          <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-500">Dónde, más en detalle</h3>
-          {d.subzones.length ? (
-            <ul className="grid gap-1 text-sm">{d.subzones.slice(0, 8).map((z) => <li key={z.id} className="flex justify-between gap-2"><span className="truncate">{z.name} <span className="text-xs text-slate-400">({z.level})</span></span><b className="tabular-nums">{z.mentions}</b></li>)}</ul>
-          ) : <span className="text-sm text-slate-500">Las menciones nombran la zona en general, no un barrio.</span>}
-        </div>
-      </div>
-      <h3 className="mb-2 mt-5 text-xs font-bold uppercase tracking-wider text-slate-500">Lo que se dice ({fmtNum(d.mentions)})</h3>
-      <FeedList rows={d.items} showCandidate empty="Sin menciones en esta zona en el período." />
-    </Panel>
-  );
-}
-
 export default function Mapa() {
   const { days } = useApp();
   const [scope, setScope] = useState("cali");
@@ -343,8 +303,8 @@ export default function Mapa() {
       {scope === "cali" && !selected && (
         <Reading><Info className="mr-1 inline size-4" />Elige un núcleo, una zona o arma un grupo para ver sus menciones, temas y emociones.</Reading>
       )}
-      {scope === "cali" && <Detail ids={selIds} title={selTitle} days={days} color={selColor} />}
-      {scope === "colombia" && selDpto && <Detail ids={[selDpto]} title={by(zd)[selDpto]?.name || "Departamento"} days={days} />}
+      {scope === "cali" && <ZoneDetail ids={selIds} title={selTitle} days={days} color={selColor} />}
+      {scope === "colombia" && selDpto && <ZoneDetail ids={[selDpto]} title={by(zd)[selDpto]?.name || "Departamento"} days={days} />}
     </div>
   );
 }

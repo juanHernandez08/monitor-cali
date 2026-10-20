@@ -216,10 +216,20 @@ def create_app(session_factory=None, start_jobs: bool = True, cf_verifier=None) 
 
     @app.get("/api/geo/detail")
     def api_geo_detail(ids: str = Query(..., max_length=8000), days: int = Query(30, ge=1, le=365),
-                       candidate_id: int | None = Query(None, ge=1)):
+                       candidate_id: int | None = Query(None, ge=1),
+                       kind: Literal["noticia", "publicacion", "comentario", "video"] | None = None,
+                       channel: Literal["prensa", "redes", "youtube"] | None = None,
+                       category: str | None = Query(None, max_length=80), topic: str | None = Query(None, max_length=120),
+                       label: Literal["positive", "negative", "neutral"] | None = None,
+                       subzone: str | None = Query(None, max_length=40),
+                       sort: Literal["recent", "negative", "positive"] = "recent",
+                       group: Literal["category"] | None = None,
+                       offset: int = Query(0, ge=0, le=100000), limit: int = Query(30, ge=1, le=100)):
         with session() as s:
             return queries.geo_detail(s, [i.strip() for i in ids.split(",") if i.strip()], days=days,
-                                      candidate_id=candidate_id)
+                                      candidate_id=candidate_id, offset=offset, limit=limit, sort=sort, group=group,
+                                      filters={"kind": kind, "channel": channel, "category": category, "topic": topic,
+                                               "label": label, "subzone": subzone})
 
     @app.get("/api/relationship")
     def api_relationship(days: int = Query(90, ge=7, le=365), candidate_id: int | None = Query(None, ge=1)):
