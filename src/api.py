@@ -221,6 +221,32 @@ def create_app(session_factory=None, start_jobs: bool = True, cf_verifier=None) 
             return queries.geo_detail(s, [i.strip() for i in ids.split(",") if i.strip()], days=days,
                                       candidate_id=candidate_id)
 
+    @app.get("/api/relationship")
+    def api_relationship(days: int = Query(90, ge=7, le=365), candidate_id: int | None = Query(None, ge=1)):
+        from src import relationship
+        with session() as s:
+            return relationship.relationship(s, candidate_id=candidate_id, days=days)
+
+    @app.get("/api/nps")
+    def api_nps(days: int = Query(30, ge=1, le=365)):
+        from src import relationship
+        with session() as s:
+            return {**relationship.nps_digital(s, days=days), "survey": relationship.survey_list(s)}
+
+    @app.post("/api/nps/survey")
+    def api_nps_survey_add(payload: dict = Body(...)):
+        from src import relationship
+        with session() as s:
+            row, err = relationship.survey_add(s, payload)
+            return _bad_request(err) if err else row
+
+    @app.delete("/api/nps/survey/{survey_id}")
+    def api_nps_survey_delete(survey_id: int):
+        from src import relationship
+        with session() as s:
+            ok = relationship.survey_delete(s, survey_id)
+            return {"ok": True} if ok else _bad_request("medición no encontrada", status=404)
+
     @app.get("/api/conversation/weekly")
     def api_conversation_weekly(days: int = Query(90, ge=14, le=365), candidate: str = Query("Carlos Arias", max_length=120)):
         with session() as s:

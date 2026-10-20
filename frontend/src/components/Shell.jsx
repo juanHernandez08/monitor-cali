@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import {
-  BarChart3, Building2, FileText, History, LayoutDashboard, MapPinned, Menu, Newspaper, RefreshCw, Share2, Users, X, Radio, Target,
+  BarChart3, Building2, FileText, HeartHandshake, History, LayoutDashboard, MapPinned, Menu, Newspaper, RefreshCw, Share2, Users, X, Radio, Target,
 } from "lucide-react";
 import { PERIODS, useApp } from "../lib/app";
 import { useApi } from "../lib/useApi";
@@ -16,6 +16,7 @@ export const NAV = [
   { id: "analisis", label: "Análisis en gráficas", icon: BarChart3, title: "Análisis", sub: "Alcance, percepción y temas con lectura en palabras" },
   { id: "ciudad", label: "Ciudad", icon: Building2, title: "Ciudad", sub: "De qué habla Cali y cómo lo siente la gente" },
   { id: "mapa", label: "Mapa", icon: MapPinned, title: "Mapa territorial", sub: "De qué zona se habla: núcleos, comunas, barrios y corregimientos" },
+  { id: "relacionamiento", label: "Relacionamiento", icon: HeartHandshake, title: "Relacionamiento y NPS", sub: "Esferas por sector y cercanía, NPS digital y de encuesta" },
   { id: "historico", label: "Histórico", icon: History, title: "Histórico", sub: "Cali de 2008 a hoy, alcaldías y cambios de conversación" },
   { id: "agenda", label: "Agenda", icon: Target, title: "Agenda", sub: "Qué conviene decir, y qué no" },
   { id: "reporte", label: "Reporte", icon: FileText, title: "Reporte", sub: "Se genera solo de lunes a viernes en la mañana" },

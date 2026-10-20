@@ -213,3 +213,24 @@ def assign_places(session, mention) -> int:
         session.add(MentionPlace(mention_id=mention.id, place_id=p["id"], level=p["level"],
                                  matched=(p.get("matched") or "")[:120], method=p["method"]))
     return len(found)
+
+
+# Núcleos territoriales de la campaña (los del mapa «Núcleos Territoriales de Cali» del cliente).
+NUCLEOS = {
+    "occidente": ("Núcleo Occidente", [2, 3, 9]),
+    "norte": ("Núcleo Norte", [4, 5, 6, 7]),
+    "oriente": ("Núcleo Oriente", [13, 14, 15, 16, 21]),
+    "centro": ("Núcleo Centro", [8, 10, 11, 12]),
+    "ladera": ("Núcleo Ladera", [1, 18, 19, 20]),
+    "sur": ("Núcleo Sur", [17, 22]),
+    "rural": ("Núcleo Rural", []),  # los 15 corregimientos
+}
+_COMUNA_NUCLEO = {f"comuna:{c:02d}": n for n, (_, cs) in NUCLEOS.items() for c in cs}
+
+
+def nucleo_of(place_id: str) -> str | None:
+    """Núcleo de una zona de Cali: la comuna (o la del barrio) decide; corregimientos y veredas = rural."""
+    chain = [place_id] + ancestors(place_id)
+    if any(p.startswith("corregimiento:") for p in chain):
+        return "rural"
+    return next((_COMUNA_NUCLEO[p] for p in chain if p in _COMUNA_NUCLEO), None)

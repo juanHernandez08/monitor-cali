@@ -16,3 +16,6 @@ export async function post(url, body) {
   if (body !== undefined) { opts.headers["Content-Type"] = "application/json"; opts.body = JSON.stringify(body); }
   return fetch(url, opts);
 }
+export async function del(url) {
+  return fetch(url, { method: "DELETE", credentials: "same-origin", headers: { "X-Requested-With": "monitor" } });
+}

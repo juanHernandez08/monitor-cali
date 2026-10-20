@@ -15,6 +15,7 @@ const PAGES = {
   analisis: lazy(() => import("./pages/Analisis")),
   ciudad: lazy(() => import("./pages/Ciudad")),
   mapa: lazy(() => import("./pages/Mapa")),
+  relacionamiento: lazy(() => import("./pages/Relacionamiento")),
   historico: lazy(() => import("./pages/Historico")),
   agenda: lazy(() => import("./pages/Agenda")),
   reporte: lazy(() => import("./pages/Reporte")),

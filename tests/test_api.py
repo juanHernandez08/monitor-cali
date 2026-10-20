@@ -140,3 +140,16 @@ def test_dashboard_serves_built_frontend(client, tmp_path, monkeypatch):
     r = client.get("/")
     assert r.status_code == 200 and "Monitor nuevo" in r.text
     assert r.headers["Cache-Control"] == "no-cache"
+
+
+def test_survey_nps_endpoints_require_csrf_header_and_validate(client):
+    body = {"date": "2026-10-15", "scope": "cali", "promoters": 50, "passives": 30, "detractors": 20}
+    assert client.post("/api/nps/survey", json=body).status_code == 403
+    r = client.post("/api/nps/survey", json=body, headers=CSRF)
+    assert r.status_code == 200 and r.json()["nps"] == 30
+    assert client.post("/api/nps/survey", json={**body, "date": "ayer"}, headers=CSRF).status_code == 400
+    sid = r.json()["id"]
+    assert [x["id"] for x in client.get("/api/nps").json()["survey"]] == [sid]
+    assert client.delete(f"/api/nps/survey/{sid}").status_code == 403
+    assert client.delete(f"/api/nps/survey/{sid}", headers=CSRF).status_code == 200
+    assert client.get("/api/relationship?days=30").status_code == 200

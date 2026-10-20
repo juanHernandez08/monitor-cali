@@ -102,6 +102,7 @@ class SentimentScore(Base):
     emotion_nuance = Column(String, nullable=True)  # matiz específico dentro de esa emoción (ver sentiment.EMOTION_NUANCES)
     apalancador = Column(String, nullable=True)  # qué disparó concretamente la emoción (frase libre del LLM)
     place_hint = Column(String, nullable=True)  # lugar de Cali que el LLM leyó en el texto ("" = ninguno; None = sin preguntar)
+    esfera = Column(String, nullable=True)  # esfera de relacionamiento (ver sentiment.ESFERAS); None = sin preguntar
     model = Column(String, nullable=False)
     created_at = Column(DateTime, default=dt.datetime.utcnow, nullable=False)
 
@@ -123,6 +124,23 @@ class MentionPlace(Base):
     method = Column(String, nullable=False)
 
     __table_args__ = (UniqueConstraint("mention_id", "place_id", name="uq_mention_place"),)
+
+
+class SurveyNPS(Base):
+    """Una medición de NPS de ENCUESTA cargada por la campaña (la pregunta de 0 a 10: "¿qué tan
+    probable es que recomiende a Carlos Arias?"). Solo totales agregados -- nunca respuestas
+    individuales ni datos de quién respondió. `scope`: "cali", "nucleo:<id>" o "comuna:<NN>"."""
+    __tablename__ = "survey_nps"
+
+    id = Column(Integer, primary_key=True)
+    date = Column(String, nullable=False)  # YYYY-MM-DD del trabajo de campo
+    scope = Column(String, nullable=False, default="cali")
+    promoters = Column(Integer, nullable=False)   # respuestas 9-10
+    passives = Column(Integer, nullable=False)    # 7-8
+    detractors = Column(Integer, nullable=False)  # 0-6
+    source = Column(String, nullable=True)  # encuestadora o método (p. ej. "puerta a puerta núcleo Oriente")
+    notes = Column(String, nullable=True)
+    created_at = Column(DateTime, default=dt.datetime.utcnow, nullable=False)
 
 
 class Run(Base):

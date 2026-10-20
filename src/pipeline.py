@@ -219,7 +219,8 @@ def score_pending(session, engine, limit: int = 20) -> int:
                                    # cada mención neutra, que siempre vuelve a salir vacía.
                                    emotion_nuance=getattr(result, "emotion_nuance", ""),
                                    apalancador=getattr(result, "apalancador", ""),
-                                   place_hint=getattr(result, "place_hint", "")))
+                                   place_hint=getattr(result, "place_hint", ""),
+                                   esfera=getattr(result, "esfera", None)))
         try:
             session.commit()
         except IntegrityError:  # otro proceso (el scheduler del servidor) ya la clasificó
@@ -233,12 +234,13 @@ def score_pending(session, engine, limit: int = 20) -> int:
 
 
 def backfill_place_hints(session, engine, limit: int = 10) -> int:
-    """Pide el campo "lugar" al LLM para menciones clasificadas antes de que existiera (2026-10-20) y
+    """Pide los campos "lugar" y "esfera" al LLM para menciones clasificadas antes de que existiera (2026-10-20) y
     recalcula su zona. Solo guarda `place_hint`: label, score, tema, emoción, etc. ya revisados no se
     tocan. De la más reciente a la más vieja (lo reciente es lo que más se mira en el mapa). Devuelve
     cuántas procesó; se detiene al primer fallo (PC del cliente apagado) para reintentar después."""
     pending = (session.query(Mention).join(SentimentScore)
-               .filter(Mention.relevant.is_(True), SentimentScore.place_hint.is_(None),
+               .filter(Mention.relevant.is_(True),
+                       or_(SentimentScore.place_hint.is_(None), SentimentScore.esfera.is_(None)),
                        SentimentScore.model != "regla")
                .order_by(Mention.fetched_at.desc()).limit(limit).all())
     done = 0
@@ -250,6 +252,7 @@ def backfill_place_hints(session, engine, limit: int = 10) -> int:
             log.exception("backfill de lugar falló para mention %s", mention.id)
             break
         mention.sentiment.place_hint = getattr(result, "place_hint", "") or ""
+        mention.sentiment.esfera = getattr(result, "esfera", None) or "ciudadanía"
         assign_places(session, mention)
         session.commit()
         done += 1
