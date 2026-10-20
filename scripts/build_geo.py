@@ -114,6 +114,9 @@ def variants(name: str) -> list[str]:
         base = _PREFIX.sub("", part)
         out.add(base)
         out.add(_STAGE.sub("", base))
+    # "barrio Comuneros" por "Los Comuneros I": la gente suele omitir el artículo (la variante sin
+    # artículo de una sola palabra queda ambigua: solo cuenta con "barrio" delante)
+    out |= {re.sub(r"^(el|la|los|las)\s+", "", v) for v in out if re.match(r"^(el|la|los|las)\s+\S", v)}
     # "Ciudadela del Río" sin el prefijo queda "del rio": eso ya no es un nombre de lugar
     out = {v for v in out if len(v) >= 4 and not re.match(r"^(de|del)\s", v) or v in (n,)}
     return sorted(out, key=len, reverse=True)

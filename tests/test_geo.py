@@ -105,3 +105,26 @@ def test_football_teams_and_standings_are_not_places():
     assert ids("Tabla de la liga BetPlay: 1. América 20 pts, 2. Tolima 16 pts, 3. Medellín 15 pts") == set()
     assert "barrio:2003" in ids("Los hinchas celebraron el gol en Siloé, Cali")
     assert "departamento:73" in ids("Lluvias fuertes en el Tolima y el Huila")
+
+
+def test_social_comments_inherit_the_zone_of_the_full_parent_post(db_session):
+    """Bug real 2026-10-20: 0 % de los comentarios de Instagram/Facebook tenían zona porque solo se miraba
+    el `post_title` (los primeros ~90 caracteres); la publicación completa sí nombraba el barrio."""
+    from src.geo import assign_places
+    from src.models import MentionPlace
+    post = _mention(db_session, "Recorrimos hoy la comunidad. " * 5 + "Estuvimos en el barrio Mojica escuchando a los vecinos",
+                    raw={"kind": "post", "platform": "instagram"}, ext="post1")
+    post.url = "https://www.instagram.com/p/abc/"
+    com = _mention(db_session, "gracias por venir", ext="com1",
+                   raw={"kind": "comment", "platform": "instagram", "post_title": "Recorrimos hoy la comunidad. Recorrimos hoy"})
+    com.url = "https://www.instagram.com/p/abc/"
+    db_session.commit()
+    assign_places(db_session, com)
+    row = db_session.query(MentionPlace).filter_by(mention_id=com.id).one()
+    assert (row.place_id, row.method) == ("barrio:1506", "heredado")
+
+
+def test_article_less_barrio_names_and_campaign_regions():
+    # "Comuneros" son dos barrios oficiales (I y II) en comunas distintas: solo se puede afirmar Cali
+    assert "barrio:" not in " ".join(ids("barrio Comuneros, Cali")) and "municipio:76001" in ids("barrio Comuneros, Cali")    assert ids("Más policía en el oriente de Cali") == {"comuna:13", "comuna:14", "comuna:15", "comuna:16", "comuna:21"}
+    assert ids("Comuneros firmes") == set()  # sin "barrio" delante no cuenta

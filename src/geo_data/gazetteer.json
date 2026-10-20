@@ -244,6 +244,10 @@
 {
 "text": "la flora",
 "ambiguous": false
+},
+{
+"text": "flora",
+"ambiguous": true
 }
 ]
 },
@@ -280,6 +284,14 @@
 {
 "text": "los naranjos",
 "ambiguous": true
+},
+{
+"text": "naranjos i",
+"ambiguous": false
+},
+{
+"text": "naranjos",
+"ambiguous": true
 }
 ]
 },
@@ -301,6 +313,10 @@
 },
 {
 "text": "mayapan",
+"ambiguous": true
+},
+{
+"text": "vegas",
 "ambiguous": true
 }
 ]
@@ -337,6 +353,10 @@
 },
 {
 "text": "la merced",
+"ambiguous": true
+},
+{
+"text": "merced",
 "ambiguous": true
 }
 ]
@@ -416,6 +436,10 @@
 {
 "text": "la flora",
 "ambiguous": false
+},
+{
+"text": "flora",
+"ambiguous": true
 }
 ]
 },
@@ -446,8 +470,16 @@
 "ambiguous": false
 },
 {
+"text": "alcazares segunda etapa",
+"ambiguous": false
+},
+{
 "text": "los alcazares",
 "ambiguous": false
+},
+{
+"text": "alcazares",
+"ambiguous": true
 }
 ]
 },
@@ -504,6 +536,10 @@
 {
 "text": "el bosque",
 "ambiguous": true
+},
+{
+"text": "bosque",
+"ambiguous": true
 }
 ]
 },
@@ -545,6 +581,10 @@
 "variants": [
 {
 "text": "la campina",
+"ambiguous": true
+},
+{
+"text": "campina",
 "ambiguous": true
 }
 ]
@@ -666,6 +706,10 @@
 {
 "text": "la esperanza",
 "ambiguous": true
+},
+{
+"text": "esperanza",
+"ambiguous": true
 }
 ]
 },
@@ -682,11 +726,19 @@
 "ambiguous": false
 },
 {
+"text": "parques - barranquilla",
+"ambiguous": false
+},
+{
 "text": "barranquilla",
 "ambiguous": true
 },
 {
 "text": "los parques",
+"ambiguous": true
+},
+{
+"text": "parques",
 "ambiguous": true
 }
 ]
@@ -719,6 +771,10 @@
 "variants": [
 {
 "text": "los pinos",
+"ambiguous": true
+},
+{
+"text": "pinos",
 "ambiguous": true
 }
 ]
@@ -784,6 +840,10 @@
 {
 "text": "las encinas",
 "ambiguous": true
+},
+{
+"text": "encinas",
+"ambiguous": true
 }
 ]
 },
@@ -829,6 +889,10 @@
 "variants": [
 {
 "text": "la isla",
+"ambiguous": true
+},
+{
+"text": "isla",
 "ambiguous": true
 }
 ]
@@ -916,8 +980,16 @@
 "ambiguous": false
 },
 {
+"text": "rivera primera etapa",
+"ambiguous": false
+},
+{
 "text": "la rivera",
 "ambiguous": false
+},
+{
+"text": "rivera",
+"ambiguous": true
 }
 ]
 },
@@ -931,6 +1003,10 @@
 "variants": [
 {
 "text": "los guayacanes",
+"ambiguous": true
+},
+{
+"text": "guayacanes",
 "ambiguous": true
 }
 ]
@@ -978,6 +1054,10 @@
 {
 "text": "la alianza",
 "ambiguous": true
+},
+{
+"text": "alianza",
+"ambiguous": true
 }
 ]
 },
@@ -1019,6 +1099,10 @@
 "variants": [
 {
 "text": "los andes",
+"ambiguous": true
+},
+{
+"text": "andes",
 "ambiguous": true
 }
 ]
@@ -1073,6 +1157,10 @@
 "variants": [
 {
 "text": "el sena",
+"ambiguous": true
+},
+{
+"text": "sena",
 "ambiguous": true
 }
 ]
@@ -1146,11 +1234,23 @@
 "ambiguous": false
 },
 {
+"text": "andes b - la riviera",
+"ambiguous": false
+},
+{
 "text": "los andes b",
 "ambiguous": false
 },
 {
 "text": "la riviera",
+"ambiguous": true
+},
+{
+"text": "andes b",
+"ambiguous": false
+},
+{
+"text": "riviera",
 "ambiguous": true
 }
 ]
@@ -1328,6 +1428,10 @@
 {
 "text": "la esmeralda",
 "ambiguous": false
+},
+{
+"text": "esmeralda",
+"ambiguous": true
 }
 ]
 },
@@ -1341,6 +1445,10 @@
 "variants": [
 {
 "text": "las delicias",
+"ambiguous": true
+},
+{
+"text": "delicias",
 "ambiguous": true
 }
 ]
@@ -1373,6 +1481,10 @@
 "variants": [
 {
 "text": "las ceibas",
+"ambiguous": true
+},
+{
+"text": "ceibas",
 "ambiguous": true
 }
 ]
@@ -1433,6 +1545,10 @@
 "variants": [
 {
 "text": "el manantial",
+"ambiguous": true
+},
+{
+"text": "manantial",
 "ambiguous": true
 }
 ]
@@ -1535,6 +1651,10 @@
 "variants": [
 {
 "text": "el piloto",
+"ambiguous": true
+},
+{
+"text": "piloto",
 "ambiguous": true
 }
 ]
@@ -1706,6 +1826,10 @@
 {
 "text": "la nueva base",
 "ambiguous": false
+},
+{
+"text": "nueva base",
+"ambiguous": false
 }
 ]
 },
@@ -1826,6 +1950,10 @@
 {
 "text": "el troncal",
 "ambiguous": true
+},
+{
+"text": "troncal",
+"ambiguous": true
 }
 ]
 },
@@ -1839,6 +1967,10 @@
 "variants": [
 {
 "text": "la merced",
+"ambiguous": true
+},
+{
+"text": "merced",
 "ambiguous": true
 }
 ]
@@ -1868,6 +2000,10 @@
 {
 "text": "la libertad",
 "ambiguous": true
+},
+{
+"text": "libertad",
+"ambiguous": true
 }
 ]
 },
@@ -1881,6 +2017,10 @@
 "variants": [
 {
 "text": "la base",
+"ambiguous": true
+},
+{
+"text": "base",
 "ambiguous": true
 }
 ]
@@ -1994,6 +2134,10 @@
 {
 "text": "el penon",
 "ambiguous": true
+},
+{
+"text": "penon",
+"ambiguous": true
 }
 ]
 },
@@ -2030,6 +2174,10 @@
 {
 "text": "navarro",
 "ambiguous": true
+},
+{
+"text": "chanca",
+"ambiguous": true
 }
 ]
 },
@@ -2048,6 +2196,10 @@
 {
 "text": "el angel del hogar",
 "ambiguous": false
+},
+{
+"text": "angel del hogar",
+"ambiguous": true
 }
 ]
 },
@@ -2061,6 +2213,10 @@
 "variants": [
 {
 "text": "el trebol",
+"ambiguous": true
+},
+{
+"text": "trebol",
 "ambiguous": true
 }
 ]
@@ -2104,6 +2260,10 @@
 {
 "text": "las americas",
 "ambiguous": true
+},
+{
+"text": "americas",
+"ambiguous": true
 }
 ]
 },
@@ -2145,6 +2305,10 @@
 "variants": [
 {
 "text": "la floresta",
+"ambiguous": true
+},
+{
+"text": "floresta",
 "ambiguous": true
 }
 ]
@@ -2256,6 +2420,10 @@
 {
 "text": "el nacional",
 "ambiguous": true
+},
+{
+"text": "nacional",
+"ambiguous": true
 }
 ]
 },
@@ -2344,6 +2512,10 @@
 {
 "text": "el mortinal",
 "ambiguous": false
+},
+{
+"text": "mortinal",
+"ambiguous": true
 }
 ]
 },
@@ -2357,6 +2529,10 @@
 "variants": [
 {
 "text": "los libertadores",
+"ambiguous": true
+},
+{
+"text": "libertadores",
 "ambiguous": true
 }
 ]
@@ -2427,6 +2603,10 @@
 "variants": [
 {
 "text": "las acacias",
+"ambiguous": true
+},
+{
+"text": "acacias",
 "ambiguous": true
 }
 ]
@@ -2734,6 +2914,10 @@
 {
 "text": "el rodeo",
 "ambiguous": true
+},
+{
+"text": "rodeo",
+"ambiguous": true
 }
 ]
 },
@@ -2747,6 +2931,10 @@
 "variants": [
 {
 "text": "el cedro",
+"ambiguous": true
+},
+{
+"text": "cedro",
 "ambiguous": true
 }
 ]
@@ -2808,6 +2996,14 @@
 {
 "text": "los naranjos",
 "ambiguous": true
+},
+{
+"text": "naranjos ii",
+"ambiguous": false
+},
+{
+"text": "naranjos",
+"ambiguous": true
 }
 ]
 },
@@ -2821,6 +3017,10 @@
 "variants": [
 {
 "text": "el prado",
+"ambiguous": true
+},
+{
+"text": "prado",
 "ambiguous": true
 }
 ]
@@ -3004,6 +3204,10 @@
 {
 "text": "la alborada",
 "ambiguous": true
+},
+{
+"text": "alborada",
+"ambiguous": true
 }
 ]
 },
@@ -3032,6 +3236,10 @@
 {
 "text": "el pondaje",
 "ambiguous": false
+},
+{
+"text": "pondaje",
+"ambiguous": true
 }
 ]
 },
@@ -3063,6 +3271,10 @@
 "variants": [
 {
 "text": "el paraiso",
+"ambiguous": true
+},
+{
+"text": "paraiso",
 "ambiguous": true
 }
 ]
@@ -3134,6 +3346,10 @@
 {
 "text": "los lagos",
 "ambiguous": true
+},
+{
+"text": "lagos",
+"ambiguous": true
 }
 ]
 },
@@ -3147,6 +3363,10 @@
 "variants": [
 {
 "text": "el recuerdo",
+"ambiguous": true
+},
+{
+"text": "recuerdo",
 "ambiguous": true
 }
 ]
@@ -3189,6 +3409,10 @@
 "variants": [
 {
 "text": "los lideres",
+"ambiguous": true
+},
+{
+"text": "lideres",
 "ambiguous": true
 }
 ]
@@ -3306,6 +3530,10 @@
 {
 "text": "el jardin",
 "ambiguous": true
+},
+{
+"text": "jardin",
+"ambiguous": true
 }
 ]
 },
@@ -3364,7 +3592,15 @@
 "ambiguous": false
 },
 {
+"text": "comuneros ii etapa",
+"ambiguous": false
+},
+{
 "text": "los comuneros",
+"ambiguous": true
+},
+{
+"text": "comuneros",
 "ambiguous": true
 }
 ]
@@ -3379,6 +3615,10 @@
 "variants": [
 {
 "text": "la fortaleza",
+"ambiguous": true
+},
+{
+"text": "fortaleza",
 "ambiguous": true
 }
 ]
@@ -3421,6 +3661,10 @@
 "variants": [
 {
 "text": "los conquistadores",
+"ambiguous": true
+},
+{
+"text": "conquistadores",
 "ambiguous": true
 }
 ]
@@ -3648,6 +3892,10 @@
 {
 "text": "el diamante",
 "ambiguous": true
+},
+{
+"text": "diamante",
+"ambiguous": true
 }
 ]
 },
@@ -3684,6 +3932,14 @@
 {
 "text": "el poblado",
 "ambiguous": true
+},
+{
+"text": "poblado ii",
+"ambiguous": false
+},
+{
+"text": "poblado",
+"ambiguous": true
 }
 ]
 },
@@ -3716,6 +3972,10 @@
 {
 "text": "los robles",
 "ambiguous": true
+},
+{
+"text": "robles",
+"ambiguous": true
 }
 ]
 },
@@ -3729,6 +3989,10 @@
 "variants": [
 {
 "text": "los cambulos",
+"ambiguous": true
+},
+{
+"text": "cambulos",
 "ambiguous": true
 }
 ]
@@ -3744,6 +4008,10 @@
 {
 "text": "el lido",
 "ambiguous": true
+},
+{
+"text": "lido",
+"ambiguous": true
 }
 ]
 },
@@ -3758,6 +4026,10 @@
 {
 "text": "la gran colombia",
 "ambiguous": true
+},
+{
+"text": "gran colombia",
+"ambiguous": false
 }
 ]
 },
@@ -3771,6 +4043,10 @@
 "variants": [
 {
 "text": "el dorado",
+"ambiguous": true
+},
+{
+"text": "dorado",
 "ambiguous": true
 }
 ]
@@ -3789,6 +4065,14 @@
 },
 {
 "text": "el poblado",
+"ambiguous": true
+},
+{
+"text": "poblado i",
+"ambiguous": false
+},
+{
+"text": "poblado",
 "ambiguous": true
 }
 ]
@@ -3832,6 +4116,10 @@
 {
 "text": "el remanso",
 "ambiguous": true
+},
+{
+"text": "remanso",
+"ambiguous": true
 }
 ]
 },
@@ -3868,6 +4156,10 @@
 {
 "text": "la selva",
 "ambiguous": true
+},
+{
+"text": "selva",
+"ambiguous": true
 }
 ]
 },
@@ -3898,12 +4190,20 @@
 "ambiguous": false
 },
 {
+"text": "sauces - ciudad modelo",
+"ambiguous": false
+},
+{
 "text": "ciudad modelo",
 "ambiguous": true
 },
 {
 "text": "los sauces",
 "ambiguous": false
+},
+{
+"text": "sauces",
+"ambiguous": true
 }
 ]
 },
@@ -3917,6 +4217,10 @@
 "variants": [
 {
 "text": "la independencia",
+"ambiguous": true
+},
+{
+"text": "independencia",
 "ambiguous": true
 }
 ]
@@ -3932,6 +4236,10 @@
 {
 "text": "el vergel",
 "ambiguous": true
+},
+{
+"text": "vergel",
+"ambiguous": true
 }
 ]
 },
@@ -3946,6 +4254,10 @@
 {
 "text": "los chorros",
 "ambiguous": false
+},
+{
+"text": "chorros",
+"ambiguous": true
 }
 ]
 },
@@ -3960,6 +4272,10 @@
 {
 "text": "el guabal",
 "ambiguous": false
+},
+{
+"text": "guabal",
+"ambiguous": true
 }
 ]
 },
@@ -3974,6 +4290,10 @@
 {
 "text": "el limonar",
 "ambiguous": false
+},
+{
+"text": "limonar",
+"ambiguous": true
 }
 ]
 },
@@ -4002,6 +4322,10 @@
 {
 "text": "las orquideas",
 "ambiguous": true
+},
+{
+"text": "orquideas",
+"ambiguous": true
 }
 ]
 },
@@ -4015,6 +4339,10 @@
 "variants": [
 {
 "text": "el jordan",
+"ambiguous": true
+},
+{
+"text": "jordan",
 "ambiguous": true
 }
 ]
@@ -4043,6 +4371,10 @@
 "variants": [
 {
 "text": "la cascada",
+"ambiguous": true
+},
+{
+"text": "cascada",
 "ambiguous": true
 }
 ]
@@ -4089,6 +4421,14 @@
 },
 {
 "text": "los comuneros",
+"ambiguous": true
+},
+{
+"text": "comuneros i",
+"ambiguous": false
+},
+{
+"text": "comuneros",
 "ambiguous": true
 }
 ]
@@ -4154,6 +4494,10 @@
 {
 "text": "el coliseo",
 "ambiguous": true
+},
+{
+"text": "coliseo",
+"ambiguous": true
 }
 ]
 },
@@ -4216,7 +4560,15 @@
 "ambiguous": false
 },
 {
+"text": "gran limonar - cataya",
+"ambiguous": false
+},
+{
 "text": "el gran limonar",
+"ambiguous": false
+},
+{
+"text": "gran limonar",
 "ambiguous": false
 },
 {
@@ -4236,6 +4588,10 @@
 {
 "text": "el retiro",
 "ambiguous": true
+},
+{
+"text": "retiro",
+"ambiguous": true
 }
 ]
 },
@@ -4249,6 +4605,10 @@
 "variants": [
 {
 "text": "la selva",
+"ambiguous": true
+},
+{
+"text": "selva",
 "ambiguous": true
 }
 ]
@@ -4310,6 +4670,10 @@
 {
 "text": "las granjas",
 "ambiguous": true
+},
+{
+"text": "granjas",
+"ambiguous": true
 }
 ]
 },
@@ -4331,6 +4695,10 @@
 },
 {
 "text": "camino real",
+"ambiguous": true
+},
+{
+"text": "fundadores",
 "ambiguous": true
 }
 ]
@@ -4365,6 +4733,10 @@
 },
 {
 "text": "villa luz",
+"ambiguous": true
+},
+{
+"text": "garzas",
 "ambiguous": true
 }
 ]
@@ -4466,6 +4838,10 @@
 {
 "text": "los farallones",
 "ambiguous": false
+},
+{
+"text": "farallones",
+"ambiguous": true
 }
 ]
 },
@@ -4480,6 +4856,10 @@
 {
 "text": "las quintas de don simon",
 "ambiguous": true
+},
+{
+"text": "quintas de don simon",
+"ambiguous": false
 }
 ]
 },
@@ -4508,6 +4888,10 @@
 {
 "text": "el vallado",
 "ambiguous": false
+},
+{
+"text": "vallado",
+"ambiguous": true
 }
 ]
 },
@@ -4534,6 +4918,10 @@
 {
 "text": "pizamos",
 "ambiguous": false
+},
+{
+"text": "dalias",
+"ambiguous": true
 }
 ]
 },
@@ -4550,11 +4938,15 @@
 "ambiguous": false
 },
 {
+"text": "canaverales",
+"ambiguous": true
+},
+{
 "text": "los samanes",
 "ambiguous": true
 },
 {
-"text": "canaverales",
+"text": "samanes",
 "ambiguous": true
 }
 ]
@@ -4716,6 +5108,10 @@
 {
 "text": "la hacienda",
 "ambiguous": true
+},
+{
+"text": "hacienda",
+"ambiguous": true
 }
 ]
 },
@@ -4738,6 +5134,10 @@
 {
 "text": "el guabito",
 "ambiguous": true
+},
+{
+"text": "guabito",
+"ambiguous": true
 }
 ]
 },
@@ -4752,6 +5152,10 @@
 {
 "text": "el morichal",
 "ambiguous": false
+},
+{
+"text": "morichal",
+"ambiguous": true
 }
 ]
 },
@@ -4848,6 +5252,10 @@
 {
 "text": "el refugio",
 "ambiguous": true
+},
+{
+"text": "refugio",
+"ambiguous": true
 }
 ]
 },
@@ -4861,6 +5269,10 @@
 "variants": [
 {
 "text": "el gran limonar",
+"ambiguous": false
+},
+{
+"text": "gran limonar",
 "ambiguous": false
 }
 ]
@@ -4892,11 +5304,19 @@
 "ambiguous": false
 },
 {
+"text": "portales - nuevo rey",
+"ambiguous": false
+},
+{
 "text": "los portales",
 "ambiguous": true
 },
 {
 "text": "nuevo rey",
+"ambiguous": true
+},
+{
+"text": "portales",
 "ambiguous": true
 }
 ]
@@ -5004,6 +5424,10 @@
 {
 "text": "la playa",
 "ambiguous": true
+},
+{
+"text": "playa",
+"ambiguous": true
 }
 ]
 },
@@ -5062,8 +5486,16 @@
 "ambiguous": false
 },
 {
+"text": "alcazares tercera etapa",
+"ambiguous": false
+},
+{
 "text": "los alcazares",
 "ambiguous": false
+},
+{
+"text": "alcazares",
+"ambiguous": true
 }
 ]
 },
@@ -5182,8 +5614,16 @@
 "ambiguous": false
 },
 {
+"text": "alcazares primera etapa",
+"ambiguous": false
+},
+{
 "text": "los alcazares",
 "ambiguous": false
+},
+{
+"text": "alcazares",
+"ambiguous": true
 }
 ]
 },
@@ -5280,6 +5720,10 @@
 {
 "text": "la sultana",
 "ambiguous": true
+},
+{
+"text": "sultana",
+"ambiguous": true
 }
 ]
 },
@@ -5326,6 +5770,10 @@
 {
 "text": "los guaduales",
 "ambiguous": true
+},
+{
+"text": "guaduales",
+"ambiguous": true
 }
 ]
 },
@@ -5339,6 +5787,10 @@
 "variants": [
 {
 "text": "el ingenio",
+"ambiguous": true
+},
+{
+"text": "ingenio",
 "ambiguous": true
 }
 ]
@@ -5410,6 +5862,10 @@
 {
 "text": "el cortijo",
 "ambiguous": true
+},
+{
+"text": "cortijo",
+"ambiguous": true
 }
 ]
 },
@@ -5464,6 +5920,10 @@
 {
 "text": "el hormiguero",
 "ambiguous": true
+},
+{
+"text": "hormiguero",
+"ambiguous": true
 }
 ]
 },
@@ -5490,6 +5950,10 @@
 {
 "text": "la buitrera",
 "ambiguous": false
+},
+{
+"text": "buitrera",
+"ambiguous": true
 }
 ]
 },
@@ -5515,6 +5979,10 @@
 "variants": [
 {
 "text": "los andes",
+"ambiguous": true
+},
+{
+"text": "andes",
 "ambiguous": true
 }
 ]
@@ -5546,6 +6014,10 @@
 {
 "text": "la leonera",
 "ambiguous": true
+},
+{
+"text": "leonera",
+"ambiguous": true
 }
 ]
 },
@@ -5572,6 +6044,10 @@
 {
 "text": "el saladito",
 "ambiguous": false
+},
+{
+"text": "saladito",
+"ambiguous": true
 }
 ]
 },
@@ -5585,6 +6061,10 @@
 {
 "text": "la elvira",
 "ambiguous": true
+},
+{
+"text": "elvira",
+"ambiguous": true
 }
 ]
 },
@@ -5597,6 +6077,10 @@
 "variants": [
 {
 "text": "la castilla",
+"ambiguous": true
+},
+{
+"text": "castilla",
 "ambiguous": true
 }
 ]
@@ -5650,6 +6134,10 @@
 {
 "text": "el pinar",
 "ambiguous": true
+},
+{
+"text": "pinar",
+"ambiguous": true
 }
 ]
 },
@@ -5662,6 +6150,10 @@
 "variants": [
 {
 "text": "el futuro",
+"ambiguous": true
+},
+{
+"text": "futuro",
 "ambiguous": true
 }
 ]
@@ -5676,6 +6168,10 @@
 {
 "text": "las brisas",
 "ambiguous": true
+},
+{
+"text": "brisas",
+"ambiguous": true
 }
 ]
 },
@@ -5688,6 +6184,10 @@
 "variants": [
 {
 "text": "la castilla cabecera",
+"ambiguous": false
+},
+{
+"text": "castilla cabecera",
 "ambiguous": false
 }
 ]
@@ -5715,6 +6215,10 @@
 {
 "text": "el cerezo",
 "ambiguous": true
+},
+{
+"text": "cerezo",
+"ambiguous": true
 }
 ]
 },
@@ -5740,6 +6244,10 @@
 "variants": [
 {
 "text": "las nieves",
+"ambiguous": true
+},
+{
+"text": "nieves",
 "ambiguous": true
 }
 ]
@@ -5767,6 +6275,10 @@
 {
 "text": "el saladito cabecera",
 "ambiguous": false
+},
+{
+"text": "saladito cabecera",
+"ambiguous": false
 }
 ]
 },
@@ -5779,6 +6291,10 @@
 "variants": [
 {
 "text": "los laureles",
+"ambiguous": true
+},
+{
+"text": "laureles",
 "ambiguous": true
 }
 ]
@@ -5819,6 +6335,10 @@
 {
 "text": "la luisa",
 "ambiguous": true
+},
+{
+"text": "luisa",
+"ambiguous": true
 }
 ]
 },
@@ -5845,6 +6365,10 @@
 {
 "text": "el otono",
 "ambiguous": true
+},
+{
+"text": "otono",
+"ambiguous": true
 }
 ]
 },
@@ -5858,6 +6382,10 @@
 {
 "text": "la fonda",
 "ambiguous": true
+},
+{
+"text": "fonda",
+"ambiguous": true
 }
 ]
 },
@@ -5870,6 +6398,10 @@
 "variants": [
 {
 "text": "el carmen",
+"ambiguous": true
+},
+{
+"text": "carmen",
 "ambiguous": true
 }
 ]
@@ -5914,6 +6446,10 @@
 {
 "text": "el rosario",
 "ambiguous": true
+},
+{
+"text": "rosario",
+"ambiguous": true
 }
 ]
 },
@@ -5926,6 +6462,10 @@
 "variants": [
 {
 "text": "la buitrera cabecera",
+"ambiguous": false
+},
+{
+"text": "buitrera cabecera",
 "ambiguous": false
 }
 ]
@@ -5953,6 +6493,10 @@
 {
 "text": "la riverita",
 "ambiguous": true
+},
+{
+"text": "riverita",
+"ambiguous": true
 }
 ]
 },
@@ -5965,6 +6509,10 @@
 "variants": [
 {
 "text": "la paz cabecera",
+"ambiguous": false
+},
+{
+"text": "paz cabecera",
 "ambiguous": false
 }
 ]
@@ -5992,6 +6540,10 @@
 {
 "text": "las palmas",
 "ambiguous": true
+},
+{
+"text": "palmas",
+"ambiguous": true
 }
 ]
 },
@@ -6017,6 +6569,10 @@
 "variants": [
 {
 "text": "el palomar",
+"ambiguous": true
+},
+{
+"text": "palomar",
 "ambiguous": true
 }
 ]
@@ -6057,6 +6613,10 @@
 {
 "text": "la maria",
 "ambiguous": true
+},
+{
+"text": "maria",
+"ambiguous": true
 }
 ]
 },
@@ -6070,6 +6630,10 @@
 {
 "text": "las tres cruces",
 "ambiguous": true
+},
+{
+"text": "tres cruces",
+"ambiguous": false
 }
 ]
 },
@@ -6082,6 +6646,10 @@
 "variants": [
 {
 "text": "las nieves",
+"ambiguous": true
+},
+{
+"text": "nieves",
 "ambiguous": true
 }
 ]
@@ -6109,6 +6677,10 @@
 {
 "text": "la esperanza",
 "ambiguous": true
+},
+{
+"text": "esperanza",
+"ambiguous": true
 }
 ]
 },
@@ -6135,6 +6707,10 @@
 {
 "text": "el diamante",
 "ambiguous": true
+},
+{
+"text": "diamante",
+"ambiguous": true
 }
 ]
 },
@@ -6147,6 +6723,10 @@
 "variants": [
 {
 "text": "el porvenir",
+"ambiguous": true
+},
+{
+"text": "porvenir",
 "ambiguous": true
 }
 ]
@@ -6161,6 +6741,10 @@
 {
 "text": "el pato",
 "ambiguous": true
+},
+{
+"text": "pato",
+"ambiguous": true
 }
 ]
 },
@@ -6173,6 +6757,10 @@
 "variants": [
 {
 "text": "la leonera cabecera",
+"ambiguous": false
+},
+{
+"text": "leonera cabecera",
 "ambiguous": false
 }
 ]
@@ -6187,6 +6775,10 @@
 {
 "text": "el pajuil",
 "ambiguous": false
+},
+{
+"text": "pajuil",
+"ambiguous": true
 }
 ]
 },
@@ -6241,11 +6833,23 @@
 "ambiguous": false
 },
 {
+"text": "arrayanes - los pinos",
+"ambiguous": false
+},
+{
 "text": "los arrayanes",
 "ambiguous": true
 },
 {
+"text": "arrayanes",
+"ambiguous": true
+},
+{
 "text": "los pinos",
+"ambiguous": true
+},
+{
+"text": "pinos",
 "ambiguous": true
 }
 ]
@@ -6380,6 +6984,10 @@
 {
 "text": "la hamaca",
 "ambiguous": true
+},
+{
+"text": "hamaca",
+"ambiguous": true
 }
 ]
 },
@@ -6406,6 +7014,10 @@
 {
 "text": "la candelaria",
 "ambiguous": true
+},
+{
+"text": "candelaria",
+"ambiguous": true
 }
 ]
 },
@@ -6418,6 +7030,10 @@
 "variants": [
 {
 "text": "la cajita",
+"ambiguous": true
+},
+{
+"text": "cajita",
 "ambiguous": true
 }
 ]
@@ -6444,6 +7060,10 @@
 "variants": [
 {
 "text": "la cajita",
+"ambiguous": true
+},
+{
+"text": "cajita",
 "ambiguous": true
 }
 ]
@@ -6484,6 +7104,10 @@
 {
 "text": "la elvira cabecera",
 "ambiguous": false
+},
+{
+"text": "elvira cabecera",
+"ambiguous": false
 }
 ]
 },
@@ -6523,6 +7147,10 @@
 {
 "text": "la paila",
 "ambiguous": true
+},
+{
+"text": "paila",
+"ambiguous": true
 }
 ]
 },
@@ -6535,6 +7163,10 @@
 "variants": [
 {
 "text": "el hormiguero cabecera",
+"ambiguous": false
+},
+{
+"text": "hormiguero cabecera",
 "ambiguous": false
 }
 ]
@@ -6588,6 +7220,10 @@
 {
 "text": "el jardin",
 "ambiguous": true
+},
+{
+"text": "jardin",
+"ambiguous": true
 }
 ]
 },
@@ -6600,6 +7236,10 @@
 "variants": [
 {
 "text": "el banqueo",
+"ambiguous": true
+},
+{
+"text": "banqueo",
 "ambiguous": true
 }
 ]
@@ -6640,6 +7280,10 @@
 {
 "text": "la voragine",
 "ambiguous": false
+},
+{
+"text": "voragine",
+"ambiguous": true
 }
 ]
 },
@@ -6653,6 +7297,10 @@
 {
 "text": "el peon",
 "ambiguous": false
+},
+{
+"text": "peon",
+"ambiguous": true
 }
 ]
 },
@@ -6679,6 +7327,10 @@
 {
 "text": "la viga",
 "ambiguous": true
+},
+{
+"text": "viga",
+"ambiguous": true
 }
 ]
 },
@@ -6692,6 +7344,10 @@
 {
 "text": "la maria",
 "ambiguous": true
+},
+{
+"text": "maria",
+"ambiguous": true
 }
 ]
 },
@@ -6704,6 +7360,10 @@
 "variants": [
 {
 "text": "los andes cabecera",
+"ambiguous": false
+},
+{
+"text": "andes cabecera",
 "ambiguous": false
 }
 ]
@@ -6750,11 +7410,19 @@
 "ambiguous": false
 },
 {
+"text": "carolina - andes bajo",
+"ambiguous": false
+},
+{
 "text": "la carolina",
 "ambiguous": true
 },
 {
 "text": "andes bajo",
+"ambiguous": true
+},
+{
+"text": "carolina",
 "ambiguous": true
 }
 ]
@@ -6769,6 +7437,10 @@
 {
 "text": "la fonda",
 "ambiguous": true
+},
+{
+"text": "fonda",
+"ambiguous": true
 }
 ]
 },
@@ -6781,6 +7453,10 @@
 "variants": [
 {
 "text": "el estero",
+"ambiguous": true
+},
+{
+"text": "estero",
 "ambiguous": true
 }
 ]
@@ -6836,11 +7512,23 @@
 "ambiguous": false
 },
 {
+"text": "mango - la reforma",
+"ambiguous": false
+},
+{
 "text": "la reforma",
 "ambiguous": true
 },
 {
 "text": "el mango",
+"ambiguous": true
+},
+{
+"text": "reforma",
+"ambiguous": true
+},
+{
+"text": "mango",
 "ambiguous": true
 }
 ]
@@ -6854,6 +7542,10 @@
 "variants": [
 {
 "text": "el faro",
+"ambiguous": true
+},
+{
+"text": "faro",
 "ambiguous": true
 }
 ]
@@ -6893,6 +7585,10 @@
 "variants": [
 {
 "text": "la sirena",
+"ambiguous": true
+},
+{
+"text": "sirena",
 "ambiguous": true
 }
 ]

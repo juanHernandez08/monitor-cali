@@ -34,7 +34,10 @@ _LEVEL_OF_TRIGGER = (("barrio", "barrio"), ("b/", "barrio"), ("urbaniz", "barrio
                      ("vereda", "vereda"), ("corregim", "corregimiento"))
 # "Aguablanca" a secas casi siempre es el Distrito de Aguablanca (comunas 13, 14, 15 y 21), no el barrio
 # de ese nombre en la comuna 8 -- el barrio solo cuenta si dice "barrio Aguablanca".
-REGIONS = {"distrito de aguablanca": ["13", "14", "15", "21"], "aguablanca": ["13", "14", "15", "21"]}
+REGIONS = {"distrito de aguablanca": ["13", "14", "15", "21"], "aguablanca": ["13", "14", "15", "21"],
+           # "oriente de Cali" y "la ladera" se leen con los núcleos territoriales de la campaña (Oriente, Ladera)
+           "oriente de cali": ["13", "14", "15", "16", "21"], "zona de ladera": ["01", "18", "19", "20"],
+           "laderas de cali": ["01", "18", "19", "20"], "ladera de cali": ["01", "18", "19", "20"]}
 
 
 # Fútbol: "Deportes Tolima", "Junior de Barranquilla" o una tabla de posiciones ("2. tolima 16 pts")
@@ -163,16 +166,18 @@ def _most_specific(found: list[dict]) -> list[dict]:
     return [p for p in found if not any(p["id"] in ancestors(o) for o in ids if o != p["id"])]
 
 
-def places_for_mention(mention) -> list[dict]:
+def places_for_mention(mention, parent_text: str | None = None) -> list[dict]:
     """Zonas de una mención, con el método que las encontró: 'texto' (la mención misma, incluido el
     cuerpo de la nota), 'heredado' (un comentario sin lugar propio toma el del video/publicación que
-    comenta) e 'ia' (el lugar que leyó el LLM, normalizado contra el diccionario oficial)."""
+    comenta) e 'ia' (el lugar que leyó el LLM, normalizado contra el diccionario oficial).
+    `parent_text`: el texto COMPLETO de la publicación comentada, si se tiene (el `post_title` que
+    guarda el comentario son solo los primeros ~90 caracteres y casi nunca trae el lugar)."""
     raw = mention.raw or {}
     own = locate(f"{mention.text}\n{(mention.body or '')[:3000]}")
     out = [{**p, "method": "texto"} for p in own]
     has_zone = any(is_inside_cali(p["id"]) for p in own)
     if not has_zone and raw.get("kind") == "comment":
-        parent = raw.get("video_title") or raw.get("video_context") or raw.get("post_title") or ""
+        parent = parent_text or raw.get("video_title") or raw.get("video_context") or raw.get("post_title") or ""
         inherited = [p for p in locate(parent) if is_inside_cali(p["id"])]
         out += [{**p, "method": "heredado"} for p in inherited]
         has_zone = bool(inherited)
@@ -192,9 +197,18 @@ def places_for_mention(mention) -> list[dict]:
 
 def assign_places(session, mention) -> int:
     """Recalcula y guarda las zonas de `mention` (idempotente). No hace commit."""
-    from src.models import MentionPlace
+    from src.models import Mention, MentionPlace
     session.query(MentionPlace).filter_by(mention_id=mention.id).delete()
-    found = places_for_mention(mention)
+    parent_text = None
+    raw = mention.raw or {}
+    if raw.get("kind") == "comment" and raw.get("platform") and mention.url:
+        # el comentario guarda la URL de su publicación: es la misma URL de la mención de esa publicación
+        for p in (session.query(Mention).filter(Mention.url == mention.url, Mention.id != mention.id)
+                  .limit(20).all()):
+            if (p.raw or {}).get("kind") == "post":
+                parent_text = f"{p.text}\n{(p.body or '')[:3000]}"
+                break
+    found = places_for_mention(mention, parent_text)
     for p in found:
         session.add(MentionPlace(mention_id=mention.id, place_id=p["id"], level=p["level"],
                                  matched=(p.get("matched") or "")[:120], method=p["method"]))

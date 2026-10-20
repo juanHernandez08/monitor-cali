@@ -37,6 +37,7 @@ _INDEXES = [
     "CREATE INDEX IF NOT EXISTS ix_mentions_fetched ON mentions (fetched_at)",
     "CREATE INDEX IF NOT EXISTS ix_mentions_source ON mentions (source_id)",
     "CREATE INDEX IF NOT EXISTS ix_runs_source_started ON runs (source_id, started_at)",
+    "CREATE INDEX IF NOT EXISTS ix_mentions_url ON mentions (url)",  # comentario -> su publicación (src/geo.assign_places)
 ]
 
 
