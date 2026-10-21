@@ -176,6 +176,7 @@ def test_geo_detail_filters_facets_pagination_and_groups(db_session):
     c = _mention(db_session, "qué miedo vivir en Siloé, Cali", ext="g3",
                  raw={"kind": "comment", "platform": "instagram"})
     c.source_id = social.id
+    b.sentiment.score = 0.8  # el ayudante guarda -0,5 para todas: sin esto el orden por tono queda empatado e inestable
     b.sentiment.category = "seguridad y convivencia"
     b.sentiment.topic = "seguridad y convivencia"  # el LLM repitió la categoría como asunto: no debe salir como asunto
     db_session.commit()
