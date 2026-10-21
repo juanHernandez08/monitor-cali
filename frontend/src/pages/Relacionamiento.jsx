@@ -41,7 +41,7 @@ function NpsSplit({ r }) {
   );
 }
 
-/* Círculos concéntricos: centro = cuentas propias; cada anillo hacia afuera, más lejos de Carlos. */
+/* Círculos concéntricos: centro = Carlos; cada anillo hacia afuera, más lejos de Carlos. */
 function Circles({ rings, own, total }) {
   const size = 360, c = size / 2, step = 30, inner = 34;
   return (
@@ -61,8 +61,7 @@ function Circles({ rings, own, total }) {
           );
         })}
         <circle cx={c} cy={c} r={inner} fill="#1d2b4f" stroke="#fff" strokeWidth={3} />
-        <text x={c} y={c - 4} textAnchor="middle" className="fill-white text-[12px] font-bold">Carlos</text>
-        <text x={c} y={c + 12} textAnchor="middle" className="fill-blue-100 text-[10px]">{own} cuentas propias</text>
+        <text x={c} y={c} textAnchor="middle" dominantBaseline="central" className="fill-white text-[13px] font-bold">Carlos</text>
       </svg>
       <ul className="grid gap-2">
         {RINGS.map((ring) => {
@@ -76,7 +75,7 @@ function Circles({ rings, own, total }) {
             </li>
           );
         })}
-        <li className="px-1 text-xs text-slate-500">{fmtNum(total)} cuentas con al menos una opinión sobre Carlos en el período. Solo se muestran totales: el monitor no lista ni perfila a las personas.</li>
+        <li className="px-1 text-xs text-slate-500">{fmtNum(total)} cuentas con al menos una opinión sobre Carlos en el período{own ? ` (sin contar ${own === 1 ? "su cuenta propia" : `sus ${own} cuentas propias`})` : ""}. Solo se muestran totales: el monitor no lista ni perfila a las personas.</li>
       </ul>
     </div>
   );
