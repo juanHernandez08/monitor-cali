@@ -1,14 +1,27 @@
+import { useState } from "react";
 import { ArrowUpRight, TrendingDown, TrendingUp } from "lucide-react";
+import { MentionsModal } from "./MentionsModal";
 import { CARLOS, pct, scored } from "../lib/format";
 import { Gauge } from "../charts/Chart";
 import { Avatar, cx } from "./ui";
 
-function Stat({ n, label, tone }) {
-  return (
-    <div className="rounded-xl bg-white/10 px-2.5 py-2 ring-1 ring-white/15 backdrop-blur-sm sm:px-3.5 sm:py-2.5">
+/* Con `onClick` la píldora es un botón: abre las menciones que cuenta (sin activar el clic del Hero, que abre el perfil). */
+function Stat({ n, label, tone, onClick }) {
+  const body = (
+    <>
       <div className={cx("text-xl font-bold leading-none tracking-tight sm:text-2xl", tone)}>{n}</div>
       <div className="mt-1 text-[10.5px] font-medium leading-tight text-blue-100/70 sm:text-[11px]">{label}</div>
-    </div>
+    </>
+  );
+  const box = "rounded-xl bg-white/10 px-2.5 py-2 ring-1 ring-white/15 backdrop-blur-sm sm:px-3.5 sm:py-2.5";
+  if (!onClick || !n) return <div className={box}>{body}</div>;
+  return (
+    <button type="button" aria-label={`Ver ${n} ${label}`} title="Ver estas menciones"
+      onClick={(e) => { e.stopPropagation(); onClick(); }}
+      onKeyDown={(e) => e.stopPropagation()}
+      className={cx(box, "cursor-pointer text-left transition hover:bg-white/20 hover:ring-white/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70")}>
+      {body}
+    </button>
   );
 }
 
@@ -21,8 +34,10 @@ export function Hero({ r, rivals, onOpen }) {
   const diff = cScored && rivalsScored ? cPct - rPct : null;
   const t = cScored || 1;
   const interactive = !!onOpen;
+  const [view, setView] = useState(null);  // null = cerrado; "" | "positive" | "neutral" | "negative" = ventana de menciones abierta
   const Wrapper = interactive ? "div" : "section";
   return (
+    <>
     <Wrapper
       {...(interactive ? { role: "button", tabIndex: 0, onClick: onOpen, onKeyDown: (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen(); } } } : {})}
       className={cx("group relative overflow-hidden rounded-3xl bg-gradient-to-br from-navy-800 via-brand-800 to-brand-600 p-4 text-white shadow-lift ring-1 ring-white/10 sm:p-7",
@@ -37,10 +52,10 @@ export function Hero({ r, rivals, onOpen }) {
         <div className="min-w-0">
           <div className="hidden lg:block"><HeroName r={r} /></div>
           <div className={cx("mt-3 grid gap-2 sm:mt-4 sm:grid-cols-3 sm:gap-2.5 xl:grid-cols-5", r.pending ? "grid-cols-3" : "grid-cols-4")}>
-            <Stat n={r.mentions} label="menciones" />
-            <Stat n={r.positive} label="positivas" tone="text-emerald-300" />
-            <Stat n={r.neutral} label="neutrales" tone="text-slate-200" />
-            <Stat n={r.negative} label="negativas" tone="text-rose-300" />
+            <Stat n={r.mentions} label="menciones" onClick={() => setView("")} />
+            <Stat n={r.positive} label="positivas" tone="text-emerald-300" onClick={() => setView("positive")} />
+            <Stat n={r.neutral} label="neutrales" tone="text-slate-200" onClick={() => setView("neutral")} />
+            <Stat n={r.negative} label="negativas" tone="text-rose-300" onClick={() => setView("negative")} />
             {r.pending ? <Stat n={r.pending} label="pendientes de análisis" tone="text-amber-200" /> : null}
           </div>
           <div className="mt-4 flex h-2.5 overflow-hidden rounded-full bg-white/15" role="img" aria-label="Reparto de sentimiento">
@@ -69,6 +84,9 @@ export function Hero({ r, rivals, onOpen }) {
         </div>
       </div>
     </Wrapper>
+    {/* fuera del Wrapper: los eventos de un portal burbujean por el árbol de React y abrirían el perfil */}
+    {view !== null && <MentionsModal r={r} initial={view} onClose={() => setView(null)} />}
+    </>
   );
 }
 
