@@ -1,5 +1,5 @@
 from src.config import (CANDIDATES, RSS_SOURCES, CITY_SOURCES, COUNCILORS, COUNCIL_ALSO_CANDIDATES,
-                        COUNCIL_CONTEXT)
+                        COUNCIL_CONTEXT, WATCHLIST, CANDIDATE_STATUS)
 from src.db import init_db, get_session
 from src.models import Candidate, Source, SourceType
 from src.pipeline import CITY_NAME
@@ -43,6 +43,25 @@ def seed(session):
         else:
             row.aliases, row.party, row.kind, row.council = c.get("aliases", []), c["party"], "councilor", True
             row.exclusions, row.context_terms = c.get("exclusions", []), list(COUNCIL_CONTEXT)
+    session.flush()
+    for name, (status, note, url, date) in CANDIDATE_STATUS.items():
+        row = session.query(Candidate).filter_by(name=name).first()
+        if row is not None and row.status is None:  # lo que una persona cambió en el tablero no se pisa
+            row.status, row.status_note, row.status_url, row.status_date = status, note, url, date
+    for w in WATCHLIST:  # precandidatos en observación (radar): config.py define quién y su estado conocido
+        if session.query(Candidate).filter(Candidate.name == w["name"], Candidate.kind.in_(("candidate", "councilor"))).first():
+            continue  # ya es candidato o concejal: no se duplica
+        row = session.query(Candidate).filter_by(name=w["name"]).first()
+        if row is None:
+            row = Candidate(name=w["name"], kind="watch")
+            session.add(row)
+        elif row.kind != "watch":
+            continue
+        row.party, row.aliases, row.context_terms = w.get("party"), w.get("aliases", []), w.get("context_terms", [])
+        # el estado del radar lo pueden haber cambiado a mano en el tablero: config solo lo fija la primera vez
+        if row.status is None:
+            row.status, row.status_note = w.get("status"), w.get("status_note")
+            row.status_url, row.status_date = w.get("status_url"), w.get("status_date")
     for name, party in COUNCIL_ALSO_CANDIDATES.items():  # candidatos que además son concejales
         row = session.query(Candidate).filter_by(name=name).first()
         if row is not None:

@@ -429,6 +429,17 @@ def job_notify_city():
             log.info("notify: %d temas de ciudad avisados", n)
 
 
+@exclusive("radar")
+def job_radar():
+    """Radar de precandidatos (src/radar.py): detecta nombres nuevos y novedades en la prensa ya capturada."""
+    from src import radar
+    with get_session() as s:
+        created = radar.scan(s)
+        sent = radar.notify_new(s)
+        if created or sent:
+            log.info("radar: %d nombres nuevos por revisar, %d avisos", len(created), sent)
+
+
 @exclusive("ollama_health")
 def job_ollama_health():
     from src import notify
@@ -496,5 +507,6 @@ def start_scheduler() -> BackgroundScheduler:
     sched.add_job(job_notify_social, "interval", minutes=15, id="notify_social", max_instances=1, coalesce=True)
     sched.add_job(job_notify_city, "interval", hours=1, id="notify_city", max_instances=1, coalesce=True)
     sched.add_job(job_ollama_health, "interval", minutes=10, id="ollama_health", max_instances=1, coalesce=True)
+    sched.add_job(job_radar, "interval", hours=3, id="radar", max_instances=1, coalesce=True)
     sched.start()
     return sched

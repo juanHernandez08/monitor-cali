@@ -10,6 +10,7 @@ const PAGES = {
   resumen: Resumen,
   perfil: Perfil,
   candidatos: lazy(() => import("./pages/Candidatos")),
+  radar: lazy(() => import("./pages/Radar")),
   publicaciones: lazy(() => import("./pages/Publicaciones")),
   meta: lazy(() => import("./pages/Meta")),
   analisis: lazy(() => import("./pages/Analisis")),

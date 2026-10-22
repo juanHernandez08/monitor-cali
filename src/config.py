@@ -155,6 +155,68 @@ CANDIDATES = [
     },
 ]
 
+# Radar de precandidatos (2026-10-21, pedido del cliente: "estar siempre al tanto" de quién suena para la
+# Alcaldía). Se siguen SOLO por prensa y medios locales (gratis): sin YouTube (cuota de 10.000 unidades/día,
+# 100 por nombre) ni cuentas de redes (créditos de Apify), y fuera de los gráficos de los 9 candidatos.
+# Pasan a CANDIDATES cuando oficialicen. status: "oficial" | "suena" | "declino". Fuentes de cada estado en
+# status_url (prensa, oct-2026). El radar (src/radar.py) detecta nombres nuevos solo; esto es lo conocido hoy.
+_ALC = ["Cali", "Alcaldía", "Alcaldia"]
+WATCHLIST = [
+    {"name": "Juan Martín Bravo", "party": None, "aliases": ["Juan Martin Bravo"], "context_terms": _ALC,
+     "status": "oficial", "status_date": "2026-10-16",
+     "status_note": "Exconcejal. Confirmó que será candidato: irá por firmas con un movimiento ciudadano.",
+     "status_url": "https://occidente.co/politica/graffiti/aspirantes-a-la-alcaldia-de-cali-2027-juan-martin-bravo/"},
+    {"name": "Alejandro Ocampo", "party": "Pacto Histórico", "aliases": [], "context_terms": _ALC,
+     "status": "suena", "status_date": "2026-10-20",
+     "status_note": "Senador. Busca el aval del Pacto Histórico; evalúa renunciar a su curul.",
+     "status_url": "https://occidente.co/politica/graffiti/pacto-historico-en-cali-define-candidatura-a-la-alcaldia-para-2027/"},
+    {"name": "Andrés Lozano", "party": None, "aliases": ["Andres Lozano"], "context_terms": _ALC,
+     "status": "suena", "status_date": "2026-10-02",
+     "status_note": "Empresario gastronómico y cultural; independiente, también suena en el Pacto Histórico.",
+     "status_url": "https://360radio.com.co/cali/alcaldia-de-cali-2027-el-tablero-politico-y-lo-que-de-verdad-piden-los-calenos/"},
+    {"name": "Gustavo Orozco", "party": None, "aliases": [], "context_terms": _ALC,
+     "status": "suena", "status_date": "2026-10-02",
+     "status_note": "Exsecretario de Movilidad, ligado a la administración de Eder.",
+     "status_url": "https://360radio.com.co/cali/alcaldia-de-cali-2027-el-tablero-politico-y-lo-que-de-verdad-piden-los-calenos/"},
+    {"name": "Wilson Ruiz", "party": None, "aliases": [], "context_terms": _ALC,
+     "status": "suena", "status_date": "2026-10-02", "status_note": "Exministro de Justicia.",
+     "status_url": "https://360radio.com.co/cali/alcaldia-de-cali-2027-el-tablero-politico-y-lo-que-de-verdad-piden-los-calenos/"},
+    {"name": "Angélica Mayolo", "party": None, "aliases": ["Angelica Mayolo"], "context_terms": _ALC,
+     "status": "suena", "status_date": "2026-10-02", "status_note": "Exministra de Cultura.",
+     "status_url": "https://360radio.com.co/cali/alcaldia-de-cali-2027-el-tablero-politico-y-lo-que-de-verdad-piden-los-calenos/"},
+    {"name": "Diana Rojas", "party": None, "aliases": [], "context_terms": _ALC,
+     "status": "suena", "status_date": "2026-10-02", "status_note": "Exconcejal.",
+     "status_url": "https://360radio.com.co/cali/alcaldia-de-cali-2027-el-tablero-politico-y-lo-que-de-verdad-piden-los-calenos/"},
+    {"name": "José Darwin Lenis", "party": None, "aliases": ["Jose Darwin Lenis", "Darwin Lenis"], "context_terms": _ALC,
+     "status": "suena", "status_date": "2026-10-20", "status_note": "Empezó a sonar como posible candidato.",
+     "status_url": "https://occidente.co/politica/graffiti/pacto-historico-en-cali-define-candidatura-a-la-alcaldia-para-2027/"},
+    {"name": "Maurice Armitage", "party": None, "aliases": [], "context_terms": _ALC,
+     "status": "suena", "status_date": "2026-10-05",
+     "status_note": "Exalcalde de Cali: le insisten desde varios sectores para que sea candidato.", "status_url": None},
+    {"name": "Guillermo Ulloa", "party": None, "aliases": [], "context_terms": _ALC,
+     "status": "suena", "status_date": "2026-10-13", "status_note": "Entró en el sonajero por la Alcaldía.", "status_url": None},
+    {"name": "Marino del Río", "party": None, "aliases": ["Marino del Rio"], "context_terms": _ALC,
+     "status": "suena", "status_date": "2026-09-30", "status_note": "Entró en la carrera por la Alcaldía.", "status_url": None},
+    {"name": "Sigifredo López", "party": None, "aliases": ["Sigifredo Lopez"], "context_terms": _ALC,
+     "status": "suena", "status_date": "2026-10-02",
+     "status_note": "Reaparición mediática; sin candidatura anunciada.",
+     "status_url": "https://360radio.com.co/cali/alcaldia-de-cali-2027-el-tablero-politico-y-lo-que-de-verdad-piden-los-calenos/"},
+]
+
+# Estado conocido de los candidatos actuales (prensa, oct-2026). Solo se escribe la primera vez; después lo
+# cambia una persona en el Radar del tablero.
+CANDIDATE_STATUS = {
+    "Clara Luz Roldán": ("oficial", "Confirmó su candidatura por el Partido de la U (sep-2026) y la volvió a anunciar el 16 de octubre.", None, "2026-10-16"),
+    "Carlos Arias": ("suena", "Presidente del Concejo; se ha postulado como precandidato (jul-2026).", None, "2026-07-06"),
+    "Alfredo Mondragón": ("suena", "Representante; aspira al aval del Pacto Histórico y evalúa renunciar a su curul.", "https://360radio.com.co/cali/alcaldia-de-cali-2027-el-tablero-politico-y-lo-que-de-verdad-piden-los-calenos/", "2026-10-02"),
+    "Roberto Ortiz": ("suena", "Concejal; contemplaría su cuarto intento a la Alcaldía.", "https://360radio.com.co/cali/alcaldia-de-cali-2027-el-tablero-politico-y-lo-que-de-verdad-piden-los-calenos/", "2026-10-02"),
+    "Mabel Lara": ("suena", "Gerenta de Proyectos Especiales, ligada a la administración de Eder.", "https://360radio.com.co/cali/alcaldia-de-cali-2027-el-tablero-politico-y-lo-que-de-verdad-piden-los-calenos/", "2026-10-02"),
+    "Francia Márquez": ("suena", "Exvicepresidenta; su candidatura es una posibilidad en conversación, no una decisión oficial.", None, "2026-09-28"),
+    "Irene Vélez": ("suena", "Exministra; entre los nombres que suenan en el Pacto Histórico.", "https://occidente.co/politica/graffiti/pacto-historico-en-cali-define-candidatura-a-la-alcaldia-para-2027/", "2026-10-20"),
+    "Roger Mina": ("suena", "Gerente de Emcali; en octubre se preguntó si renunciará para ser candidato.", None, "2026-10-08"),
+    "Carlos Paz": ("revisar", "Sin candidatura en la prensa reciente: el Carlos Paz que sale en medios de Cali es un bailarín de salsa. Confirmar con el equipo si sigue.", None, None),
+}
+
 # Cuentas de Instagram/Facebook a monitorear vía Bright Data (posts + comentarios).
 # "candidate": los posts/comentarios de esa cuenta se atribuyen al candidato; None = medio
 # (solo cuenta lo que nombre a un candidato). Completar con los handles confirmados.

@@ -36,7 +36,13 @@ class Candidate(Base):
     active = Column(Boolean, default=True, nullable=False)
     aliases = Column(JSON, default=list)
     exclusions = Column(JSON, default=list)  # frases que identifican homónimos ("Arias Orjuela")
-    kind = Column(String, default="candidate", nullable=False)  # "candidate" | "councilor" | "city"
+    kind = Column(String, default="candidate", nullable=False)  # "candidate" | "councilor" | "city" | "watch"
+    # "watch" = precandidato en observación (radar): se sigue por prensa y medios locales (gratis), sin
+    # YouTube ni cuentas de redes (cuota/créditos) y fuera de los gráficos de los candidatos (ver src/radar.py).
+    status = Column(String, nullable=True)  # radar: "oficial" | "suena" | "declino"
+    status_note = Column(String, nullable=True)  # qué se sabe, en una frase
+    status_url = Column(String, nullable=True)  # nota de prensa que lo respalda
+    status_date = Column(String, nullable=True)  # AAAA-MM-DD de esa nota
     council = Column(Boolean, default=False, nullable=False)  # pertenece al Concejo de Cali
     context_terms = Column(JSON, default=list)  # si está, el texto debe contener alguno (nombres comunes)
     # Nombre con homónimos famosos: sus videos y los comentarios de esos videos deben traer el
@@ -107,6 +113,24 @@ class SentimentScore(Base):
     created_at = Column(DateTime, default=dt.datetime.utcnow, nullable=False)
 
     mention = relationship("Mention", back_populates="sentiment")
+
+
+class RadarSuggestion(Base):
+    """Nombre que la prensa empezó a mencionar como posible aspirante a la Alcaldía y que aún no está en el
+    monitor (src/radar.py). Una persona decide: seguirlo (pasa a "watch"), descartarlo o dejarlo por revisar."""
+    __tablename__ = "radar_suggestions"
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String, nullable=False, unique=True)
+    state = Column(String, nullable=False, default="nuevo")  # nuevo | siguiendo | descartado
+    first_seen = Column(String, nullable=False)  # AAAA-MM-DD
+    last_seen = Column(String, nullable=False)
+    headlines = Column(Integer, default=1, nullable=False)  # titulares distintos que lo nombran
+    outlets = Column(JSON, default=list)  # medios distintos
+    cue = Column(String, nullable=True)  # lo que dice la prensa de él: "suena", "confirmó", "va por firmas"...
+    sample_title = Column(String, nullable=True)
+    sample_url = Column(String, nullable=True)
+    notified = Column(Boolean, default=False, nullable=False)
 
 
 class MentionPlace(Base):

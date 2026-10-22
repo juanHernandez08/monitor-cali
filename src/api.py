@@ -257,6 +257,37 @@ def create_app(session_factory=None, start_jobs: bool = True, cf_verifier=None) 
             ok = relationship.survey_delete(s, survey_id)
             return {"ok": True} if ok else _bad_request("medición no encontrada", status=404)
 
+    @app.get("/api/radar")
+    def api_radar(days: int = Query(30, ge=7, le=180)):
+        from src import radar
+        with session() as s:
+            return radar.overview(s, days=days)
+
+    @app.post("/api/radar/suggestion/{suggestion_id}/{action}")
+    def api_radar_suggestion(suggestion_id: int, action: Literal["follow", "dismiss"]):
+        from src import radar
+        with session() as s:
+            if action == "follow":
+                c = radar.follow(s, suggestion_id)
+                return {"ok": True, "candidate_id": c.id, "name": c.name} if c else _bad_request("sugerencia no encontrada", status=404)
+            return {"ok": True} if radar.dismiss(s, suggestion_id) else _bad_request("sugerencia no encontrada", status=404)
+
+    @app.post("/api/radar/person/{candidate_id}/status")
+    def api_radar_status(candidate_id: int, payload: dict = Body(...)):
+        from src import radar
+        with session() as s:
+            c = radar.set_status(s, candidate_id, str(payload.get("status") or ""), payload.get("note"), payload.get("url"))
+            return {"ok": True, "status": c.status} if c else _bad_request("estado inválido o persona no encontrada")
+
+    @app.post("/api/radar/person/{candidate_id}/{action}")
+    def api_radar_person(candidate_id: int, action: Literal["promote", "archive"]):
+        from src import radar
+        with session() as s:
+            if action == "promote":
+                c, err = radar.promote(s, candidate_id)
+                return _bad_request(err, status=409) if err else {"ok": True, "name": c.name}
+            return {"ok": True} if radar.archive(s, candidate_id) else _bad_request("solo se archiva a quien está en observación")
+
     @app.get("/api/conversation/weekly")
     def api_conversation_weekly(days: int = Query(90, ge=14, le=365), candidate: str = Query("Carlos Arias", max_length=120)):
         with session() as s:

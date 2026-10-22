@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import {
-  BarChart3, Building2, FileText, HeartHandshake, History, LayoutDashboard, MapPinned, Menu, Newspaper, RefreshCw, Share2, Users, X, Radio, Target,
+  BarChart3, Building2, FileText, HeartHandshake, History, LayoutDashboard, MapPinned, Menu, Radar as RadarIcon, Newspaper, RefreshCw, Share2, Users, X, Radio, Target,
 } from "lucide-react";
 import { PERIODS, useApp } from "../lib/app";
 import { useApi } from "../lib/useApi";
@@ -11,6 +11,7 @@ import { Button, Segmented, Select, cx } from "./ui";
 export const NAV = [
   { id: "resumen", label: "Resumen", icon: LayoutDashboard, title: "Resumen", sub: "Lo esencial: cómo va Carlos frente a sus rivales" },
   { id: "candidatos", label: "Candidatos", icon: Users, title: "Candidatos", sub: "Quién habla más, cómo les va y qué emoción transmiten" },
+  { id: "radar", label: "Radar", icon: RadarIcon, title: "Radar de precandidatos", sub: "Quién suena para la Alcaldía de Cali y qué cambió" },
   { id: "publicaciones", label: "Publicaciones", icon: Newspaper, title: "Publicaciones", sub: "Prensa, redes sociales y YouTube, una por una" },
   { id: "meta", label: "Meta y redes", icon: Share2, title: "Meta y redes", sub: "Alcance, reacción de la audiencia y qué funciona en redes" },
   { id: "analisis", label: "Análisis en gráficas", icon: BarChart3, title: "Análisis", sub: "Alcance, percepción y temas con lectura en palabras" },

@@ -604,7 +604,7 @@ def social_strong_posts(session, days: int = 7, multiplier: float = 3.0, min_his
 def social_candidates(session) -> list[dict]:
     """Candidatos y concejales (todo menos el candidato especial de ciudad), para poblar el
     filtro de "Meta y redes" -- antes ese filtro solo listaba a los 9 candidatos a la alcaldía."""
-    rows = (session.query(Candidate).filter_by(active=True).filter(Candidate.kind != "city")
+    rows = (session.query(Candidate).filter_by(active=True).filter(Candidate.kind.notin_(("city", "watch")))  # watch = radar, sin redes
             .order_by(Candidate.name).all())
     rows.sort(key=lambda c: c.name != CARLOS)
     return [{"candidate_id": c.id, "name": c.name, "party": c.party, "is_councilor": c.kind == "councilor"}
