@@ -280,9 +280,18 @@ def create_app(session_factory=None, start_jobs: bool = True, cf_verifier=None) 
             return {"ok": True, "status": c.status} if c else _bad_request("estado inválido o persona no encontrada")
 
     @app.post("/api/radar/person/{candidate_id}/{action}")
-    def api_radar_person(candidate_id: int, action: Literal["promote", "archive"]):
+    def api_radar_person(candidate_id: int, action: Literal["promote", "archive", "restore", "retire"]):
         from src import radar
         with session() as s:
+            if action == "restore":
+                c = radar.restore(s, candidate_id)
+                return {"ok": True, "name": c.name} if c else _bad_request("solo se reactiva a quien se retiró")
+            if action == "retire":
+                c = s.get(radar.Candidate, candidate_id)
+                if c is None or c.kind not in ("candidate", "watch"):
+                    return _bad_request("persona no encontrada")
+                radar.retire(s, c, "Retirado a mano desde el Radar.")
+                return {"ok": True}
             if action == "promote":
                 c, err = radar.promote(s, candidate_id)
                 return _bad_request(err, status=409) if err else {"ok": True, "name": c.name}

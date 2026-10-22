@@ -532,7 +532,7 @@ def social_posts(session, days: int = 30, candidate_id: int | None = None, platf
     este monitor debe detectar."""
     q = (session.query(Mention).outerjoin(SentimentScore).join(Source).join(Candidate)
          .filter(WHEN >= _since(days), Mention.relevant.is_(True), Source.type == SourceType.SOCIAL,
-                 Candidate.kind != "city"))
+                 Candidate.kind.notin_(("city", "retired"))))
     if candidate_id:
         q = q.filter(Mention.candidate_id == candidate_id)
     rows = [m for m in q.all() if (m.raw or {}).get("kind") == "post"]
@@ -604,7 +604,7 @@ def social_strong_posts(session, days: int = 7, multiplier: float = 3.0, min_his
 def social_candidates(session) -> list[dict]:
     """Candidatos y concejales (todo menos el candidato especial de ciudad), para poblar el
     filtro de "Meta y redes" -- antes ese filtro solo listaba a los 9 candidatos a la alcaldía."""
-    rows = (session.query(Candidate).filter_by(active=True).filter(Candidate.kind.notin_(("city", "watch")))  # watch = radar, sin redes
+    rows = (session.query(Candidate).filter_by(active=True).filter(Candidate.kind.notin_(("city", "watch", "retired")))  # watch = radar, sin redes; retired = se retiró
             .order_by(Candidate.name).all())
     rows.sort(key=lambda c: c.name != CARLOS)
     return [{"candidate_id": c.id, "name": c.name, "party": c.party, "is_councilor": c.kind == "councilor"}

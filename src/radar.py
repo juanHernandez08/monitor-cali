@@ -42,8 +42,14 @@ _CUES = [
     (r"ser[aá] (?:el )?candidat[oa]", "oficial", True),
     (r"se lanza(?: a la alcald[ií]a)?", "oficial", True),
     (r"(?:aspira|buscará|busca) (?:a )?(?:ser )?(?:la )?alcald[ií]a", "suena", False),
-    (r"renunciar[aá] (?:para|a su)", "mueve", True),
-    (r"(?:declina|desiste|se baja|renuncia a su (?:candidatura|aspiraci[oó]n)|no ser[aá] candidat[oa])", "declino", True),
+    (r"renunciar[aá] (?:para|a su (?:curul|cargo|puesto|gerencia|direcci[oó]n))", "mueve", True),
+    # RETIRO: solo frases inequívocas. Con ellas el radar saca a la persona de las listas (ver apply_changes).
+    (r"(?:declina|declinó|desiste|desistió|se baja|se bajó|se retira|se retiró|retira|retiró|renuncia|renunció|renunciará) "
+     r"(?:de |a |a la |a su |su |de su )?(?:la )?(?:candidatura|aspiraci[oó]n|carrera|contienda|alcald[ií]a|carrera por la alcald[ií]a)", "declino", True),
+    (r"(?:no ser[aá]|no va a ser|ya no ser[aá]) (?:el |la )?candidat[oa]", "declino", True),
+    (r"(?:descarta|descartó) (?:aspirar|ser candidat[oa]|su candidatura|su aspiraci[oó]n|lanzarse)", "declino", True),
+    (r"no (?:aspirar[aá]|se lanzar[aá]|ir[aá] a la alcald[ií]a|buscar[aá] la alcald[ií]a)", "declino", True),
+    (r"dice no a (?:la alcald[ií]a|su candidatura)", "declino", True),
 ]
 _CUE_RE = [(re.compile(rf"(?P<name>{_NAME})\s+(?P<cue>{c})"), kind, strong) for c, kind, strong in _CUES]
 _ROLES = {
@@ -185,7 +191,7 @@ def news(session, days: int = 14, limit: int = 25) -> list[dict]:
     keys, cands = _known(session)
     named = {}
     for c in cands:
-        if c.kind in ("candidate", "watch"):
+        if c.kind in ("candidate", "watch", "retired"):
             for n in [c.name, *(c.aliases or [])]:
                 named[norm(n)] = c
     out = []
@@ -220,16 +226,21 @@ def _count_mentions(session, c: Candidate, days: int) -> dict:
 def overview(session, days: int = 30) -> dict:
     today = dt.date.today()
     people = []
-    for c in (session.query(Candidate).filter(Candidate.active.is_(True), Candidate.kind.in_(("candidate", "watch")))
+    retired = []
+    for c in (session.query(Candidate).filter(Candidate.kind.in_(("candidate", "watch", "retired")))
               .order_by(Candidate.kind, Candidate.name).all()):
-        people.append({"candidate_id": c.id, "name": c.name, "party": c.party, "kind": c.kind, "status": c.status or "revisar",
-                       "note": c.status_note, "url": c.status_url, "date": c.status_date, **_count_mentions(session, c, days)})
+        row = {"candidate_id": c.id, "name": c.name, "party": c.party, "kind": c.kind, "status": c.status or "revisar",
+               "note": c.status_note, "url": c.status_url, "date": c.status_date}
+        if c.kind == "retired":
+            retired.append({**row, "was": c.retired_from})
+        elif c.active:
+            people.append({**row, **_count_mentions(session, c, days)})
     people.sort(key=lambda p: ({"oficial": 0, "suena": 1, "revisar": 2, "declino": 3}.get(p["status"], 2), -p["headlines"]))
     sugg = (session.query(RadarSuggestion).filter(RadarSuggestion.state == "nuevo")
             .order_by(RadarSuggestion.last_seen.desc(), RadarSuggestion.headlines.desc()).all())
     return {
         "days": days, "today": today.isoformat(), "days_to_election": (ELECTION - today).days,
-        "calendar": CALENDAR, "people": people, "news": news(session),
+        "calendar": CALENDAR, "people": people, "retired": sorted(retired, key=lambda r: r["date"] or "", reverse=True), "news": news(session),
         "suggestions": [{"id": r.id, "name": r.name, "first_seen": r.first_seen, "last_seen": r.last_seen, "headlines": r.headlines,
                          "outlets": r.outlets or [], "cue": r.cue, "title": r.sample_title, "url": r.sample_url} for r in sugg],
         "max_candidates": 9, "candidates_now": sum(1 for p in people if p["kind"] == "candidate"),
@@ -291,6 +302,104 @@ def promote(session, candidate_id: int) -> tuple[Candidate | None, str | None]:
     return c, None
 
 
+PROTECTED = {"Carlos Arias"}  # el candidato del cliente: el radar avisa, pero nunca lo saca por un titular
+MIN_OUTLETS_CANDIDATE = 2  # sacar a uno de los 9 candidatos exige que lo cuenten al menos 2 medios distintos
+
+
+def retire(session, c: Candidate, note: str | None = None, url: str | None = None) -> None:
+    """Saca a la persona de listas y gráficos (kind="retired", todas las consultas filtran por kind) y deja de
+    buscarla (active=False). Las menciones ya guardadas se conservan: se puede reactivar sin perder historia."""
+    if c.kind != "retired":
+        c.retired_from = c.kind
+    c.kind, c.active, c.status = "retired", False, "declino"
+    c.status_note = (note or "Anunció que no será candidato.")[:300]
+    c.status_url = url  # la nota del retiro; sin ella no se deja la vieja de «suena» como si respaldara el retiro
+    c.status_date = dt.date.today().isoformat()
+    session.commit()
+
+
+def restore(session, candidate_id: int, status: str = "suena") -> Candidate | None:
+    c = session.get(Candidate, candidate_id)
+    if c is None or c.kind != "retired":
+        return None
+    c.kind, c.active, c.status = c.retired_from or "watch", True, status
+    c.retired_from = None
+    c.status_note = (c.status_note or "") + " (reactivado)"
+    c.status_date = dt.date.today().isoformat()
+    session.commit()
+    return c
+
+
+def _reports(session, days: int) -> dict[int, dict[str, dict]]:
+    """Por persona y tipo de novedad: titulares distintos y medios distintos que la cuentan."""
+    keys, cands = _known(session)
+    named = {}
+    for c in cands:
+        if c.kind in ("candidate", "watch", "retired"):
+            for n in [c.name, *(c.aliases or [])]:
+                named[norm(n)] = c
+    out: dict[int, dict[str, dict]] = {}
+    for title, outlet, url, published in _press_titles(session, days):
+        for hit in extract(title):
+            nm = norm(hit["name"])
+            c = named.get(nm) or next((cc for k, cc in named.items() if len(k.split()) >= 2 and set(k.split()) <= set(nm.split())), None)
+            if c is None:
+                continue
+            slot = out.setdefault(c.id, {}).setdefault(hit["kind"], {"titles": set(), "outlets": set(), "title": title, "url": url,
+                                                                      "outlet": outlet, "date": published})
+            slot["titles"].add(norm(title)[:90])
+            slot["outlets"].add(outlet)
+            break
+    return out
+
+
+def apply_changes(session, days: int = 7) -> list[dict]:
+    """Mantiene la lista al día SIN que nadie la toque:
+      * si la prensa informa que alguien se RETIRA («no será candidato», «renunció a su aspiración», «descarta aspirar»),
+        sale de listas y gráficos y se avisa al equipo. Un precandidato en observación sale con un solo titular;
+        uno de los 9 candidatos exige 2 medios distintos; Carlos Arias nunca se saca solo (solo se avisa).
+      * si alguien retirado vuelve a OFICIALIZAR su candidatura (2 medios), se reactiva.
+    Todo es reversible desde el tablero («Reactivar»). Devuelve lo que cambió."""
+    from src import notify
+    changes = []
+    reps = _reports(session, days)
+    for cid, kinds in reps.items():
+        c = session.get(Candidate, cid)
+        if c is None:
+            continue
+        d = kinds.get("declino")
+        if d and c.kind != "retired":
+            enough = len(d["outlets"]) >= (MIN_OUTLETS_CANDIDATE if c.kind == "candidate" else 1)
+            key = f"radar_retire:{c.id}:{norm(d['title'])[:60]}"
+            if _notified(session, key):
+                continue
+            if c.name in PROTECTED or not enough:
+                notify.send(config.NTFY_TOPIC_TEAM, f"🛰️ Posible retiro de {c.name} (por confirmar)",
+                            f"{d['title']}\n({d['outlet']}) — no se sacó del monitor: " +
+                            ("es el candidato del cliente." if c.name in PROTECTED else "solo lo reporta un medio; esperando otro."),
+                            priority=4, tags=["warning"], click=f"{config.DASHBOARD_URL}/#radar", view_label="Ver nota", view_url=d["url"])
+                if c.name in PROTECTED:
+                    _mark(session, key)  # una sola vez; si no se confirma con más medios, se reintenta en el próximo ciclo
+                continue
+            retire(session, c, f"Se retiró: «{d['title'][:200]}» ({d['outlet']})", d["url"])
+            _mark(session, key)
+            changes.append({"name": c.name, "change": "retiro", "title": d["title"], "url": d["url"]})
+            notify.send(config.NTFY_TOPIC_TEAM, f"🛰️ Se retira: {c.name}",
+                        f"{d['title']}\n({d['outlet']})\n\nSalió de las listas y de los gráficos. Si fue un error, se reactiva en el Radar.",
+                        priority=4, tags=["door"], click=f"{config.DASHBOARD_URL}/#radar", view_label="Ver nota", view_url=d["url"])
+        elif c.kind == "retired" and kinds.get("oficial") and len(kinds["oficial"]["outlets"]) >= 2:
+            o = kinds["oficial"]
+            key = f"radar_return:{c.id}:{norm(o['title'])[:60]}"
+            if _notified(session, key):
+                continue
+            restore(session, c.id, "oficial")
+            _mark(session, key)
+            changes.append({"name": c.name, "change": "regreso", "title": o["title"], "url": o["url"]})
+            notify.send(config.NTFY_TOPIC_TEAM, f"🛰️ Vuelve: {c.name} oficializa su candidatura", f"{o['title']}\n({o['outlet']})",
+                        priority=4, tags=["leftwards_arrow_with_hook"], click=f"{config.DASHBOARD_URL}/#radar", view_label="Ver nota", view_url=o["url"])
+    return changes
+
+
 def archive(session, candidate_id: int) -> bool:
     c = session.get(Candidate, candidate_id)
     if c is None or c.kind != "watch":
@@ -324,8 +433,8 @@ def notify_new(session) -> int:
     session.commit()
     labels = {"oficial": "Oficializa", "declino": "Declina", "mueve": "Se mueve", "suena": "Suena"}
     for n in news(session, days=3):
-        if n["kind"] == "suena":
-            continue  # «suena» es ruido diario; se avisa lo que cambia el panorama
+        if n["kind"] in ("suena", "declino"):
+            continue  # «suena» es ruido diario; los retiros los avisa apply_changes (con lo que se hizo)
         key = "radar_news:" + norm(n["title"])[:80]
         if _notified(session, key):
             continue

@@ -435,9 +435,11 @@ def job_radar():
     from src import radar
     with get_session() as s:
         created = radar.scan(s)
+        changed = radar.apply_changes(s)  # retiros y regresos: la lista se actualiza sola
         sent = radar.notify_new(s)
-        if created or sent:
-            log.info("radar: %d nombres nuevos por revisar, %d avisos", len(created), sent)
+        if created or sent or changed:
+            log.info("radar: %d nombres nuevos por revisar, %d cambios de estado (%s), %d avisos", len(created), len(changed),
+                     ", ".join(f"{c['name']}: {c['change']}" for c in changed) or "-", sent)
 
 
 @exclusive("ollama_health")

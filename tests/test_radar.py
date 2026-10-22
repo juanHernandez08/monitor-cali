@@ -133,3 +133,76 @@ def test_watch_people_are_searched_in_free_sources_but_not_in_youtube():
     import inspect
     from src import pipeline
     assert 'c.kind == "candidate"' in inspect.getsource(pipeline.ingest)  # terms_for=candidates solo busca candidatos
+
+
+# ---------- retiros automáticos: la lista se actualiza sola ----------
+
+def _withdraw_titles(name):
+    return (f"{name} descarta aspirar a la Alcaldía de Cali - Diario Occidente",
+            f"{name} no será candidato a la Alcaldía de Cali - El País")
+
+
+def test_withdrawal_cues_are_recognized_and_ordinary_news_is_not():
+    from src.radar import extract
+    for t in ["Wilson Ruiz descarta aspirar a la Alcaldía de Cali", "Diana Rojas se retira de la contienda por la Alcaldía de Cali",
+              "Gustavo Orozco renunció a su aspiración a la Alcaldía de Cali", "Andrés Lozano no será candidato a la Alcaldía de Cali",
+              "Angélica Mayolo declina su candidatura a la Alcaldía de Cali", "Marino del Río no aspirará a la Alcaldía de Cali"]:
+        assert extract(t)[0]["kind"] == "declino", t
+    # «renunciará para ser candidato» y «renunciará a su cargo» son lo CONTRARIO de retirarse
+    assert extract("Roger Mina renunciará para ser candidato a la Alcaldía de Cali")[0]["kind"] == "mueve"
+    assert extract("Roger Mina renunciará a su gerencia para aspirar a la Alcaldía de Cali")[0]["kind"] == "mueve"
+
+
+def test_a_watch_person_who_withdraws_leaves_the_lists_with_one_headline_and_can_be_restored(db_session):
+    from src import radar, queries
+    w = Candidate(name="Wilson Ruiz", aliases=[], kind="watch", status="suena")
+    db_session.add(w)
+    db_session.commit()
+    _press(db_session, _withdraw_titles("Wilson Ruiz")[0], "w1")
+    changes = radar.apply_changes(db_session)
+    db_session.refresh(w)
+    assert [c["change"] for c in changes] == ["retiro"]
+    assert (w.kind, w.active, w.status, w.retired_from) == ("retired", False, "declino", "watch")
+    o = radar.overview(db_session)
+    assert "Wilson Ruiz" not in [p["name"] for p in o["people"]] and o["retired"][0]["name"] == "Wilson Ruiz"
+    assert radar.apply_changes(db_session) == []  # no repite
+    assert radar.restore(db_session, w.id).kind == "watch" and w.active
+
+
+def test_a_main_candidate_needs_two_outlets_and_carlos_is_never_removed(db_session):
+    from src import radar
+    ortiz = Candidate(name="Roberto Ortiz", aliases=[], kind="candidate", status="suena")
+    carlos = Candidate(name="Carlos Arias", aliases=[], kind="candidate", status="suena")
+    db_session.add_all([ortiz, carlos])
+    db_session.commit()
+    _press(db_session, "Roberto Ortiz descarta aspirar a la Alcaldía de Cali - Diario Occidente", "o1")
+    assert radar.apply_changes(db_session) == []  # un solo medio: se avisa, no se saca
+    db_session.refresh(ortiz)
+    assert ortiz.kind == "candidate"
+    _press(db_session, "Roberto Ortiz no será candidato a la Alcaldía de Cali - El País", "o2", outlet="El País")
+    assert [c["name"] for c in radar.apply_changes(db_session)] == ["Roberto Ortiz"]
+    db_session.refresh(ortiz)
+    assert ortiz.kind == "retired" and ortiz.retired_from == "candidate"
+    # Carlos: aunque 2 medios lo digan, solo se avisa
+    _press(db_session, "Carlos Arias descarta aspirar a la Alcaldía de Cali - Diario Occidente", "c1")
+    _press(db_session, "Carlos Arias no será candidato a la Alcaldía de Cali - El País", "c2", outlet="El País")
+    assert radar.apply_changes(db_session) == []
+    db_session.refresh(carlos)
+    assert carlos.kind == "candidate" and carlos.active
+
+
+def test_retired_people_disappear_from_charts_and_come_back_when_two_outlets_say_they_are_in(db_session):
+    from src import radar, queries
+    c = Candidate(name="Mabel Lara", aliases=[], kind="candidate", status="suena")
+    db_session.add(c)
+    db_session.commit()
+    assert "Mabel Lara" in [x["name"] for x in queries.social_candidates(db_session)]
+    radar.retire(db_session, c, "prueba")
+    assert "Mabel Lara" not in [x["name"] for x in queries.social_candidates(db_session)]
+    assert db_session.query(Candidate).filter_by(kind="candidate").count() == 0  # fuera de todo lo que filtra por kind
+    _press(db_session, "Mabel Lara confirma su candidatura a la Alcaldía de Cali - Diario Occidente", "m1")
+    assert radar.apply_changes(db_session) == []  # un solo medio no la trae de vuelta
+    _press(db_session, "Mabel Lara anuncia su candidatura a la Alcaldía de Cali - El País", "m2", outlet="El País")
+    assert [x["change"] for x in radar.apply_changes(db_session)] == ["regreso"]
+    db_session.refresh(c)
+    assert c.kind == "candidate" and c.active and c.status == "oficial"

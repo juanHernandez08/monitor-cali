@@ -1,4 +1,4 @@
-import { CalendarDays, Eye, ExternalLink, Newspaper, Radar as RadarIcon, UserPlus, X } from "lucide-react";
+import { CalendarDays, DoorOpen, Eye, ExternalLink, Newspaper, Radar as RadarIcon, Undo2, UserPlus, X } from "lucide-react";
 import { useApp } from "../lib/app";
 import { useApi } from "../lib/useApi";
 import { clearCache } from "../lib/cache";
@@ -41,10 +41,11 @@ function Person({ p, onChanged }) {
         <span>{p.headlines} {p.headlines === 1 ? "titular" : "titulares"} en {p.outlets} {p.outlets === 1 ? "medio" : "medios"} (últimos 30 días)</span>
       </div>
       {p.last && <a href={p.last.url} target="_blank" rel="noopener noreferrer" className="flex min-w-0 items-center gap-1 text-xs text-brand-700 hover:underline"><Newspaper className="size-3.5 shrink-0" /><span className="truncate">{p.last.title}</span></a>}
-      {p.kind === "watch" && (
+      {(p.kind === "watch" || p.name !== "Carlos Arias") && (
         <div className="flex flex-wrap gap-2 pt-1">
-          <Button variant="soft" className="h-8 px-3 text-xs" onClick={() => window.confirm(`¿Pasar a ${p.name} a candidato completo? Cuenta en los gráficos y se busca también en YouTube.`) && act(`/api/radar/person/${p.candidate_id}/promote`, undefined, `${p.name} ya es candidato.`)}>Pasar a candidato</Button>
-          <Button variant="ghost" className="h-8 px-3 text-xs" onClick={() => window.confirm(`¿Dejar de seguir a ${p.name}?`) && act(`/api/radar/person/${p.candidate_id}/archive`, undefined, `${p.name} archivado.`)}>Dejar de seguir</Button>
+          {p.kind === "watch" && <Button variant="soft" className="h-8 px-3 text-xs" onClick={() => window.confirm(`¿Pasar a ${p.name} a candidato completo? Cuenta en los gráficos y se busca también en YouTube.`) && act(`/api/radar/person/${p.candidate_id}/promote`, undefined, `${p.name} ya es candidato.`)}>Pasar a candidato</Button>}
+          {p.name !== "Carlos Arias" && <Button variant="ghost" icon={DoorOpen} className="h-8 px-3 text-xs" onClick={() => window.confirm(`¿${p.name} anunció que no será candidato? Sale de las listas y de los gráficos (se puede reactivar).`) && act(`/api/radar/person/${p.candidate_id}/retire`, undefined, `${p.name} salió de las listas.`)}>Se retiró</Button>}
+          {p.kind === "watch" && <Button variant="ghost" className="h-8 px-3 text-xs" onClick={() => window.confirm(`¿Dejar de seguir a ${p.name}?`) && act(`/api/radar/person/${p.candidate_id}/archive`, undefined, `${p.name} archivado.`)}>Dejar de seguir</Button>}
         </div>
       )}
     </article>
@@ -65,7 +66,7 @@ export default function Radar() {
   return (
     <div className="grid gap-5">
       <Intro icon={RadarIcon} title="Radar de precandidatos">
-        <p>Para estar siempre al tanto de quién suena para la Alcaldía de Cali. El radar lee los titulares de prensa que el monitor ya recoge, <b>propone nombres nuevos</b> cuando la prensa empieza a mencionarlos y <b>avisa al equipo</b> de cada novedad: quién oficializa, quién declina, quién renuncia para aspirar. Nunca agrega a nadie solo: una persona decide a quién seguir.</p>
+        <p>Para estar siempre al tanto de quién suena para la Alcaldía de Cali. El radar lee los titulares de prensa que el monitor ya recoge, <b>propone nombres nuevos</b> cuando la prensa empieza a mencionarlos y <b>avisa al equipo</b> de cada novedad: quién oficializa, quién declina, quién renuncia para aspirar. <b>Si alguien anuncia su retiro, sale solo de las listas y de los gráficos</b> y se reactiva con un clic si fue un error. Para sumar a alguien nuevo, una persona decide a quién seguir.</p>
         {d && <p className="mt-2 rounded-lg bg-white/10 px-3 py-2 text-white">Faltan <b>{d.days_to_election} días</b> para las elecciones territoriales (31 de octubre de 2027). Se revisa solo cada 3 horas.</p>}
       </Intro>
 
@@ -120,6 +121,26 @@ export default function Radar() {
                 );
               })}
             </div>
+          </Panel>
+
+          <Panel icon={DoorOpen} tone="red" title="Se retiraron" hint="Anunciaron que no serán candidatos: salieron solas de las listas y de los gráficos cuando la prensa lo informó (candidatos, con dos medios; precandidatos, con uno). Si fue un error, se reactivan con un clic.">
+            {d.retired.length ? (
+              <ul className="divide-y divide-slate-100">
+                {d.retired.map((p) => (
+                  <li key={p.candidate_id} className="grid gap-2 py-3 sm:grid-cols-[1fr_auto] sm:items-center">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2"><b className="text-slate-900">{p.name}</b><Tag tone="negative">Se retiró · {fmtDay(p.date)}</Tag>{p.party && <Tag>{p.party}</Tag>}</div>
+                      <p className="mt-1 text-[13px] text-slate-600">{p.note}{p.url && <> <LinkOut href={p.url}>nota</LinkOut></>}</p>
+                    </div>
+                    <Button variant="ghost" icon={Undo2} className="h-8 px-3 text-xs" onClick={() => window.confirm(`¿Reactivar a ${p.name}?`) && (async () => {
+                      const r = await post(`/api/radar/person/${p.candidate_id}/restore`);
+                      if (!r.ok) { notify("No se pudo reactivar.", "error"); return; }
+                      notify(`${p.name} volvió a las listas.`); reload();
+                    })()}>Reactivar</Button>
+                  </li>
+                ))}
+              </ul>
+            ) : <Empty icon={DoorOpen}>Nadie se ha retirado. Si la prensa informa que alguien no será candidato, sale solo de las listas y llega un aviso.</Empty>}
           </Panel>
 
           <Panel icon={CalendarDays} tone="violet" title="Calendario electoral" hint="Fechas aproximadas según la prensa; se ajustan cuando la Registraduría las confirme.">

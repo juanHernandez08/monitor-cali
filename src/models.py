@@ -43,6 +43,9 @@ class Candidate(Base):
     status_note = Column(String, nullable=True)  # qué se sabe, en una frase
     status_url = Column(String, nullable=True)  # nota de prensa que lo respalda
     status_date = Column(String, nullable=True)  # AAAA-MM-DD de esa nota
+    # "retired" = anunció que no será candidato: sale de listas y gráficos (todas las consultas filtran kind) y se
+    # deja de buscar (active=False). `retired_from` guarda de qué tipo venía, para poder reactivarlo (src/radar.py).
+    retired_from = Column(String, nullable=True)
     council = Column(Boolean, default=False, nullable=False)  # pertenece al Concejo de Cali
     context_terms = Column(JSON, default=list)  # si está, el texto debe contener alguno (nombres comunes)
     # Nombre con homónimos famosos: sus videos y los comentarios de esos videos deben traer el
