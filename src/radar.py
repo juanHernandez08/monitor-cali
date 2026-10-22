@@ -306,15 +306,22 @@ PROTECTED = {"Carlos Arias"}  # el candidato del cliente: el radar avisa, pero n
 MIN_OUTLETS_CANDIDATE = 2  # sacar a uno de los 9 candidatos exige que lo cuenten al menos 2 medios distintos
 
 
-def retire(session, c: Candidate, note: str | None = None, url: str | None = None) -> None:
+def _manual_key(candidate_id: int) -> str:
+    return f"radar_manual_retire:{candidate_id}"
+
+
+def retire(session, c: Candidate, note: str | None = None, url: str | None = None, manual: bool = False) -> None:
     """Saca a la persona de listas y gráficos (kind="retired", todas las consultas filtran por kind) y deja de
-    buscarla (active=False). Las menciones ya guardadas se conservan: se puede reactivar sin perder historia."""
+    buscarla (active=False). Las menciones ya guardadas se conservan: se puede reactivar sin perder historia.
+    `manual`: lo decidió una persona del equipo; entonces la prensa no la reactiva sola (solo el botón «Reactivar»)."""
     if c.kind != "retired":
         c.retired_from = c.kind
     c.kind, c.active, c.status = "retired", False, "declino"
     c.status_note = (note or "Anunció que no será candidato.")[:300]
     c.status_url = url  # la nota del retiro; sin ella no se deja la vieja de «suena» como si respaldara el retiro
     c.status_date = dt.date.today().isoformat()
+    if manual and not _notified(session, _manual_key(c.id)):
+        session.add(NotifyState(key=_manual_key(c.id), value="1"))
     session.commit()
 
 
@@ -322,6 +329,9 @@ def restore(session, candidate_id: int, status: str = "suena") -> Candidate | No
     c = session.get(Candidate, candidate_id)
     if c is None or c.kind != "retired":
         return None
+    flag = session.get(NotifyState, _manual_key(c.id))
+    if flag is not None:
+        session.delete(flag)
     c.kind, c.active, c.status = c.retired_from or "watch", True, status
     c.retired_from = None
     c.status_note = (c.status_note or "") + " (reactivado)"
@@ -387,7 +397,8 @@ def apply_changes(session, days: int = 7) -> list[dict]:
             notify.send(config.NTFY_TOPIC_TEAM, f"🛰️ Se retira: {c.name}",
                         f"{d['title']}\n({d['outlet']})\n\nSalió de las listas y de los gráficos. Si fue un error, se reactiva en el Radar.",
                         priority=4, tags=["door"], click=f"{config.DASHBOARD_URL}/#radar", view_label="Ver nota", view_url=d["url"])
-        elif c.kind == "retired" and kinds.get("oficial") and len(kinds["oficial"]["outlets"]) >= 2:
+        elif (c.kind == "retired" and kinds.get("oficial") and len(kinds["oficial"]["outlets"]) >= 2
+              and not _notified(session, _manual_key(c.id))):  # un retiro manual solo lo revierte una persona
             o = kinds["oficial"]
             key = f"radar_return:{c.id}:{norm(o['title'])[:60]}"
             if _notified(session, key):

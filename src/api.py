@@ -290,7 +290,7 @@ def create_app(session_factory=None, start_jobs: bool = True, cf_verifier=None) 
                 c = s.get(radar.Candidate, candidate_id)
                 if c is None or c.kind not in ("candidate", "watch"):
                     return _bad_request("persona no encontrada")
-                radar.retire(s, c, "Retirado a mano desde el Radar.")
+                radar.retire(s, c, "Retirado a mano desde el Radar.", manual=True)
                 return {"ok": True}
             if action == "promote":
                 c, err = radar.promote(s, candidate_id)

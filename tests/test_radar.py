@@ -206,3 +206,19 @@ def test_retired_people_disappear_from_charts_and_come_back_when_two_outlets_say
     assert [x["change"] for x in radar.apply_changes(db_session)] == ["regreso"]
     db_session.refresh(c)
     assert c.kind == "candidate" and c.active and c.status == "oficial"
+
+
+def test_a_manual_retirement_is_not_undone_by_the_press_only_by_the_reactivate_button(db_session):
+    from src import radar
+    c = Candidate(name="Clara Prueba", aliases=[], kind="candidate", status="oficial")
+    db_session.add(c)
+    db_session.commit()
+    radar.retire(db_session, c, "decisión del equipo", manual=True)
+    _press(db_session, "Clara Prueba confirma su candidatura a la Alcaldía de Cali - Diario Occidente", "k1")
+    _press(db_session, "Clara Prueba anuncia su candidatura a la Alcaldía de Cali - El País", "k2", outlet="El País")
+    assert radar.apply_changes(db_session) == []  # dos medios dicen que sigue, pero la sacó una persona
+    db_session.refresh(c)
+    assert c.kind == "retired"
+    assert radar.restore(db_session, c.id, "oficial").kind == "candidate"
+    radar.retire(db_session, c, "otra vez, automático")  # un retiro por prensa sí puede revertirse solo
+    assert [x["change"] for x in radar.apply_changes(db_session)] == ["regreso"]
