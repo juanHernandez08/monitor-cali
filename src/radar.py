@@ -16,6 +16,8 @@ import datetime as dt
 import re
 import unicodedata
 
+from sqlalchemy import func
+
 from src import config
 from src.models import Candidate, Mention, NotifyState, RadarSuggestion, Source, SourceType
 
@@ -74,7 +76,9 @@ _STOPN = {norm(w) for w in _STOP}
 
 def clean_title(title: str) -> tuple[str, str | None]:
     """(titular sin el medio pegado al final, medio). Google News termina en « - El País»."""
-    t = (title or "").replace("\n", " ").strip().lstrip("|¿ ").strip()
+    # NFC: algunos titulares de Google News llegan con la tilde "descompuesta" (a + acento suelto) y los patrones
+    # de abajo no los reconocían (pasó con «¿Roger Mina renunciará para ser candidato...?», 2026-10-21).
+    t = unicodedata.normalize("NFC", title or "").replace("\n", " ").strip().lstrip("|¿ ").strip()
     outlet = None
     m = re.search(r"\s[-–]\s([^-–]{2,40})$", t)
     if m:
@@ -128,7 +132,7 @@ def _is_known(name: str, keys: set[str]) -> bool:
 
 def _press_titles(session, days: int):
     since = dt.datetime.utcnow() - dt.timedelta(days=days)
-    when = Mention.published_at
+    when = func.coalesce(Mention.published_at, Mention.fetched_at)
     q = (session.query(Mention.text, Mention.url, when, Source.name).join(Source, Mention.source_id == Source.id)
          .filter(Source.type.in_(PRESS), when >= since).order_by(when.desc()))
     seen = set()

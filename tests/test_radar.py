@@ -35,6 +35,15 @@ def test_extract_classifies_the_news_type():
     assert kind("Wilson Ruiz desiste de su aspiración a la Alcaldía de Cali") == "declino"
 
 
+def test_extract_handles_decomposed_accents_like_the_ones_google_news_sends():
+    import unicodedata
+    from src.radar import extract
+    t = unicodedata.normalize("NFD", "| ¿Roger Mina renunciará para ser candidato a la Alcaldía de Cali? Graffiti - Diario Occidente")
+    assert [h["name"] for h in extract(t)] == ["Roger Mina"]
+    t2 = unicodedata.normalize("NFD", "Aspirantes a la Alcaldía de Cali: Juan Martín Bravo va por firmas - Diario Occidente")
+    assert [h["name"] for h in extract(t2)] == ["Juan Martín Bravo"]
+
+
 def _press(db_session, title, ext, days_ago=1, outlet="Diario Occidente"):
     src = db_session.query(Source).filter_by(name=outlet).first()
     if src is None:
