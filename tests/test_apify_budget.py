@@ -72,6 +72,16 @@ def test_select_accounts_prioritizes_carlos_then_rivals_then_councilors_and_skip
     assert [a["url"] for a in chosen] == ["u/carlos"] and comment_posts == 1
 
 
+def test_select_accounts_skips_retired_candidates():
+    accounts = [
+        {"platform": "instagram", "url": "u/carlos", "candidate": "Carlos Arias"},
+        {"platform": "instagram", "url": "u/retirado", "candidate": "Ex Candidato"},
+    ]
+    kinds = {"Carlos Arias": "candidate", "Ex Candidato": "retired"}
+    chosen, _, _ = ab.select_accounts(accounts, kinds, {}, 1.0, "Carlos Arias", [], 30)
+    assert [a["url"] for a in chosen] == ["u/carlos"]
+
+
 def test_select_accounts_rotates_oldest_first_and_never_exceeds_the_budget():
     accounts = [{"platform": "instagram", "url": f"u/{i}", "candidate": f"R{i}"} for i in range(5)]
     kinds = {f"R{i}": "candidate" for i in range(5)}

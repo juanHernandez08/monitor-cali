@@ -128,6 +128,8 @@ def select_accounts(accounts: list[dict], kinds: dict[str, str], last_dates: dic
     def oldest_first(group):
         return sorted(group, key=lambda a: last_dates.get(a["url"], ""))
 
+    # quien anunció su retiro (kind "retired", ver src/radar.py) deja de costar créditos
+    accounts = [a for a in accounts if kinds.get(a.get("candidate")) != "retired"]
     carlos_accts = [a for a in accounts if a.get("candidate") == carlos]
     rivals = [a for a in accounts if a.get("candidate") and a["candidate"] != carlos and kinds.get(a["candidate"]) == "candidate"]
     councilors = [a for a in accounts if a.get("candidate") and a["candidate"] != carlos and kinds.get(a["candidate"]) != "candidate"]

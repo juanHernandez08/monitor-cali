@@ -109,8 +109,11 @@ def _build(source: Source, session):
         known, pending, last_dates, post_texts = _social_state(session, source)
         month = dt.datetime.utcnow().strftime("%Y-%m")
         connectors = []
-        x_accounts = [a for a in config.SOCIAL_ACCOUNTS if a["platform"] == "x"]
-        ig_fb_accounts = [a for a in config.SOCIAL_ACCOUNTS if a["platform"] != "x"]
+        from src.models import Candidate
+        retired = {c.name for c in session.query(Candidate).filter(Candidate.kind == "retired")}
+        live_accounts = [a for a in config.SOCIAL_ACCOUNTS if a.get("candidate") not in retired]
+        x_accounts = [a for a in live_accounts if a["platform"] == "x"]
+        ig_fb_accounts = [a for a in live_accounts if a["platform"] != "x"]
         budget_run = None
         if apify:
             # Presupuesto en dólares: manda sobre todo lo demás (ver src/apify_budget.py). Si no se puede
