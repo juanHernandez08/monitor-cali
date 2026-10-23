@@ -62,6 +62,10 @@
     background-attachment: fixed;
   }
   :focus-visible { @apply outline-2 outline-offset-2 outline-brand-500 rounded-md; }
+  /* Una grilla sin columnas explícitas tiene UNA columna "auto" que crece hasta el ancho de su contenido y se sale de
+     la pantalla en el celular (filtros del Mapa, tarjetas de Candidatos). Con minmax(0,1fr) respeta el ancho del padre;
+     las clases grid-cols-* de Tailwind (capa utilities) siguen ganando sobre esto. */
+  .grid { grid-template-columns: minmax(0, 1fr); }
   button { @apply cursor-pointer; }
   button:disabled { @apply cursor-default; }
   ::selection { background: rgb(42 120 214 / 0.2); }

@@ -92,7 +92,7 @@ export function ZoneDetail({ ids, title, days, color, candidateId }) {
       </KpiGrid>
 
       {/* ---------- filtros ---------- */}
-      <div className="mt-4 grid gap-2.5 rounded-2xl border border-slate-200 bg-slate-50/70 p-3">
+      <div className="mt-4 grid grid-cols-1 gap-2.5 rounded-2xl border border-slate-200 bg-slate-50/70 p-3">
         <div className="flex flex-wrap items-center gap-2">
           <Segmented size="sm" value={f.kind} onChange={(v) => set({ ...f, kind: v })} label="Tipo de contenido"
             options={[["", `Todo (${fmtNum(fac.kind.reduce((a, x) => a + x.count, 0))})`],
