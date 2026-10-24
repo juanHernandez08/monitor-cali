@@ -2,9 +2,10 @@
 
 El código no tenía ningún freno para Claude (solo para Apify, src/apify_budget.py). Aquí se mide el gasto REAL de
 cada llamada (tokens de `response.usage` x precio del modelo) y se acumula por mes calendario en `api_usage`
-(servicio "claude_usd_micro", en millonésimas de dólar). Al llegar al tope mensual (`CLAUDE_MONTHLY_BUDGET_USD`) la
-clasificación pasa sola al modelo barato de respaldo en vez de detenerse (sin el PC del cliente nadie la
-reanudaría), y se avisa a soporte técnico. Un tope duro (1,5 x) corta todo por si el respaldo también se disparara.
+(servicio "claude_usd_micro", en millonésimas de dólar). El tope mensual (`CLAUDE_MONTHLY_BUDGET_USD`, recortado por
+src/budget_plan.py si junto con Apify no cupiera en el presupuesto global) es DURO: al 70 % se avisa a soporte; al 85 % la
+clasificación pasa sola al modelo barato de respaldo (cuesta ~1/20, y el 15 % restante le alcanza de sobra) en vez de
+detenerse, porque sin el PC del cliente nadie la reanudaría; al 100 % se corta todo hasta el mes siguiente.
 También avisa, una vez por día, si Anthropic rechaza por saldo agotado o clave inválida."""
 import datetime as dt
 import logging
@@ -18,8 +19,8 @@ from src.models import ApiUsage, NotifyState
 log = logging.getLogger("claude_budget")
 
 SERVICE = "claude_usd_micro"
-HARD_STOP_FACTOR = 1.5
-WARN_AT = 0.8
+WARN_AT = 0.70      # aviso a soporte
+DEGRADE_AT = 0.85   # de aquí en adelante se clasifica con el modelo barato (Haiku cuesta ~1/20); el 15 % restante es su margen
 
 # USD por millón de tokens (entrada, salida). Lectura de caché = 0,1 x entrada; escritura de caché de 5 min = 1,25 x entrada
 # y de 1 hora = 2 x entrada.
@@ -55,7 +56,11 @@ def _month(today: dt.date | None = None) -> str:
 
 class ClaudeBudget:
     def __init__(self, monthly_usd: float | None = None, fallback_model: str | None = None):
-        self.monthly_usd = config.CLAUDE_MONTHLY_BUDGET_USD if monthly_usd is None else monthly_usd
+        # tope DURO: el configurado, recortado por el presupuesto global si junto con el de Apify no cupiera (src/budget_plan.py)
+        if monthly_usd is None:
+            from src import budget_plan
+            monthly_usd = budget_plan.claude_limit_usd()
+        self.monthly_usd = monthly_usd
         self.fallback_model = fallback_model or config.CLAUDE_FALLBACK_MODEL
 
     # ---- medición ----
@@ -82,29 +87,33 @@ class ClaudeBudget:
         return usd
 
     # ---- decisión ----
-    def model_for(self, preferred: str) -> str:
-        """El modelo a usar ahora: el preferido mientras haya presupuesto; el barato al llegar al tope del mes."""
+    def ensure_room(self) -> float:
+        """Corta (BudgetExceeded) si ya se llegó al tope duro del mes. Devuelve lo gastado."""
         spent = self.spent()
-        if spent >= self.monthly_usd * HARD_STOP_FACTOR:
-            self._alert("claude_hard_stop", "🛑 Claude: tope duro de gasto alcanzado",
-                        f"Se gastaron USD {spent:.2f} este mes (tope {self.monthly_usd:.2f}). La clasificación se detuvo hasta el mes siguiente.",
-                        monthly=True, priority=5)
-            raise BudgetExceeded(f"gasto del mes USD {spent:.2f} >= tope duro")
         if spent >= self.monthly_usd:
-            self._alert("claude_cap", "⚠️ Claude: tope mensual alcanzado",
-                        f"Se gastaron USD {spent:.2f} de {self.monthly_usd:.2f}. Hasta fin de mes se clasifica con {self.fallback_model} "
-                        "(más barato, menos preciso). Para seguir con el modelo bueno, subir CLAUDE_MONTHLY_BUDGET_USD en el .env del servidor.",
-                        monthly=True, priority=4)
+            self._alert("claude_hard_stop", "🛑 Claude: tope mensual de gasto alcanzado",
+                        f"Se gastaron USD {spent:.2f} de {self.monthly_usd:.2f}. La clasificación y el análisis se detuvieron hasta el mes siguiente.",
+                        monthly=True, priority=5)
+            raise BudgetExceeded(f"gasto del mes USD {spent:.2f} >= tope USD {self.monthly_usd:.2f}")
+        return spent
+
+    def model_for(self, preferred: str) -> str:
+        """El modelo a usar ahora: el preferido mientras haya presupuesto; el barato desde el 85 % del tope del mes."""
+        spent = self.ensure_room()
+        if spent >= self.monthly_usd * DEGRADE_AT:
+            self._alert("claude_cap", "⚠️ Claude: se pasa al modelo económico",
+                        f"Van USD {spent:.2f} de {self.monthly_usd:.2f} del mes. Hasta fin de mes se clasifica con {self.fallback_model} "
+                        "(más barato, menos preciso) para no pasarse del presupuesto.", monthly=True, priority=4)
             return self.fallback_model
         if spent >= self.monthly_usd * WARN_AT:
-            self._alert("claude_warn", "💵 Claude: 80 % del tope mensual",
+            self._alert("claude_warn", "💵 Claude: 70 % del tope mensual",
                         f"Van USD {spent:.2f} de {self.monthly_usd:.2f} este mes.", monthly=True, priority=3)
         return preferred
 
     def status(self) -> dict:
         spent = self.spent()
         return {"month": _month(), "spent_usd": round(spent, 3), "cap_usd": self.monthly_usd,
-                "degraded": spent >= self.monthly_usd, "model": config.CLAUDE_CLASSIFY_MODEL,
+                "degraded": spent >= self.monthly_usd * DEGRADE_AT, "model": config.CLAUDE_CLASSIFY_MODEL,
                 "fallback_model": self.fallback_model}
 
     # ---- avisos ----

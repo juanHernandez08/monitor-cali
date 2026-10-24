@@ -58,9 +58,16 @@ CLAUDE_MODEL = os.environ.get("CLAUDE_MODEL", "claude-sonnet-5-5")  # el anális
 # clasificar (viaja y lo apaga): Sonnet 5.5 acierta ~96 % del tono contra ~77 % de Ollama y ~79 % de
 # Haiku en la prueba de 100 menciones (scripts/eval_models.py, docs/Cotizacion_Monitor_Cali_2026-10.pdf).
 CLAUDE_CLASSIFY_MODEL = os.environ.get("CLAUDE_CLASSIFY_MODEL", "claude-sonnet-5-5")
-# Freno de gasto de Claude (src/claude_budget.py): al llegar al tope del mes la clasificación pasa sola al
-# modelo barato de respaldo (no se detiene) y se avisa a soporte técnico. Dólares por mes calendario.
-CLAUDE_MONTHLY_BUDGET_USD = float(os.environ.get("CLAUDE_MONTHLY_BUDGET_USD", "22"))
+# Presupuesto GLOBAL (src/budget_plan.py). 2026-10-23: el cliente aprobó hasta 300.000 COP al mes y no se puede pasar "por
+# nada del mundo". FIXED = servidor Hostinger (57.900 + respaldo 9.900, se renueva solo cada mes). El dólar es CONSERVADOR
+# (lo real salió ~3.220 con todo incluido): el peor caso calculado queda por encima de lo que de verdad se pagaría.
+MONTHLY_BUDGET_COP = int(os.environ.get("MONTHLY_BUDGET_COP", "300000"))
+FIXED_MONTHLY_COP = int(os.environ.get("FIXED_MONTHLY_COP", "67800"))
+BUDGET_FX_COP_PER_USD = float(os.environ.get("BUDGET_FX_COP_PER_USD", "3700"))
+# Freno de gasto de Claude (src/claude_budget.py), dólares por mes calendario: TOPE DURO (al llegar se detiene). Antes, al
+# 85 % la clasificación pasa sola al modelo barato de respaldo y se avisa a soporte técnico. budget_plan lo recorta si junto
+# con el tope de Apify no cupiera en el presupuesto global.
+CLAUDE_MONTHLY_BUDGET_USD = float(os.environ.get("CLAUDE_MONTHLY_BUDGET_USD", "26"))
 CLAUDE_FALLBACK_MODEL = os.environ.get("CLAUDE_FALLBACK_MODEL", "claude-haiku-5-5")
 
 # Google Cloud (gratis): Custom Search JSON API + YouTube Data API v3
@@ -316,11 +323,13 @@ BRIGHTDATA_MONTHLY_CREDITS = int(os.environ.get("BRIGHTDATA_MONTHLY_CREDITS", "4
 APIFY_TOKEN = os.environ.get("APIFY_TOKEN")
 APIFY_MONTHLY_ITEMS = int(os.environ.get("APIFY_MONTHLY_ITEMS", "10000"))
 
-# Presupuesto en DÓLARES de Apify (ver src/apify_budget.py). Presupuesto aprobado por el cliente: el techo
-# aplica solo al ciclo que termina en APIFY_CYCLE_BUDGET_END; al abrirse un ciclo nuevo no se gasta hasta
-# confirmar uno nuevo. Aumentarlo exige aprobación explícita del cliente.
+# Presupuesto en DÓLARES de Apify (ver src/apify_budget.py). Presupuesto aprobado por el cliente. APIFY_CYCLE_BUDGET_END:
+# una fecha (AAAA-MM-DD) = el techo vale solo para el ciclo que termina ese día y al abrirse uno nuevo no se gasta hasta
+# confirmar otro; "auto" (desde 2026-10-23, aprobación permanente dentro del presupuesto global de src/budget_plan.py) = el
+# techo vale para CADA ciclo, así la captura no se detiene sola mientras nadie puede confirmar. Subir el techo exige
+# aprobación explícita del cliente.
 APIFY_CYCLE_BUDGET_USD = float(os.environ.get("APIFY_CYCLE_BUDGET_USD", "19"))
-APIFY_CYCLE_BUDGET_END = os.environ.get("APIFY_CYCLE_BUDGET_END", "2026-10-28")
+APIFY_CYCLE_BUDGET_END = os.environ.get("APIFY_CYCLE_BUDGET_END", "auto")
 APIFY_RESERVE_USD = float(os.environ.get("APIFY_RESERVE_USD", "0.75"))      # intocable
 SOCIAL_INTERVAL_HOURS = int(os.environ.get("SOCIAL_INTERVAL_HOURS", "24"))  # vueltas de redes (antes 12)
 SOCIAL_MIN_HOURS = float(os.environ.get("SOCIAL_MIN_HOURS", "20"))          # mínimo entre vueltas, también para "Actualizar ahora"

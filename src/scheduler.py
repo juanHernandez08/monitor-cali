@@ -493,6 +493,11 @@ def _next_run(session, source_types: list[SourceType], interval: dt.timedelta) -
 
 def start_scheduler() -> BackgroundScheduler:
     sched = BackgroundScheduler(timezone="America/Bogota")
+    try:
+        from src import budget_plan
+        budget_plan.check_and_alert()  # peor caso del mes vs. presupuesto global; avisa a soporte si hubo que recortar a Claude
+    except Exception:
+        log.exception("no se pudo calcular el presupuesto global")
     with get_session() as s:
         cse_next = _next_run(s, CSE_GROUP, dt.timedelta(hours=8))
         yt_next = _next_run(s, YT_GROUP, dt.timedelta(hours=12))

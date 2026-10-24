@@ -159,7 +159,14 @@ function StatusFooter() {
       {b?.claude && (
         <div className="mt-1">
           Claude (clasificación, {b.claude.month}): ${b.claude.spent_usd.toFixed(2)} gastados de ${b.claude.cap_usd.toFixed(2)} del mes
-          {b.claude.degraded && <span className="ml-1 text-amber-700">· tope alcanzado: clasifica con el modelo económico ({b.claude.fallback_model})</span>}
+          {b.claude.degraded && <span className="ml-1 text-amber-700">· cerca del tope: clasifica con el modelo económico ({b.claude.fallback_model})</span>}
+        </div>
+      )}
+      {b?.plan && (
+        <div className="mt-1">
+          Presupuesto del mes: peor caso {b.plan.worst_case_cop.toLocaleString("es-CO")} COP de {b.plan.limit_cop.toLocaleString("es-CO")}
+          {" "}(servidor {b.plan.fixed_cop.toLocaleString("es-CO")} + topes de Apify y Claude al dólar a {b.plan.fx.toLocaleString("es-CO")})
+          {!b.plan.ok && <span className="ml-1 text-rose-600">· no cabe: revisar topes</span>}
         </div>
       )}
     </footer>

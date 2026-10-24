@@ -264,6 +264,8 @@ class SentimentEngine:
         "medium" (no "low": esto redacta un análisis, no clasifica una etiqueta) más un tope más
         alto dejan espacio de sobra para pensar y para el texto visible.
         """
+        if self.budget is not None:
+            self.budget.ensure_room()  # el análisis narrativo también respeta el tope duro del mes
         response = self._create(
             self.model, max_tokens=max_tokens, output_config={"effort": "medium"},
             messages=[{"role": "user", "content": prompt}],

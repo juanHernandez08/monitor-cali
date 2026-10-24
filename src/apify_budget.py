@@ -9,8 +9,8 @@ Reglas, todas fallan CERRADO (ante la duda no se gasta):
 - Techo efectivo = el MENOR entre el tope de la cuenta de Apify y `APIFY_CYCLE_BUDGET_USD`.
 - Siempre se deja una reserva intocable (`APIFY_RESERVE_USD`).
 - Lo disponible se reparte en partes iguales entre las vueltas que faltan hasta el fin del ciclo.
-- El techo configurado vale solo para el ciclo que termina en `APIFY_CYCLE_BUDGET_END`; si Apify
-  abre un ciclo nuevo, no se gasta hasta que alguien confirme un presupuesto nuevo.
+- Si `APIFY_CYCLE_BUDGET_END` es una fecha, el techo vale solo para el ciclo que termina ese día: si Apify abre un ciclo
+  nuevo, no se gasta hasta que alguien confirme un presupuesto nuevo. Con "auto" (aprobación permanente) vale para todos.
 - Durante la vuelta se vuelve a consultar el gasto real antes de cada llamada.
 """
 import dataclasses
@@ -88,7 +88,7 @@ def compute_plan(status: Status | None, today: dt.date, ceiling: float | None = 
     interval_hours = interval_hours or config.SOCIAL_INTERVAL_HOURS
     if status is None:
         return Plan(False, "no se pudo consultar el saldo de Apify; no se gasta nada hasta poder verificarlo")
-    if status.cycle_end.isoformat() != ceiling_end:
+    if ceiling_end not in ("auto", "") and status.cycle_end.isoformat() != ceiling_end:
         return Plan(False, f"Apify abrió un ciclo nuevo (termina {status.cycle_end}); el presupuesto aprobado era para el ciclo que "
                            f"termina {ceiling_end}. No se gasta hasta confirmar un presupuesto nuevo", cycle_end=status.cycle_end.isoformat())
     effective = min(status.cap, ceiling)

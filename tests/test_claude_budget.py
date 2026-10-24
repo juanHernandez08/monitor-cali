@@ -57,21 +57,26 @@ def test_spend_accumulates_per_month_and_ignores_other_months(budget, db_session
     assert budget.spent() == pytest.approx(0.6, abs=1e-4)
 
 
-def test_model_degrades_to_the_cheap_one_at_the_cap_and_warns_once(budget):
+def test_warns_at_70_degrades_at_85_and_stops_at_100_percent(budget):
     assert budget.model_for("claude-sonnet-5-5") == "claude-sonnet-5-5"
-    budget.add("claude-sonnet-5-5", usage(o=85_000))  # 0,85 USD = 85 % del tope de 1 USD
+    budget.add("claude-sonnet-5-5", usage(o=75_000))  # 0,75 USD = 75 % del tope de 1 USD
     assert budget.model_for("claude-sonnet-5-5") == "claude-sonnet-5-5"
     assert budget.model_for("claude-sonnet-5-5") == "claude-sonnet-5-5"
-    assert len([t for t in budget.sent if "80 %" in t]) == 1  # avisa una sola vez al mes
-    budget.add("claude-sonnet-5-5", usage(o=20_000))  # 1,05 USD: pasó el tope
+    assert len([t for t in budget.sent if "70 %" in t]) == 1  # avisa una sola vez al mes
+    budget.add("claude-sonnet-5-5", usage(o=12_000))  # 0,87 USD: desde el 85 % clasifica con el modelo barato
     assert budget.model_for("claude-sonnet-5-5") == "claude-haiku-5-5"
     assert budget.model_for("claude-sonnet-5-5") == "claude-haiku-5-5"
-    assert len([t for t in budget.sent if "alcanzado" in t]) == 1
+    assert len([t for t in budget.sent if "económico" in t]) == 1
     assert budget.status()["degraded"] is True
+    budget.add("claude-haiku-5-5", usage(o=300_000))  # 0,15 USD más: llega al 100 %
+    with pytest.raises(BudgetExceeded):
+        budget.model_for("claude-sonnet-5-5")
+    with pytest.raises(BudgetExceeded):
+        budget.ensure_room()  # el análisis narrativo también se corta
 
 
-def test_hard_stop_far_above_the_cap(budget):
-    budget.add("claude-sonnet-5-5", usage(o=160_000))  # 1,6 USD >= 1,5 x tope
+def test_the_hard_stop_is_the_cap_itself_not_a_multiple_of_it(budget):
+    budget.add("claude-sonnet-5-5", usage(o=100_001))  # 1,00001 USD >= tope de 1 USD
     with pytest.raises(BudgetExceeded):
         budget.model_for("claude-sonnet-5-5")
 
@@ -116,7 +121,7 @@ def test_engine_charges_the_budget_and_uses_the_degraded_model(budget):
     r = engine.score("texto")
     assert r.model == "claude-sonnet-5-5" and client.calls[0]["output_config"] == {"effort": "low"}
     assert budget.spent() > 0
-    budget.add("claude-sonnet-5-5", usage(o=105_000))  # pasa el tope (1 USD) sin llegar al tope duro (1,5 USD)
+    budget.add("claude-sonnet-5-5", usage(o=90_000))  # pasa el 85 % del tope (1 USD) sin llegar al 100 %
     r = engine.score("texto")
     assert r.model == "claude-haiku-5-5" and client.calls[-1]["model"] == "claude-haiku-5-5"
     assert client.calls[-1]["output_config"] == {"effort": "low"}  # Haiku 5.5 sí acepta effort (el 4.5 no)
