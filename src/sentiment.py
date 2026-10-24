@@ -240,7 +240,9 @@ class SentimentEngine:
         response = self._create(
             model, max_tokens=320, **kwargs,
             messages=[{"role": "user", "content": [
-                {"type": "text", "text": static, "cache_control": {"type": "ephemeral"}},
+                # TTL de 1 hora: la captura llega en rondas cada ~15 min y el caché de 5 min arrancaba frío en casi todas
+                # (escritura 0,008 USD vs 0,002 con caché caliente); a 1 h se paga la escritura (2x) una vez por hora.
+                {"type": "text", "text": static, "cache_control": {"type": "ephemeral", "ttl": "1h"}},
                 {"type": "text", "text": dynamic},
             ]}],
         )

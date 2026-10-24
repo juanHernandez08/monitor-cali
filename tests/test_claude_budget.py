@@ -35,6 +35,12 @@ def test_cost_uses_model_prices_and_cache_discounts():
     assert cost_usd("claude-sonnet-5-5", usage(o=1_000_000)) == pytest.approx(10.0)
     assert cost_usd("claude-sonnet-5-5", usage(cr=1_000_000)) == pytest.approx(0.2)
     assert cost_usd("claude-sonnet-5-5", usage(cw=1_000_000)) == pytest.approx(2.5)
+    # escritura de caché de 1 hora = 2x entrada (cuando la API desglosa por duración)
+    u = usage(cw=1_000_000)
+    u.cache_creation = SimpleNamespace(ephemeral_1h_input_tokens=1_000_000, ephemeral_5m_input_tokens=0)
+    assert cost_usd("claude-sonnet-5-5", u) == pytest.approx(4.0)
+    u.cache_creation = SimpleNamespace(ephemeral_1h_input_tokens=400_000, ephemeral_5m_input_tokens=600_000)
+    assert cost_usd("claude-sonnet-5-5", u) == pytest.approx(2 * (0.8 + 0.75))
     assert cost_usd("claude-haiku-5-5", usage(i=1_000_000, o=1_000_000)) == pytest.approx(0.6)
     assert cost_usd("modelo-desconocido", usage(i=1_000_000)) == pytest.approx(3.0)  # se cuenta caro, nunca barato
     assert cost_usd("claude-sonnet-5-5", None) == 0.0

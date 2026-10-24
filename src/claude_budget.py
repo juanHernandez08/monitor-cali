@@ -21,7 +21,8 @@ SERVICE = "claude_usd_micro"
 HARD_STOP_FACTOR = 1.5
 WARN_AT = 0.8
 
-# USD por millón de tokens (entrada, salida). Lectura de caché = 0,1 x entrada; escritura de caché (5 min) = 1,25 x entrada.
+# USD por millón de tokens (entrada, salida). Lectura de caché = 0,1 x entrada; escritura de caché de 5 min = 1,25 x entrada
+# y de 1 hora = 2 x entrada.
 PRICES = {
     "claude-sonnet-5-5": (2.0, 10.0), "claude-sonnet-5": (2.0, 10.0), "claude-sonnet-4-6": (3.0, 15.0),
     "claude-haiku-5-5": (0.10, 0.50), "claude-haiku-4-5": (1.0, 5.0),
@@ -40,7 +41,11 @@ def cost_usd(model: str, usage) -> float:
         return 0.0
     price_in, price_out = PRICES.get(model, DEFAULT_PRICE)
     n = lambda name: getattr(usage, name, 0) or 0
-    tokens_in = n("input_tokens") + 1.25 * n("cache_creation_input_tokens") + 0.1 * n("cache_read_input_tokens")
+    written = n("cache_creation_input_tokens")
+    detail = getattr(usage, "cache_creation", None)  # desglose por duración, cuando la API lo trae
+    hour = (getattr(detail, "ephemeral_1h_input_tokens", 0) or 0) if detail is not None else 0
+    write_cost = 2.0 * hour + 1.25 * max(written - hour, 0)
+    tokens_in = n("input_tokens") + write_cost + 0.1 * n("cache_read_input_tokens")
     return (tokens_in * price_in + n("output_tokens") * price_out) / 1_000_000
 
 
