@@ -520,6 +520,9 @@ def create_app(session_factory=None, start_jobs: bool = True, cf_verifier=None) 
         data = {"ok": plan.ok, "reason": plan.reason, "used": status.used if status else None,
                 "ceiling": plan.ceiling, "reserve": plan.reserve, "available": plan.available,
                 "days_left": plan.days_left, "job_budget": plan.job_budget, "cycle_end": plan.cycle_end}
+        if config.SENTIMENT_BACKEND == "claude":
+            from src.claude_budget import ClaudeBudget
+            data["claude"] = ClaudeBudget().status()
         budget_cache.update(at=time.time(), data=data)
         return data
 

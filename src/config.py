@@ -52,12 +52,16 @@ OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "qwen2.5:14b")
 # fuerza CPU (más lento, pero no toca la GPU) mientras se actualiza el driver. None = decide Ollama.
 OLLAMA_NUM_GPU = int(os.environ["OLLAMA_NUM_GPU"]) if os.environ.get("OLLAMA_NUM_GPU") is not None else None
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
-CLAUDE_MODEL = os.environ.get("CLAUDE_MODEL", "claude-sonnet-5")  # solo el análisis narrativo del reporte (poco volumen, 1/día)
+CLAUDE_MODEL = os.environ.get("CLAUDE_MODEL", "claude-sonnet-5-5")  # el análisis narrativo del reporte (poco volumen, 1/día)
 # Clasificación (label/tema/categoría/emoción por mención): esto es el volumen real -- cientos por
-# día -- así que es lo que de verdad pesa en la factura. Haiku es lo que se cotizó y aprobó con el
-# cliente (docs/cotizacion.md); Sonnet quedó puesto por error y costaba ~2× lo presupuestado
-# (2026-09-30, cliente avisó que quedaban USD 5 de saldo -- viabilidad del proyecto en juego).
-CLAUDE_CLASSIFY_MODEL = os.environ.get("CLAUDE_CLASSIFY_MODEL", "claude-haiku-4-5")
+# día -- así que es lo que de verdad pesa en la factura. Desde 2026-10-23 el PC del cliente deja de
+# clasificar (viaja y lo apaga): Sonnet 5.5 acierta ~96 % del tono contra ~77 % de Ollama y ~79 % de
+# Haiku en la prueba de 100 menciones (scripts/eval_models.py, docs/Cotizacion_Monitor_Cali_2026-10.pdf).
+CLAUDE_CLASSIFY_MODEL = os.environ.get("CLAUDE_CLASSIFY_MODEL", "claude-sonnet-5-5")
+# Freno de gasto de Claude (src/claude_budget.py): al llegar al tope del mes la clasificación pasa sola al
+# modelo barato de respaldo (no se detiene) y se avisa a soporte técnico. Dólares por mes calendario.
+CLAUDE_MONTHLY_BUDGET_USD = float(os.environ.get("CLAUDE_MONTHLY_BUDGET_USD", "22"))
+CLAUDE_FALLBACK_MODEL = os.environ.get("CLAUDE_FALLBACK_MODEL", "claude-haiku-5-5")
 
 # Google Cloud (gratis): Custom Search JSON API + YouTube Data API v3
 GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")

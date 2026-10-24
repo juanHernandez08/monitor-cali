@@ -156,6 +156,12 @@ function StatusFooter() {
             : <span className="text-rose-600">captura de redes en pausa: {b.reason}</span>}
         </div>
       )}
+      {b?.claude && (
+        <div className="mt-1">
+          Claude (clasificación, {b.claude.month}): ${b.claude.spent_usd.toFixed(2)} gastados de ${b.claude.cap_usd.toFixed(2)} del mes
+          {b.claude.degraded && <span className="ml-1 text-amber-700">· tope alcanzado: clasifica con el modelo económico ({b.claude.fallback_model})</span>}
+        </div>
+      )}
     </footer>
   );
 }

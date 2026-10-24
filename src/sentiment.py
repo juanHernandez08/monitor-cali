@@ -146,6 +146,11 @@ class SentimentResult:
     esfera: str = "ciudadanía"
 
 
+class ContentError(ValueError):
+    """La respuesta del modelo no sirve para ESTA mención (rechazo de seguridad, sin texto, JSON roto). Es distinto de una
+    falla de la API (red, saldo, límite), que afecta a toda la cola: ver pipeline.score_pending."""
+
+
 def _esfera(value) -> str:
     v = str(value or "").strip().lower()
     return next((e for e in ESFERAS if e.lower() == v), "ciudadanía")
@@ -200,13 +205,26 @@ class SentimentEngine:
     """Backend Claude (Anthropic API). Dos modelos: uno barato para clasificar (el volumen real,
     cientos de menciones/día) y uno más capaz solo para el análisis narrativo (1 vez/día)."""
 
-    def __init__(self, model: str | None = None, classify_model: str | None = None, client=None):
+    def __init__(self, model: str | None = None, classify_model: str | None = None, client=None, budget=None):
         self.model = model or config.CLAUDE_MODEL
         self.classify_model = classify_model or config.CLAUDE_CLASSIFY_MODEL
         if client is None:
             from anthropic import Anthropic
             client = Anthropic(api_key=config.ANTHROPIC_API_KEY)
         self.client = client
+        self.budget = budget  # src/claude_budget.ClaudeBudget; sin él (pruebas) no se mide ni se frena el gasto
+
+    def _create(self, model: str, **kwargs):
+        """Llamada a la API con el gasto medido y los rechazos de Anthropic (saldo, clave) avisados al soporte."""
+        try:
+            response = self.client.messages.create(model=model, **kwargs)
+        except Exception as exc:
+            if self.budget is not None:
+                self.budget.report_api_error(exc)
+            raise
+        if self.budget is not None:
+            self.budget.add(model, getattr(response, "usage", None))
+        return response
 
     def score(self, text: str, candidate: str | None = None, city: bool = False) -> SentimentResult:
         # Clasificación de una sola etiqueta JSON: no necesita razonamiento extendido. Sin esto,
@@ -214,11 +232,13 @@ class SentimentEngine:
         # el mayor costo real de la herramienta (cientos de menciones/día), y ese pensamiento
         # invisible competía por el mismo tope de max_tokens que el JSON de la respuesta.
         # Haiku 4.5 NO acepta "effort" (da 400) -- pero tampoco piensa si no se le pide, así que
-        # sencillamente se omite en vez de forzar "low" como con Sonnet.
+        # sencillamente se omite en vez de forzar "low" como con Sonnet. Haiku 5.5 y Sonnet 5.5 sí lo aceptan
+        # (y no se les puede desactivar el pensamiento: `thinking: disabled` da 400 en Sonnet 5.5).
         static, dynamic = _prompt_parts(text, candidate, city)
-        kwargs = {} if "haiku" in self.classify_model else {"output_config": {"effort": "low"}}
-        response = self.client.messages.create(
-            model=self.classify_model, max_tokens=320, **kwargs,
+        model = self.budget.model_for(self.classify_model) if self.budget is not None else self.classify_model
+        kwargs = {} if "haiku-4" in model else {"output_config": {"effort": "low"}}
+        response = self._create(
+            model, max_tokens=320, **kwargs,
             messages=[{"role": "user", "content": [
                 {"type": "text", "text": static, "cache_control": {"type": "ephemeral"}},
                 {"type": "text", "text": dynamic},
@@ -227,8 +247,10 @@ class SentimentEngine:
         # Los modelos actuales pueden devolver bloques `thinking` antes del texto.
         for block in response.content:
             if getattr(block, "type", "text") == "text":
-                return _parse_payload(block.text, self.classify_model)
-        raise ValueError("La respuesta de Claude no contiene un bloque de texto")
+                return _parse_payload(block.text, model)
+        # Sin texto: Claude se negó (stop_reason "refusal") o se quedó sin tokens. Es un problema de ESTA mención, no de
+        # la API: el llamador la descarta tras unos reintentos en vez de frenar la cola entera.
+        raise ContentError(f"La respuesta de Claude no contiene un bloque de texto (stop_reason={getattr(response, 'stop_reason', None)})")
 
     def generate_text(self, prompt: str, max_tokens: int = 3000) -> str:
         """Texto libre (no la clasificación JSON de score()) -- para el análisis narrativo del
@@ -240,14 +262,14 @@ class SentimentEngine:
         "medium" (no "low": esto redacta un análisis, no clasifica una etiqueta) más un tope más
         alto dejan espacio de sobra para pensar y para el texto visible.
         """
-        response = self.client.messages.create(
-            model=self.model, max_tokens=max_tokens, output_config={"effort": "medium"},
+        response = self._create(
+            self.model, max_tokens=max_tokens, output_config={"effort": "medium"},
             messages=[{"role": "user", "content": prompt}],
         )
         for block in response.content:
             if getattr(block, "type", "text") == "text":
                 return block.text.strip()
-        raise ValueError("La respuesta de Claude no contiene un bloque de texto")
+        raise ContentError("La respuesta de Claude no contiene un bloque de texto")
 
 
 def _ollama_post(url: str, json_body: dict, timeout: int) -> dict:
@@ -292,5 +314,6 @@ class OllamaSentimentEngine:
 def build_sentiment_engine():
     backend = os.environ.get("SENTIMENT_BACKEND", "ollama").lower()
     if backend == "claude" and os.environ.get("ANTHROPIC_API_KEY"):
-        return SentimentEngine()
+        from src.claude_budget import ClaudeBudget
+        return SentimentEngine(budget=ClaudeBudget())
     return OllamaSentimentEngine()

@@ -70,6 +70,7 @@ def test_social_connector_gets_known_posts_pending_comments_and_marks_attempted(
     from src.models import Candidate, Mention
     import src.scheduler as m
     monkeypatch.setenv("BRIGHTDATA_API_TOKEN", "t")
+    monkeypatch.delenv("APIFY_TOKEN", raising=False)  # el .env local trae el real: con él el test consultaría el saldo de Apify en vivo
     monkeypatch.setattr(m.config, "SOCIAL_ACCOUNTS", [{"platform": "instagram", "url": "https://www.instagram.com/x/", "candidate": "Carlos Arias"}])
     c = Candidate(name="Carlos Arias", aliases=[])
     src = Source(type=SourceType.SOCIAL, name="IG")

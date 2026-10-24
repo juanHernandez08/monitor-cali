@@ -163,6 +163,19 @@ def context_text(mention) -> str:
     return text
 
 
+def count_pending(session) -> int:
+    """Menciones que score_pending ya podría clasificar (las de Google News esperan su cuerpo y no cuentan)."""
+    return (session.query(Mention).join(Source, Mention.source_id == Source.id)
+            .outerjoin(SentimentScore, SentimentScore.mention_id == Mention.id)
+            .filter(SentimentScore.id.is_(None))
+            .filter(or_(Source.type != SourceType.GOOGLE_NEWS, Mention.body.isnot(None)))
+            .count())
+
+
+MAX_CONTENT_FAILURES = 3
+_content_failures: dict[int, int] = {}  # mention.id -> veces seguidas que el modelo respondió algo inservible
+
+
 def score_pending(session, engine, limit: int = 20) -> int:
     """Clasifica menciones sin SentimentScore, en lotes. Devuelve cuántas clasificó."""
     pending = (
@@ -198,9 +211,22 @@ def score_pending(session, engine, limit: int = 20) -> int:
         text = context_text(mention)
         try:
             result = engine.score(text, candidate=mention.candidate.name, city=is_city)
+        except ValueError:
+            # La respuesta del modelo no sirve para ESTA mención (rechazo de seguridad, JSON roto): se reintenta unas veces y,
+            # si sigue igual, se aparta (relevant=False) para que no frene a todas las que vienen detrás en la cola.
+            n = _content_failures[mention.id] = _content_failures.get(mention.id, 0) + 1
+            log.exception("score: respuesta inservible para mention %s (intento %d/%d)", mention.id, n, MAX_CONTENT_FAILURES)
+            if n >= MAX_CONTENT_FAILURES:
+                mention.relevant = False
+                session.add(SentimentScore(mention_id=mention.id, label=SentimentLabel.NEUTRAL, score=0.0,
+                                           topic="no clasificable", model="error"))
+                session.commit()
+                _content_failures.pop(mention.id, None)
+                scored += 1
+            continue
         except Exception:
             log.exception("score falló para mention %s", mention.id)
-            break  # Ollama caído: reintentar en el próximo ciclo
+            break  # Ollama o la API de Claude caídos (red, saldo, límite): reintentar en el próximo ciclo
         topic = (result.topic or "").lower()
         is_comment = (mention.raw or {}).get("kind") == "comment"
         # Homónimo → fuera. Un comentario "tangencial" habla del video, no del candidato → fuera.

@@ -22,7 +22,7 @@ from src.connectors.youtube import YouTubeConnector
 from src.db import get_session
 from src.enrich import enrich_pending
 from src.models import Run, Source, SourceType
-from src.pipeline import backfill_place_hints, ingest, score_pending
+from src.pipeline import backfill_place_hints, count_pending, ingest, score_pending
 from src.sentiment import OllamaSentimentEngine, build_sentiment_engine
 from sqlalchemy import func
 
@@ -409,6 +409,9 @@ def job_score():
             p = backfill_place_hints(s, engine, limit=12)
             if p:
                 log.info("lugar: %d menciones antiguas releídas", p)
+        if not isinstance(engine, OllamaSentimentEngine) and n < 20:
+            # Sin el PC del cliente de respaldo, una cola que no baja = la API de Claude está fallando: avisar a soporte.
+            notify.check_score_backlog(s, count_pending(s))
         alerted = notify.check_negative_mentions(s)
         if alerted:
             log.info("notify: %d menciones negativas avisadas", alerted)

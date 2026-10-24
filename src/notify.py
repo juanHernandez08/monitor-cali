@@ -198,6 +198,26 @@ def check_ollama_tunnel(session) -> None:
                  priority=4, tags=["red_circle"])
 
 
+def check_score_backlog(session, pending: int, threshold: int = 60) -> None:
+    """Avisa (solo a Juan, NTFY_TOPIC_TECH) si hay una cola de menciones sin clasificar que no baja: sin el PC del cliente
+    como respaldo, es la señal de que la API de Claude está fallando. Un aviso cada 6 horas, y otro cuando se normaliza."""
+    import datetime as dt
+    now = dt.datetime.utcnow()
+    last = _get_state(session, "score_backlog_alert")
+    if pending < threshold:
+        if last:
+            _set_state(session, "score_backlog_alert", "")
+            send(config.NTFY_TOPIC_TECH, "✅ Clasificación al día", f"Quedan {pending} menciones pendientes.", priority=3,
+                 tags=["white_check_mark"])
+        return
+    if last and now - dt.datetime.fromisoformat(last) < dt.timedelta(hours=6):
+        return
+    _set_state(session, "score_backlog_alert", now.isoformat())
+    send(config.NTFY_TOPIC_TECH, "🟠 Menciones sin clasificar",
+         f"Hay {pending} menciones esperando clasificación y la cola no baja. Revisar los registros del servidor "
+         "(saldo o límite de la API de Claude).", priority=4, tags=["warning"])
+
+
 def notify_apify_blocked(session, reason: str) -> None:
     """La vuelta de redes NO corrió por presupuesto (ver src/apify_budget.py). Un aviso por día y por
     motivo: el job se revisa cada 24 h, pero "Actualizar ahora" puede reintentar varias veces."""
